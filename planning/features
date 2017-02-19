@@ -1,0 +1,20 @@
+Legend:
+
+i - Implemented
+n - Not implemented
+p - Partially implemented
+
+General:
+n amd64 64-bit mode support
+
+Scheduling:
+n multiprocessor support
+n real-time scheduling
+n priorities
+n priority-inversion handling
+n cpu-burst handling
+
+Interrupts:
+n general handlers
+n system timer
+n nested interrupts
