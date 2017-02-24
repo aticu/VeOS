@@ -6,6 +6,8 @@ p - Partially implemented
 
 General:
 n amd64 64-bit mode support
+n basic rust OS-library
+n basic rust program-library
 
 Scheduling:
 n multiprocessor support
@@ -18,3 +20,16 @@ Interrupts:
 n general handlers
 n system timer
 n nested interrupts
+
+Memory Managment:
+n basic allocator/deallocator
+n paging/virtual memory (second chance algorithm)
+n thrashing prevention
+
+Interface:
+n basic syscalls
+n event based programming
+
+Resource managment:
+n basic resource manager
+n deadlock detection/resolution
