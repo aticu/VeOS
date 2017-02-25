@@ -4,6 +4,7 @@ extern stack_top
 extern check_multiboot
 extern check_cpuid
 extern check_long_mode
+extern enable_SSE
 extern set_up_paging
 extern enable_paging
 extern gdt.code
@@ -20,6 +21,7 @@ start:
     call check_multiboot
     call check_cpuid
     call check_long_mode
+    call enable_SSE
 
     ;enable paging
     call set_up_paging
