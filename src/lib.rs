@@ -1,35 +1,31 @@
 #![feature(lang_items)]
+#![feature(const_fn)]
+#![feature(unique)]
 #![no_std]
 
 extern crate rlibc;
+extern crate volatile;
+extern crate spin;
+
+#[macro_use]
+mod vga_buffer;
 
 #[no_mangle]
-pub extern fn rust_main()
-{
-    let string = b"Hello from Rust!";
-    let color_byte = 0x0f;
+pub extern fn rust_main() {
+    vga_buffer::clear_screen();
+    println!("Hello from high level Rust! Package name: {}", env!("CARGO_PKG_VERSION"));
 
-    let mut string_colored = [color_byte; 24];
-    for (i, char_byte) in string.into_iter().enumerate() {
-        string_colored[i * 2] = *char_byte;
+    loop {
     }
-
-    let buffer_ptr = (0xb8000 + 1988) as * mut _;
-    unsafe { *buffer_ptr = string_colored };
-
-    loop {}
 }
 
 #[lang = "eh_personality"]
-extern fn eh_personality()
-{
+extern fn eh_personality() {
 }
 
 #[lang = "panic_fmt"]
 #[no_mangle]
-pub extern fn panic_fmt() -> !
-{
-    loop
-    {
+pub extern fn panic_fmt() -> ! {
+    loop {
     }
 }

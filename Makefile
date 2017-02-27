@@ -2,10 +2,10 @@ src_dir := src
 build_dir := build
 
 arch ?= x86_64
-target ?= $(arch)-unknown-none-gnu
+target ?= $(arch)-unknown-veos-gnu
 kernel := $(build_dir)/kernel-$(arch).bin
 iso := $(build_dir)/os-$(arch).iso
-rust_lib := target/$(target)/debug/libve_os.a
+rust_lib := target/$(target)/debug/libveos.a
 
 asm_folders := $(src_dir)/arch/$(arch)/init
 
@@ -24,10 +24,10 @@ rust_compiler := xargo
 
 .PHONY: all clean run iso
 
-all: $(kernel)
+all: $(kernel) run
 
 clean:
-	rm -rf $(build_dir) target
+	rm -rf $(build_dir) target $(sysroot_dir)
 
 run: $(iso)
 	qemu-system-x86_64 -cdrom $(iso) --no-reboot
@@ -43,7 +43,7 @@ $(iso): $(kernel) $(grub_cfg)
 	@cp $(grub_cfg) build/isofiles/boot/grub
 	grub-mkrescue -o $(iso) build/isofiles 2>/dev/null
 
-$(kernel): $(assembly_object_files) $(linker_script) $(rust_lib) cargo
+$(kernel): $(assembly_object_files) $(linker_script) cargo $(rust_lib)
 	$(linker) $(linker_flags) -o $(kernel) $(assembly_object_files) $(rust_lib)
 
 $(assembly_object_files): $(build_dir)/%.o : $(src_dir)/%.asm

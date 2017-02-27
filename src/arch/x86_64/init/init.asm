@@ -13,7 +13,7 @@ long_mode_start: ;first 64-bit code to be executed
 
     call rust_main
 
-    ;print OKAY
-    mov rax, 0x2f592f412f4b2f4f
-    mov qword [0xb8000], rax
+    ;in case the rust code ever returns, halt the CPU indefinitely
+.endlessLoop
     hlt
+    jmp .endlessLoop
