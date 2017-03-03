@@ -14,7 +14,7 @@ pdp_table:
 pd_table:
     resb 4096
 stack_bottom:
-    resb 64
+    resb 4096 ;use a stack that has a page as it's size
 stack_top:
 
 section .rodata

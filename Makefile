@@ -24,7 +24,7 @@ rust_compiler := xargo
 
 .PHONY: all clean run iso
 
-all: $(kernel) run
+all: $(kernel)
 
 clean:
 	rm -rf $(build_dir) target $(sysroot_dir)

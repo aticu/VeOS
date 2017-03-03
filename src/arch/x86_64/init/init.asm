@@ -1,6 +1,6 @@
 global long_mode_start
 
-extern rust_main
+extern main
 
 section .text
 long_mode_start: ;first 64-bit code to be executed
@@ -11,9 +11,9 @@ long_mode_start: ;first 64-bit code to be executed
     mov fs, ax
     mov gs, ax
 
-    call rust_main
+    call main
 
     ;in case the rust code ever returns, halt the CPU indefinitely
-.endlessLoop
+.endlessLoop:
     hlt
     jmp .endlessLoop

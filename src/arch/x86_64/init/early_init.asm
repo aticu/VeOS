@@ -16,6 +16,7 @@ bits 32
 start:
     ;initialize stack pointer
     mov esp, stack_top
+    mov edi, ebx ;save multiboot information address in edi for later use
 
     ;check if long mode is available
     call check_multiboot

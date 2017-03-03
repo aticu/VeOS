@@ -48,6 +48,7 @@ struct Buffer {
     chars: [[Volatile<ScreenChar>; BUFFER_WIDTH]; BUFFER_HEIGHT]
 }
 
+///The writer is used to write to a legacy VGA display buffer.
 pub struct Writer {
     column_position: usize,
     row_position: usize,
@@ -56,6 +57,7 @@ pub struct Writer {
 }
 
 impl Writer {
+    ///Writes the given character to the buffer.
     pub fn write_char(&mut self, byte: u8) {
         match byte {
             b'\n' => self.new_line(),
@@ -78,6 +80,7 @@ impl Writer {
         }
     }
 
+    ///Writes the given string to the buffer.
     pub fn write_string(&mut self, string: &str) {
         for byte in string.bytes() {
             self.write_char(byte);
@@ -168,6 +171,7 @@ pub fn print(args: fmt::Arguments) {
     WRITER.lock().write_fmt(args).unwrap();
 }
 
+///Clears the VGA buffer screen.
 pub fn clear_screen() {
     WRITER.lock().clear_screen();
 }
