@@ -40,3 +40,10 @@ pub fn get_vga_info() -> vga_buffer::Info {
         BootMethod::Multiboot2 => multiboot2::get_vga_info()
     }
 }
+
+pub fn get_bootloader_name() -> &'static str {
+    match *get_boot_method() {
+        BootMethod::Unknown => "None",
+        BootMethod::Multiboot2 => multiboot2::get_bootloader_name()
+    }
+}

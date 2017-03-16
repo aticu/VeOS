@@ -2,7 +2,7 @@ src_dir := src
 build_dir := build
 
 arch ?= x86_64
-target ?= $(arch)-unknown-veos-gnu
+target ?= $(arch)-unknown-none-gnu
 kernel := $(build_dir)/kernel-$(arch).bin
 iso := $(build_dir)/os-$(arch).iso
 rust_lib := target/$(target)/debug/libveos.a
@@ -22,7 +22,7 @@ assembler := nasm
 rust_compiler_flags := --target $(target)
 rust_compiler := xargo
 
-.PHONY: all clean run iso
+.PHONY: all clean run iso run_verbose objdump cargo
 
 all: $(kernel)
 
@@ -36,6 +36,9 @@ run_verbose: $(iso)
 	qemu-system-x86_64 -cdrom $(iso) -d int --no-reboot
 
 iso: $(iso)
+
+objdump: $(kernel)
+	objdump $(kernel) -D --disassembler-options=intel-mnemonic | less
 
 $(iso): $(kernel) $(grub_cfg)
 	@mkdir -p build/isofiles/boot/grub

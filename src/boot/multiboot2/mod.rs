@@ -1,6 +1,9 @@
 mod framebuffer_info;
+mod boot_loader_name;
 
 use super::super::vga_buffer;
+pub use self::framebuffer_info::get_vga_info;
+pub use self::boot_loader_name::get_bootloader_name;
 
 #[repr(C)]
 struct BasicTag {
@@ -49,15 +52,7 @@ fn check_validity(information_structure_address: usize) -> bool {
     end_tag_type == 0 && end_tag_size == 8
 }
 
-fn get_tag(tag_type: u32) -> *const BasicTag {
-    unsafe { BasicTagIterator::new().find(|tag| (**tag).tag_type == tag_type).expect("Tag type not found") }
+fn get_tag(tag_type: u32) -> Option<*const BasicTag> {
+    unsafe { BasicTagIterator::new().find(|tag| (**tag).tag_type == tag_type) }
 }
 
-pub fn get_vga_info() -> vga_buffer::Info {
-    let framebuffer_tag = unsafe { &*(get_tag(8) as *const framebuffer_info::FramebufferInfo) };
-    vga_buffer::Info {
-        height: framebuffer_tag.framebuffer_height as usize,
-        width: framebuffer_tag.framebuffer_width as usize,
-        address: framebuffer_tag.framebuffer_addr as usize
-    }
-}
