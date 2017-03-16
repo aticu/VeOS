@@ -1,4 +1,3 @@
-global check_multiboot
 global check_cpuid
 global check_long_mode
 
@@ -8,14 +7,6 @@ extern no_long_mode_error
 
 section .text
 bits 32
-check_multiboot:            ;check if booted using multiboot
-    cmp eax, 0x36d76289     ;multiboot magic number
-    jne .no_multiboot
-    ret
-.no_multiboot:
-    mov eax, no_multiboot_error
-    jmp early_error
-
 check_cpuid:                ;check if the cpuid instruction is available
     ;move flags register to eax
     pushfd

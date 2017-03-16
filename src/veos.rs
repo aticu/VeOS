@@ -9,15 +9,13 @@ extern crate spin;
 
 #[macro_use]
 mod vga_buffer;
-mod multiboot;
+mod boot;
 
 #[no_mangle]
-//pub extern fn main(multiboot_structure : usize) {
-pub extern fn main(multiboot_structure : &multiboot::MultibootInformation) {
-    vga_buffer::clear_screen();
-    println!("Hello from high level Rust! Package name: {}", env!("CARGO_PKG_VERSION"));
-//    println!("MultibootInformation address: {:?}", unsafe { (&*(multiboot_structure as *const multiboot::MultibootInformation)).total_size });
-    println!("{:?}", multiboot_structure);
+pub extern fn main(magic_number: u32, information_structure_address: usize) {
+    boot::init(magic_number, information_structure_address);
+    vga_buffer::init();
+    println!("Everything worked as expected!");
 
     loop {
     }
