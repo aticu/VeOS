@@ -1,4 +1,5 @@
-use super::vga_buffer;
+#[cfg(target_arch = "x86_64")]
+use arch::x86_64::vga_buffer;
 use super::get_tag;
 
 #[repr(C)]
@@ -15,6 +16,7 @@ pub struct FramebufferInfo { //type = 8
     color_info: u32 //this is just a placeholder, this depends on the framebuffer_type
 }
 
+#[cfg(target_arch = "x86_64")]
 pub fn get_vga_info() -> vga_buffer::Info {
     let framebuffer_tag = unsafe { &*(get_tag(8).expect("Framebuffer tag required.") as *const FramebufferInfo) };
     vga_buffer::Info {

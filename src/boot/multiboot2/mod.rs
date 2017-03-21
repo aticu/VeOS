@@ -1,9 +1,10 @@
 mod framebuffer_info;
 mod boot_loader_name;
+mod memory_map;
 
-use super::super::vga_buffer;
 pub use self::framebuffer_info::get_vga_info;
 pub use self::boot_loader_name::get_bootloader_name;
+pub use self::memory_map::print_all;
 
 #[repr(C)]
 struct BasicTag {
@@ -34,7 +35,7 @@ impl Iterator for BasicTagIterator {
         else {
             let last_address = self.current_address;
             self.current_address += current_tag.size as usize;
-            self.current_address += if self.current_address % 8 == 0 {0} else {8 - (self.current_address % 8)};
+            self.current_address += if self.current_address % 8 == 0 { 0 } else { 8 - (self.current_address % 8) };
             Some(last_address as *const BasicTag)
         }
     }

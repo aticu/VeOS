@@ -1,4 +1,5 @@
-use super::super::vga_buffer;
+#[cfg(target_arch = "x86_64")]
+use arch::x86_64::vga_buffer;
 
 pub fn init() {
     //TODO this gets called when the OS is booted using an unknown bootloader

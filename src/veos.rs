@@ -10,7 +10,8 @@ extern crate spin;
 #[macro_use]
 mod ffi;
 #[macro_use]
-mod vga_buffer;
+mod io;
+mod arch;
 mod boot;
 
 static OS_NAME: &str = "VeOS";
@@ -18,8 +19,9 @@ static OS_NAME: &str = "VeOS";
 #[no_mangle]
 pub extern fn main(magic_number: u32, information_structure_address: usize) {
     boot::init(magic_number, information_structure_address);
-    vga_buffer::init();
+    io::init();
     println!("Booted {} using {}...", OS_NAME, boot::get_bootloader_name());
+    boot::print_all();
 
     loop {
     }

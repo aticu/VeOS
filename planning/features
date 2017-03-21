@@ -5,7 +5,7 @@ n - Not implemented
 p - Partially implemented
 
 General:
-n amd64 64-bit mode support
+i amd64 64-bit mode support
 n basic rust OS-library
 n basic rust program-library
 

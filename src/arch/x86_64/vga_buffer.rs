@@ -2,7 +2,7 @@ use core::fmt;
 use core::ptr::Unique;
 use volatile::Volatile;
 use spin::Mutex;
-use super::boot;
+use boot;
 
 #[allow(dead_code)]
 #[repr(u8)]
@@ -43,7 +43,7 @@ struct ScreenChar {
 }
 
 struct Buffer {
-    chars: [[Volatile<ScreenChar>; 80]; 25]
+    chars: [[Volatile<ScreenChar>; 80]; 25] //TODO this doesn't work for bigger displays
 }
 
 ///The writer is used to write to a legacy VGA display buffer.
@@ -134,8 +134,8 @@ impl Writer {
 
     fn clear_screen(&mut self)
     {
-        for _ in 0..self.buffer_height {
-            self.new_line();
+        for i in 0..self.buffer_height {
+            self.clear_line(i);
         }
 
         self.column_position = 0;
@@ -157,7 +157,7 @@ impl fmt::Write for Writer {
     }
 }
 
-static WRITER: Mutex<Writer> = Mutex::new(Writer {
+pub static WRITER: Mutex<Writer> = Mutex::new(Writer {
     buffer_height: 25,
     buffer_width: 80,
     column_position: 0,
@@ -177,22 +177,6 @@ pub fn init() {
     let info = boot::get_vga_info();
     WRITER.lock().init(info);
     clear_screen();
-}
-
-macro_rules! println {
-    ($fmt:expr) => (print!(concat!($fmt, "\n")));
-    ($fmt:expr, $($arg:tt)*) => (print!(concat!($fmt, "\n"), $($arg)*));
-}
-
-macro_rules! print {
-    ($($arg:tt)*) => ({
-        $crate::vga_buffer::print(format_args!($($arg)*));
-    });
-}
-
-pub fn print(args: fmt::Arguments) {
-    use core::fmt::Write;
-    WRITER.lock().write_fmt(args).unwrap();
 }
 
 ///Clears the VGA buffer screen.

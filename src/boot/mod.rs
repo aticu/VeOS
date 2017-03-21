@@ -1,7 +1,8 @@
 mod multiboot2;
 mod freestanding;
 
-use super::vga_buffer;
+#[cfg(target_arch = "x86_64")]
+use arch::x86_64::vga_buffer;
 
 enum BootMethod {
     Unknown,
@@ -34,6 +35,7 @@ fn get_boot_method() -> &'static BootMethod {
     unsafe { &BOOT_METHOD }
 }
 
+#[cfg(target_arch = "x86_64")]
 pub fn get_vga_info() -> vga_buffer::Info {
     match *get_boot_method() {
         BootMethod::Unknown => freestanding::get_vga_info(),
@@ -46,4 +48,8 @@ pub fn get_bootloader_name() -> &'static str {
         BootMethod::Unknown => "None",
         BootMethod::Multiboot2 => multiboot2::get_bootloader_name()
     }
+}
+
+pub fn print_all() {
+    multiboot2::print_all();
 }
