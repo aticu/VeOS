@@ -1,26 +1,54 @@
 ENTRY(start)
 OUTPUT_FORMAT(elf64-x86-64)
 
-SECTIONS {
-    . = 1M;
+PAGE_SIZE = 4K;
+LOADER_START = 1M;
+KERNEL_OFFSET = 0xffff800000000000;
 
-    .boot :
+SECTIONS {
+    . = LOADER_START;
+
+    .init :
     {
         KEEP(*(.multiboot_header))
+        *(.init)
+        . = ALIGN(PAGE_SIZE);
     }
 
-    .text :
+    . += KERNEL_OFFSET;
+
+    .text : AT(ADDR(.text) - KERNEL_OFFSET)
     {
-        *(.text)
+        *(.text .text.*)
+        . = ALIGN(PAGE_SIZE);
     }
 
-    .data :
+    .rodata : AT(ADDR(.rodata) - KERNEL_OFFSET)
     {
-        *(.data)
+        *(.rodata .rodata.*)
+        . = ALIGN(PAGE_SIZE);
     }
 
-    .bss :
+    .data.rel.ro : AT(ADDR(.data.rel.ro) - KERNEL_OFFSET)
     {
-        *(.bss)
+        *(.data.rel.ro.local*) *(.data.rel.ro .data.rel.ro.*)
+        . = ALIGN(PAGE_SIZE);
     }
+
+    .data : AT(ADDR(.data) - KERNEL_OFFSET)
+    {
+        *(.data .data.*)
+        . = ALIGN(PAGE_SIZE);
+    }
+
+    _data_end = . - KERNEL_OFFSET;
+
+    .bss : AT(ADDR(.bss) - KERNEL_OFFSET)
+    {
+        *(.bss .bss.*)
+        *(COMMON)
+        . = ALIGN(PAGE_SIZE);
+    }
+    
+    _bss_end = . - KERNEL_OFFSET;
 }

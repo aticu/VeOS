@@ -30,15 +30,18 @@ clean:
 	rm -rf $(build_dir) target $(sysroot_dir)
 
 run: $(iso)
-	qemu-system-x86_64 -cdrom $(iso) --no-reboot
+	qemu-system-x86_64 -cdrom $(iso) --no-reboot -s
 
 run_verbose: $(iso)
-	qemu-system-x86_64 -cdrom $(iso) -d int --no-reboot
+	qemu-system-x86_64 -cdrom $(iso) -d int --no-reboot -s
 
 iso: $(iso)
 
 objdump: $(kernel)
-	objdump $(kernel) -D --disassembler-options=intel-mnemonic | less
+	objdump $(kernel) -D -C --disassembler-options=intel-mnemonic | less
+
+hexdump: $(kernel)
+	hexdump $(kernel) | less
 
 $(iso): $(kernel) $(grub_cfg)
 	@mkdir -p build/isofiles/boot/grub

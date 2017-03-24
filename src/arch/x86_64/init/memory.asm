@@ -5,7 +5,7 @@ global pd_table
 global gdt.code
 global gdt.pointer
 
-section .bss
+section .init
 align 4096
 pml4_table:
     resb 4096
@@ -17,7 +17,7 @@ stack_bottom:
     resb 4096 ;use a stack that has a page as it's size
 stack_top:
 
-section .rodata
+section .init
 gdt:
     dq 0 ;required
 .code: equ $ - gdt

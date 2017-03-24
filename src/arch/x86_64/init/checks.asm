@@ -2,10 +2,8 @@ global check_cpuid
 global check_long_mode
 
 extern early_error
-extern no_multiboot_error
-extern no_long_mode_error
 
-section .text
+section .init
 bits 32
 check_cpuid:                ;check if the cpuid instruction is available
     ;move flags register to eax
@@ -47,3 +45,6 @@ check_long_mode:            ;check if long mode is supported
 .no_long_mode:
     mov eax, no_long_mode_error
     jmp early_error
+
+no_long_mode_error:
+    db "Your CPU does not support 64 Bit mode. That means it's not possible to use this OS on your computer. Aborting...",0

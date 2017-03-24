@@ -5,15 +5,19 @@ extern pml4_table
 extern pdp_table
 extern pd_table
 
-section .text
+section .init
 bits 32
 set_up_paging: ;sets up very basic paging for the first GB of memory
-.map_pml4: ;map first entry to the only p3 table
+.map_pml4: ;map first entry to the only page directory pointer table
     mov eax, pdp_table
     or eax, 0b11 ;present + writable
     mov [pml4_table], eax
+    mov [pml4_table + 256 * 8], eax ;map the high half of the kernel
+    mov eax, pml4_table ;set up recursive mapping for the last page table entry
+    or eax, 0b11
+    mov [pml4_table + 511 * 8], eax
 
-.map_pdp: ;map first entry to the only p2 table
+.map_pdp: ;map first entry to the only page directory table
     mov eax, pd_table
     or eax, 0b11 ;present + writable
     mov [pdp_table], eax

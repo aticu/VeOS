@@ -1,6 +1,6 @@
 global early_error
 
-section .text
+section .init
 bits 32
 early_error:
     mov ecx, 0
