@@ -6,10 +6,12 @@ p - Partially implemented
 
 General:
 i amd64 64-bit mode support
+n SMP
 n basic rust OS-library
 n basic rust program-library
 
 Scheduling:
+n differentiating between IO-heavy and CPU-heavy processes
 n multiprocessor support
 n real-time scheduling
 n priorities

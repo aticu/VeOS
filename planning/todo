@@ -1,2 +1,3 @@
 Improve support for reading the multiboot structure
 High half kernel
+Improve panic function
