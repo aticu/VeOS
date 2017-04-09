@@ -21,9 +21,6 @@ start:
     mov esi, ebx ;save multiboot information address in esi for later use
     mov edi, eax ;save the multiboot magic number in edi for later use
 
-    mov dword [0xb8000], 0x2f4b2f4f
-    hlt
-
     ;check if long mode is available
     call check_cpuid
     call check_long_mode

@@ -1,11 +1,13 @@
-src_dir := src
-build_dir := build
-
 arch ?= x86_64
 target ?= $(arch)-unknown-none-gnu
+build_type ?= debug
+
+src_dir := src
+build_dir := target/$(target)/build
+
 kernel := $(build_dir)/kernel-$(arch).bin
 iso := $(build_dir)/os-$(arch).iso
-rust_lib := target/$(target)/debug/libveos.a
+rust_lib := target/$(target)/$(build_type)/libveos.a
 
 asm_folders := $(src_dir)/arch/$(arch)/init
 
@@ -20,14 +22,17 @@ linker := ld
 assembler_flags := -felf64
 assembler := nasm
 rust_compiler_flags := --target $(target)
+ifeq ($(build_type),release)
+	rust_compiler_flags += --release
+endif
 rust_compiler := xargo
 
-.PHONY: all clean run iso run_verbose objdump cargo
+.PHONY: all clean run iso run_verbose objdump cargo doc doctest
 
 all: $(kernel)
 
 clean:
-	rm -rf $(build_dir) target $(sysroot_dir)
+	rm -rf target
 
 run: $(iso)
 	qemu-system-x86_64 -cdrom $(iso) --no-reboot -s
@@ -37,6 +42,12 @@ run_verbose: $(iso)
 
 iso: $(iso)
 
+doc:
+	cargo rustdoc -- --no-defaults --passes collapse-docs --passes unindent-comments --passes strip-priv-imports
+
+doctest:
+	cargo rustdoc -- --no-defaults --passes collapse-docs --passes unindent-comments --passes strip-priv-imports --test
+
 objdump: $(kernel)
 	objdump $(kernel) -D -C --disassembler-options=intel-mnemonic | less
 
@@ -44,10 +55,10 @@ hexdump: $(kernel)
 	hexdump $(kernel) | less
 
 $(iso): $(kernel) $(grub_cfg)
-	@mkdir -p build/isofiles/boot/grub
-	@cp $(kernel) build/isofiles/boot/kernel.bin
-	@cp $(grub_cfg) build/isofiles/boot/grub
-	grub-mkrescue -o $(iso) build/isofiles 2>/dev/null
+	@mkdir -p $(build_dir)/isofiles/boot/grub
+	@cp $(kernel) $(build_dir)/isofiles/boot/kernel.bin
+	@cp $(grub_cfg) $(build_dir)/isofiles/boot/grub
+	grub-mkrescue -o $(iso) $(build_dir)/isofiles 2>/dev/null
 
 $(kernel): $(assembly_object_files) $(linker_script) cargo $(rust_lib)
 	$(linker) $(linker_flags) -o $(kernel) $(assembly_object_files) $(rust_lib)

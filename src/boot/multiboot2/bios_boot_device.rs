@@ -1,3 +1,6 @@
+//!Handles the bios boot device multiboot2 tag.
+
+///Represents the bios boot device tag.
 #[repr(C)]
 struct BiosBootDevice { //type = 5
     tag_type: u32,

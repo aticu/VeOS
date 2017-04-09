@@ -1,43 +1,43 @@
 global set_up_paging
 global enable_paging
 
-extern pml4_table
-extern pdp_table
-extern pd_table
+extern l4_table
+extern l3_table
+extern l2_table
 
 section .init
 bits 32
 set_up_paging: ;sets up very basic paging for the first GB of memory
-.map_pml4: ;map first entry to the only page directory pointer table
-    mov eax, pdp_table
+.map_l4: ;map first entry to the currently only l4 tablel4 tablel4 tablel4 table
+    mov eax, l3_table
     or eax, 0b11 ;present + writable
-    mov [pml4_table], eax
-    mov [pml4_table + 256 * 8], eax ;map the high half of the kernel
-    mov eax, pml4_table ;set up recursive mapping for the last page table entry
+    mov [l4_table], eax
+    mov [l4_table + 256 * 8], eax ;map the high half addresses of the kernel
+    mov eax, l4_table ;set up recursive mapping for the last page table entry
     or eax, 0b11
-    mov [pml4_table + 511 * 8], eax
+    mov [l4_table + 511 * 8], eax
 
-.map_pdp: ;map first entry to the only page directory table
-    mov eax, pd_table
+.map_l3: ;map first entry to the currently only l3 table
+    mov eax, l2_table
     or eax, 0b11 ;present + writable
-    mov [pdp_table], eax
+    mov [l3_table], eax
 
     mov ecx, 0
-.map_pd: ;map all 512 entries as an identity
+.map_l2: ;map all 512 entries as an identity
     mov eax, 0x200000 ; 2 Mb
     mul ecx
     or eax, 0b10000011 ;present, writable and huge
-    mov [pd_table + ecx * 8], eax
+    mov [l2_table + ecx * 8], eax
 
     inc ecx
     cmp ecx, 512
-    jne .map_pd
+    jne .map_l2
 
     ret
 
 enable_paging:
     ;load base table
-    mov eax, pml4_table
+    mov eax, l4_table
     mov cr3, eax
 
     ;enable PAE

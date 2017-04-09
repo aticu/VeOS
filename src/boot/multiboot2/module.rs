@@ -1,3 +1,6 @@
+//!Handles the module multiboot2 tag.
+
+///Represents the module tag.
 #[repr(C)]
 struct Module { //type = 3
     tag_type: u32,

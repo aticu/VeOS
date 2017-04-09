@@ -1,5 +1,7 @@
+//!Handles the memory map multiboot2 tag.
 use super::get_tag;
 
+///Represents the memory map tag.
 #[repr(C)]
 struct MemoryMap { //type = 6
     tag_type: u32,
@@ -9,6 +11,7 @@ struct MemoryMap { //type = 6
     entries: usize
 }
 
+///Represents an entry of version 0 in the memory map.
 #[repr(C)]
 struct MemoryMapEntryVersion0 {
     base_addr: u64,
@@ -17,12 +20,14 @@ struct MemoryMapEntryVersion0 {
     reserved: u32
 }
 
+///Represents an iterator for the memory map tags.
 struct MemoryMapEntryVersion0Iterator {
     memory_map: &'static MemoryMap,
     current_address: usize
 }
 
 impl MemoryMapEntryVersion0Iterator {
+    ///Creates a new iterator for the memory map tags.
     fn new(address: usize) -> MemoryMapEntryVersion0Iterator {
         let memory_map = unsafe { &*(address as *const MemoryMap) };
         MemoryMapEntryVersion0Iterator {
@@ -44,12 +49,5 @@ impl Iterator for MemoryMapEntryVersion0Iterator {
         else {
             None
         }
-    }
-}
-
-pub fn print_all() {
-    let memory_map = get_tag(6).expect("Memory map tag required.") as usize;
-    for area in MemoryMapEntryVersion0Iterator::new(memory_map) {
-        println!("Base: {:x}, Length: {:x}, Type: {}", area.base_addr, area.length, area.memory_type);
     }
 }

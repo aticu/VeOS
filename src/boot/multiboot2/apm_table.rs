@@ -1,3 +1,6 @@
+//!Handles the apm table multiboot2 tag.
+
+///Represents the apm table tag.
 #[repr(C)]
 struct ApmTable { //type = 10
     tag_type: u32,

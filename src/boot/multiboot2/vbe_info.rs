@@ -1,3 +1,6 @@
+//!Handles the vbe info multiboot2 tag.
+
+///Represents the vbe info tag.
 #[repr(C)]
 struct VBEInfo { //type = 7
     tag_type: u32,
