@@ -13,26 +13,24 @@ enum BootMethod {
     ///The system was booted using multiboot.
     Multiboot,
     ///The system was booted using multiboot2.
-    Multiboot2
+    Multiboot2,
 }
 
 ///An entry in a memory map.
 #[derive(Debug, Clone, Copy)]
 pub struct MemoryMapEntry {
     pub start: usize,
-    pub length: usize
+    pub length: usize,
 }
 
 ///Provides an iterator for a memory map.
 pub struct MemoryMapIterator {
-    multiboot_iterator: multiboot::MemoryMapIterator
+    multiboot_iterator: multiboot::MemoryMapIterator,
 }
 
 impl MemoryMapIterator {
     fn new() -> MemoryMapIterator {
-        MemoryMapIterator {
-            multiboot_iterator: multiboot::get_memory_map()
-        }
+        MemoryMapIterator { multiboot_iterator: multiboot::get_memory_map() }
     }
 }
 
@@ -42,13 +40,14 @@ impl Iterator for MemoryMapIterator {
     fn next(&mut self) -> Option<MemoryMapEntry> {
         match *get_boot_method() {
             BootMethod::Multiboot => self.multiboot_iterator.next(),
-            _ => None
+            _ => None,
         }
     }
 }
 
 ///The method that the system was booted with.
-static mut BOOT_METHOD: BootMethod = BootMethod::Unknown; //This will only be set once very early. After that it can be assumed to be static.
+//This will only be set once very early. After that it can be assumed to be static.
+static mut BOOT_METHOD: BootMethod = BootMethod::Unknown;
 
 ///Initializes the boot module and all the data it provides.
 pub fn init(magic_number: u32, information_structure_address: usize) {
@@ -57,7 +56,7 @@ pub fn init(magic_number: u32, information_structure_address: usize) {
     match *get_boot_method() {
         BootMethod::Multiboot2 => multiboot2::init(information_structure_address),
         BootMethod::Multiboot => multiboot::init(information_structure_address),
-        _ => freestanding::init()
+        _ => freestanding::init(),
     };
 }
 
@@ -67,7 +66,7 @@ fn set_boot_method(magic_number: u32) {
         BOOT_METHOD = match magic_number {
             0x36d76289 => BootMethod::Multiboot2,
             0x2badb002 => BootMethod::Multiboot,
-            _ => BootMethod::Unknown
+            _ => BootMethod::Unknown,
         }
     }
 }
@@ -82,7 +81,7 @@ fn get_boot_method() -> &'static BootMethod {
 pub fn get_vga_info() -> vga_buffer::Info {
     match *get_boot_method() {
         BootMethod::Multiboot2 => multiboot2::get_vga_info(),
-        _ => freestanding::get_vga_info()
+        _ => freestanding::get_vga_info(),
     }
 }
 
@@ -91,7 +90,7 @@ pub fn get_bootloader_name() -> &'static str {
     match *get_boot_method() {
         BootMethod::Multiboot2 => multiboot2::get_bootloader_name(),
         BootMethod::Multiboot => multiboot::get_bootloader_name(),
-        _ => "no boot loader"
+        _ => "no boot loader",
     }
 }
 

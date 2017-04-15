@@ -9,12 +9,12 @@ pub use self::boot_loader_name::get_bootloader_name;
 #[repr(C)]
 struct BasicTag {
     tag_type: u32,
-    size: u32
+    size: u32,
 }
 
 ///Represents an iterator for the tags.
 struct BasicTagIterator {
-    current_address: usize
+    current_address: usize,
 }
 
 impl BasicTagIterator {
@@ -25,7 +25,8 @@ impl BasicTagIterator {
 }
 
 ///The base address for the information structure.
-static mut STRUCT_BASE_ADDRESS: usize = 0; //this will only be valid after init was called and will never be changed afterwards
+//this will only be valid after init was called and will never be changed afterwards
+static mut STRUCT_BASE_ADDRESS: usize = 0;
 
 impl Iterator for BasicTagIterator {
     type Item = *const BasicTag;
@@ -34,11 +35,14 @@ impl Iterator for BasicTagIterator {
         let current_tag = unsafe { &*(self.current_address as *const BasicTag) };
         if current_tag.tag_type == 0 && current_tag.size == 8 {
             None
-        }
-        else {
+        } else {
             let last_address = self.current_address;
             self.current_address += current_tag.size as usize;
-            self.current_address += if self.current_address % 8 == 0 { 0 } else { 8 - (self.current_address % 8) };
+            self.current_address += if self.current_address % 8 == 0 {
+                0
+            } else {
+                8 - (self.current_address % 8)
+            };
             Some(last_address as *const BasicTag)
         }
     }
@@ -53,8 +57,10 @@ pub fn init(information_structure_address: usize) {
 ///Checks if the passed information structure is valid.
 fn check_validity(information_structure_address: usize) -> bool {
     let total_size: u32 = unsafe { *(information_structure_address as *const u32) };
-    let end_tag_type: u32 = unsafe { *((information_structure_address + total_size as usize - 8) as *const u32) };
-    let end_tag_size: u32 = unsafe { *((information_structure_address + total_size as usize - 4) as *const u32) };
+    let end_tag_type: u32 =
+        unsafe { *((information_structure_address + total_size as usize - 8) as *const u32) };
+    let end_tag_size: u32 =
+        unsafe { *((information_structure_address + total_size as usize - 4) as *const u32) };
     end_tag_type == 0 && end_tag_size == 8
 }
 

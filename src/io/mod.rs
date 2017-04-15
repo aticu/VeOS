@@ -11,7 +11,8 @@ pub fn init() {
 
 ///Prints the given line to the screen.
 ///
-///It uses the arguments passed to it and prints the string with the formatting arguments. Then a new line is started.
+///It uses the arguments passed to it and prints the string with the formatting arguments.
+///Then a new line is started.
 #[macro_export]
 macro_rules! println {
     ($fmt:expr) => (print!(concat!($fmt, "\n")));

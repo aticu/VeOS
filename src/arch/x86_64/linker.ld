@@ -66,6 +66,10 @@ SECTIONS {
         . += PAGE_SIZE;
         l2_table = . - KERNEL_OFFSET;
         . += PAGE_SIZE;
+        temporary_map_l2 = . - KERNEL_OFFSET;
+        . += PAGE_SIZE;
+        temporary_map_l1 = . - KERNEL_OFFSET;
+        . += PAGE_SIZE;
         stack_bottom = . - KERNEL_OFFSET;
         . += STACK_SIZE;
         stack_top = . - KERNEL_OFFSET;

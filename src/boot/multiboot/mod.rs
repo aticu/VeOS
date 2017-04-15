@@ -26,7 +26,7 @@ struct MultibootInformation {
     vbe_mode: u16,
     vbe_interface_seg: u16,
     vbe_interface_off: u16,
-    vbe_interface_len: u16
+    vbe_interface_len: u16,
 }
 
 bitflags! {
@@ -66,15 +66,19 @@ struct MmapEntry {
     size: u32,
     base_addr: usize,
     length: usize,
-    mem_type: u32
+    mem_type: u32,
 }
 
 ///The base address for the information strucuture.
-static mut STRUCT_BASE_ADDRESS: *const MultibootInformation = 0 as *const MultibootInformation; //only valid after init
+//only valid after init
+static mut STRUCT_BASE_ADDRESS: *const MultibootInformation = 0 as *const MultibootInformation;
 
 ///Initializes the multiboot module.
 pub fn init(information_structure_address: usize) {
-    unsafe { STRUCT_BASE_ADDRESS = to_virtual!(information_structure_address) as *const MultibootInformation };
+    unsafe {
+        STRUCT_BASE_ADDRESS = to_virtual!(information_structure_address) as
+                              *const MultibootInformation
+    };
     assert!(!get_flags().contains(A_OUT | ELF));
 }
 
@@ -82,8 +86,8 @@ pub fn init(information_structure_address: usize) {
 pub fn get_bootloader_name() -> &'static str {
     if get_flags().contains(BOOT_LOADER_NAME) {
         from_c_str!(to_virtual!(get_info().boot_loader_name)).unwrap()
-    }
-    else { //no specific name given by the boot loader
+    } else {
+        //no specific name given by the boot loader
         "a multiboot compliant bootloader"
     }
 }
@@ -101,7 +105,7 @@ fn get_info() -> &'static MultibootInformation {
 ///Provides an iterator for the memory map.
 pub struct MemoryMapIterator {
     address: usize,
-    max_address: usize
+    max_address: usize,
 }
 
 impl MemoryMapIterator {
@@ -110,13 +114,12 @@ impl MemoryMapIterator {
         if get_flags().contains(MMAP) {
             MemoryMapIterator {
                 address: to_virtual!(get_info().mmap_addr),
-                max_address: to_virtual!(get_info().mmap_addr + get_info().mmap_length)
+                max_address: to_virtual!(get_info().mmap_addr + get_info().mmap_length),
             }
-        }
-        else {
+        } else {
             MemoryMapIterator {
                 address: 0,
-                max_address: 0
+                max_address: 0,
             }
         }
     }
@@ -132,11 +135,12 @@ impl Iterator for MemoryMapIterator {
 
             self.address += mem::size_of::<u32>() + current_entry.size as usize;
 
-            if current_entry.mem_type == 1 { //only a type of 1 is usable memory
+            if current_entry.mem_type == 1 {
+                //only a type of 1 is usable memory
                 return Some(super::MemoryMapEntry {
-                    start: current_entry.base_addr,
-                    length: current_entry.length
-                });
+                                start: current_entry.base_addr,
+                                length: current_entry.length,
+                            });
             }
         }
         None

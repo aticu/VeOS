@@ -13,22 +13,22 @@ use boot;
 #[repr(u8)]
 #[derive(Debug, Clone, Copy)]
 pub enum Color {
-    Black       = 0,
-    Blue        = 1,
-    Green       = 2,
-    Cyan        = 3,
-    Red         = 4,
-    Magenta     = 5,
-    Brown       = 6,
-    LightGray   = 7,
-    DarkGray    = 8,
-    LightBlue   = 9,
-    LightGreen  = 10,
-    LightCyan   = 11,
-    LightRed    = 12,
-    Pink        = 13,
-    Yellow      = 14,
-    White       = 15
+    Black = 0,
+    Blue = 1,
+    Green = 2,
+    Cyan = 3,
+    Red = 4,
+    Magenta = 5,
+    Brown = 6,
+    LightGray = 7,
+    DarkGray = 8,
+    LightBlue = 9,
+    LightGreen = 10,
+    LightCyan = 11,
+    LightRed = 12,
+    Pink = 13,
+    Yellow = 14,
+    White = 15,
 }
 
 ///Represents a color code in the buffer.
@@ -51,12 +51,13 @@ struct ScreenChar {
     ///The ascii character represented.
     character: u8,
     ///The color code of the character represented.
-    color_code: ColorCode
+    color_code: ColorCode,
 }
 
 ///Represents a character on this screen.
 struct Buffer {
-    chars: [Volatile<ScreenChar>; 10000000] //TODO: this works for arbitrary screen sizes up to 10000000, but it isn't nice
+    //TODO: this works for arbitrary screen sizes up to 10000000, but it isn't nice
+    chars: [Volatile<ScreenChar>; 10000000],
 }
 
 ///The writer is used to write to a legacy VGA display buffer.
@@ -72,7 +73,7 @@ pub struct Writer {
     ///The color code used throughout the buffer.
     color_code: ColorCode,
     ///Access to the buffer itself.
-    buffer: Unique<Buffer>
+    buffer: Unique<Buffer>,
 }
 
 impl Writer {
@@ -90,10 +91,11 @@ impl Writer {
                 let color_code = self.color_code;
                 let width = self.buffer_width;
 
-                self.get_buffer().chars[row_position * width + column_position].write(ScreenChar {
-                    character: byte,
-                    color_code: color_code
-                });
+                self.get_buffer().chars[row_position * width + column_position]
+                    .write(ScreenChar {
+                               character: byte,
+                               color_code: color_code,
+                           });
 
                 self.column_position += 1;
             }
@@ -109,9 +111,7 @@ impl Writer {
 
     ///Returns a reference to the buffer.
     fn get_buffer(&mut self) -> &mut Buffer {
-        unsafe {
-            self.buffer.get_mut()
-        }
+        unsafe { self.buffer.get_mut() }
     }
 
     ///Inserts a new line character.
@@ -149,7 +149,7 @@ impl Writer {
         let buffer = self.get_buffer();
         let space = ScreenChar {
             character: b' ',
-            color_code: color_code
+            color_code: color_code,
         };
 
         for i in 0..width {
@@ -158,8 +158,7 @@ impl Writer {
     }
 
     ///Clears the whole screen.
-    fn clear_screen(&mut self)
-    {
+    fn clear_screen(&mut self) {
         for i in 0..self.buffer_height {
             self.clear_line(i);
         }
@@ -185,14 +184,15 @@ impl fmt::Write for Writer {
 }
 
 ///The Writer that is used to print to the screen.
-pub static WRITER: Mutex<Writer> = Mutex::new(Writer {
-    buffer_height: 25,
-    buffer_width: 80,
-    column_position: 0,
-    row_position: 0,
-    color_code: ColorCode::new(Color::LightGray, Color::Black),
-    buffer: unsafe { Unique::new(to_virtual!(0xb8000) as *mut _) }
-});
+pub static WRITER: Mutex<Writer> =
+    Mutex::new(Writer {
+                   buffer_height: 25,
+                   buffer_width: 80,
+                   column_position: 0,
+                   row_position: 0,
+                   color_code: ColorCode::new(Color::LightGray, Color::Black),
+                   buffer: unsafe { Unique::new(to_virtual!(0xb8000) as *mut _) },
+               });
 
 ///Contains basic buffer information.
 ///
@@ -200,7 +200,7 @@ pub static WRITER: Mutex<Writer> = Mutex::new(Writer {
 pub struct Info {
     pub height: usize,
     pub width: usize,
-    pub address: usize
+    pub address: usize,
 }
 
 ///Initializes the buffer for use.

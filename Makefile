@@ -27,7 +27,7 @@ ifeq ($(build_type),release)
 endif
 rust_compiler := xargo
 
-.PHONY: all clean run iso run_verbose objdump cargo doc doctest
+.PHONY: all clean run iso run_verbose objdump cargo doc doc_open doctest test
 
 all: $(kernel)
 
@@ -45,8 +45,14 @@ iso: $(iso)
 doc:
 	cargo rustdoc -- --no-defaults --passes collapse-docs --passes unindent-comments --passes strip-priv-imports
 
+doc_open: doc
+	xdg-open target/doc/veos/index.html
+
 doctest:
 	cargo rustdoc -- --no-defaults --passes collapse-docs --passes unindent-comments --passes strip-priv-imports --test
+
+test: doctest
+	RUSTFLAGS+=" -A dead_code" cargo test
 
 objdump: $(kernel)
 	objdump $(kernel) -D -C --disassembler-options=intel-mnemonic | less

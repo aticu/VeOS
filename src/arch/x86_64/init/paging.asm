@@ -4,6 +4,8 @@ global enable_paging
 extern l4_table
 extern l3_table
 extern l2_table
+extern temporary_map_l2
+extern temporary_map_l1
 
 section .init
 bits 32
@@ -14,13 +16,16 @@ set_up_paging: ;sets up very basic paging for the first GB of memory
     mov [l4_table], eax
     mov [l4_table + 256 * 8], eax ;map the high half addresses of the kernel
     mov eax, l4_table ;set up recursive mapping for the last page table entry
-    or eax, 0b11
+    or eax, 0b11 ;present + writable
     mov [l4_table + 511 * 8], eax
 
 .map_l3: ;map first entry to the currently only l3 table
     mov eax, l2_table
     or eax, 0b11 ;present + writable
     mov [l3_table], eax
+    mov eax, temporary_map_l2
+    or eax, 0b11 ;present + writable
+    mov [l3_table + 511 * 8], eax ;map the temporary map table
 
     mov ecx, 0
 .map_l2: ;map all 512 entries as an identity
@@ -32,6 +37,11 @@ set_up_paging: ;sets up very basic paging for the first GB of memory
     inc ecx
     cmp ecx, 512
     jne .map_l2
+
+.map_temporary_l2:
+    mov eax, temporary_map_l1
+    or eax, 0b11 ;present + writable
+    mov [temporary_map_l2 + 511 * 8], eax
 
     ret
 

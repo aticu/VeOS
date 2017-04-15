@@ -14,6 +14,6 @@ pub fn get_vga_info() -> vga_buffer::Info {
     vga_buffer::Info {
         height: 25,
         width: 80,
-        address: 0xffff8000000b8000
+        address: 0xffff8000000b8000,
     }
 }
