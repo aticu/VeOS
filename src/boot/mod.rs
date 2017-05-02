@@ -1,31 +1,31 @@
-//!Provides information about the initial status of the system.
+//! Provides information about the initial status of the system.
 mod multiboot2;
 mod multiboot;
 mod freestanding;
 
 #[cfg(target_arch = "x86_64")]
-use arch::x86_64::vga_buffer;
+use arch::vga_buffer;
 
-///Lists possiblities for boot sources.
+/// Lists possiblities for boot sources.
 enum BootMethod {
-    ///No known bootloader could be found.
+    /// No known bootloader could be found.
     Unknown,
-    ///The system was booted using multiboot.
+    /// The system was booted using multiboot.
     Multiboot,
-    ///The system was booted using multiboot2.
-    Multiboot2,
+    /// The system was booted using multiboot2.
+    Multiboot2
 }
 
-///An entry in a memory map.
+/// An entry in a memory map.
 #[derive(Debug, Clone, Copy)]
 pub struct MemoryMapEntry {
     pub start: usize,
-    pub length: usize,
+    pub length: usize
 }
 
-///Provides an iterator for a memory map.
+/// Provides an iterator for a memory map.
 pub struct MemoryMapIterator {
-    multiboot_iterator: multiboot::MemoryMapIterator,
+    multiboot_iterator: multiboot::MemoryMapIterator
 }
 
 impl MemoryMapIterator {
@@ -45,11 +45,12 @@ impl Iterator for MemoryMapIterator {
     }
 }
 
-///The method that the system was booted with.
-//This will only be set once very early. After that it can be assumed to be static.
+/// The method that the system was booted with.
+// This will only be set once very early. After that it can be assumed to be
+// static.
 static mut BOOT_METHOD: BootMethod = BootMethod::Unknown;
 
-///Initializes the boot module and all the data it provides.
+/// Initializes the boot module and all the data it provides.
 pub fn init(magic_number: u32, information_structure_address: usize) {
     set_boot_method(magic_number);
 
@@ -60,7 +61,7 @@ pub fn init(magic_number: u32, information_structure_address: usize) {
     };
 }
 
-///Identifies the boot_method.
+/// Identifies the boot_method.
 fn set_boot_method(magic_number: u32) {
     unsafe {
         BOOT_METHOD = match magic_number {
@@ -71,12 +72,12 @@ fn set_boot_method(magic_number: u32) {
     }
 }
 
-///Returns the method the system was booted with.
+/// Returns the method the system was booted with.
 fn get_boot_method() -> &'static BootMethod {
     unsafe { &BOOT_METHOD }
 }
 
-///Returns information about the VGA buffer.
+/// Returns information about the VGA buffer.
 #[cfg(target_arch = "x86_64")]
 pub fn get_vga_info() -> vga_buffer::Info {
     match *get_boot_method() {
@@ -85,7 +86,7 @@ pub fn get_vga_info() -> vga_buffer::Info {
     }
 }
 
-///Returns the name of the boot loader.
+/// Returns the name of the boot loader.
 pub fn get_bootloader_name() -> &'static str {
     match *get_boot_method() {
         BootMethod::Multiboot2 => multiboot2::get_bootloader_name(),
@@ -94,7 +95,7 @@ pub fn get_bootloader_name() -> &'static str {
     }
 }
 
-///Returns an iterator for the map of usable memory.
+/// Returns an iterator for the map of usable memory.
 pub fn get_memory_map() -> MemoryMapIterator {
     MemoryMapIterator::new()
 }

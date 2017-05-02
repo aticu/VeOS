@@ -1,12 +1,13 @@
-//!Handles the framebuffer information tag.
-#[cfg(target_arch = "x86_64")]
-use arch::x86_64::vga_buffer;
-use super::get_tag;
+//! Handles the framebuffer information tag.
 
-///Represents the framebuffer information tag.
+use super::get_tag;
+#[cfg(target_arch = "x86_64")]
+use arch::vga_buffer;
+
+/// Represents the framebuffer information tag.
 #[repr(C)]
 pub struct FramebufferInfo {
-    //type = 8
+    // type = 8
     tag_type: u32,
     size: u32,
     pub framebuffer_addr: u64,
@@ -16,10 +17,10 @@ pub struct FramebufferInfo {
     framebuffer_bpp: u8,
     framebuffer_type: u8,
     reserved: u8,
-    color_info: u32, //this is just a placeholder, this depends on the framebuffer_type
+    color_info: u32 // this is just a placeholder, this depends on the framebuffer_type
 }
 
-///Returns the VGA buffer information requested.
+/// Returns the VGA buffer information requested.
 #[cfg(target_arch = "x86_64")]
 pub fn get_vga_info() -> vga_buffer::Info {
     let framebuffer_tag = get_tag(8);
@@ -29,15 +30,15 @@ pub fn get_vga_info() -> vga_buffer::Info {
             vga_buffer::Info {
                 height: framebuffer_tag.framebuffer_height as usize,
                 width: framebuffer_tag.framebuffer_width as usize,
-                address: to_virtual!(framebuffer_tag.framebuffer_addr) as usize,
+                address: to_virtual!(framebuffer_tag.framebuffer_addr) as usize
             }
-        }
+        },
         None => {
             vga_buffer::Info {
                 height: 25,
                 width: 80,
-                address: to_virtual!(0xb8000),
+                address: to_virtual!(0xb8000)
             }
-        }
+        },
     }
 }

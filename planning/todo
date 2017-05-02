@@ -1,3 +1,3 @@
-Improve support for reading the multiboot structure
 Implement stack unwinding for better debugging
-move the stack to the bss section
+Move the stack to the bss section and to a specific location in virtual memory
+Make page table locks more granular

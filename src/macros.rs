@@ -1,10 +1,12 @@
-///Creates an &'static str from a c string.
+/// Creates an &'static str from a c string.
 ///
-///Converts the string at the given address from a c string to a rust &'static str.
-///Optionally if the length is known, the process can be sped up, by passing it.
+/// Converts the string at the given address from a c string to a rust &'static
+/// str.
+/// Optionally if the length is known, the process can be sped up, by passing
+/// it.
 #[macro_export]
 macro_rules! from_c_str {
-    ($address:expr, $length:expr) => {{
+    ($address: expr, $length: expr) => {{
         use core::str;
         use core::slice;
         unsafe {
@@ -16,7 +18,7 @@ macro_rules! from_c_str {
                            };
         str::from_utf8(bytes)
     }};
-    ($address:expr) => {{
+    ($address: expr) => {{
         let mut address: usize = $address;
         unsafe {
             while *(address as *const u8) != 0 {
@@ -27,13 +29,14 @@ macro_rules! from_c_str {
     }};
 }
 
-///Converts to a virtual address.
+/// Converts to a virtual address.
 ///
-///Converts a given physical address within the kernel part of memory to its corresponding
-///virtual address.
+/// Converts a given physical address within the kernel part of memory to its
+/// corresponding
+/// virtual address.
 #[macro_export]
 macro_rules! to_virtual {
-    ($address:expr) => {{
+    ($address: expr) => {{
         const KERNEL_OFFSET: usize = 0xffff800000000000;
         $address as usize + KERNEL_OFFSET
     }};

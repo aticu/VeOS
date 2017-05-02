@@ -1,6 +1,6 @@
-//!Handles the multiboot information structure.
+//! Handles the multiboot information structure.
 
-///Represents the multiboot information structure.
+/// Represents the multiboot information structure.
 #[repr(C)]
 struct MultibootInformation {
     flags: u32,
@@ -10,7 +10,7 @@ struct MultibootInformation {
     cmdline: u32,
     mods_count: u32,
     mods_addr: u32,
-    elf_num: u32, //only elf tags are supported, because this kernel is an elf file
+    elf_num: u32, // only elf tags are supported, because this kernel is an elf file
     elf_size: u32,
     elf_addr: u32,
     elf_shndx: u32,
@@ -26,7 +26,7 @@ struct MultibootInformation {
     vbe_mode: u16,
     vbe_interface_seg: u16,
     vbe_interface_off: u16,
-    vbe_interface_len: u16,
+    vbe_interface_len: u16
 }
 
 bitflags! {
@@ -59,21 +59,21 @@ bitflags! {
     }
 }
 
-///Represents an entry in the given memory map.
+/// Represents an entry in the given memory map.
 #[derive(Debug)]
 #[repr(C, packed)]
 struct MmapEntry {
     size: u32,
     base_addr: usize,
     length: usize,
-    mem_type: u32,
+    mem_type: u32
 }
 
-///The base address for the information strucuture.
-//only valid after init
+/// The base address for the information strucuture.
+// only valid after init
 static mut STRUCT_BASE_ADDRESS: *const MultibootInformation = 0 as *const MultibootInformation;
 
-///Initializes the multiboot module.
+/// Initializes the multiboot module.
 pub fn init(information_structure_address: usize) {
     unsafe {
         STRUCT_BASE_ADDRESS = to_virtual!(information_structure_address) as
@@ -82,44 +82,44 @@ pub fn init(information_structure_address: usize) {
     assert!(!get_flags().contains(A_OUT | ELF));
 }
 
-///Returns the name of the boot loader.
+/// Returns the name of the boot loader.
 pub fn get_bootloader_name() -> &'static str {
     if get_flags().contains(BOOT_LOADER_NAME) {
         from_c_str!(to_virtual!(get_info().boot_loader_name)).unwrap()
     } else {
-        //no specific name given by the boot loader
+        // no specific name given by the boot loader
         "a multiboot compliant bootloader"
     }
 }
 
-///Returns the flags of the multiboot structure.
+/// Returns the flags of the multiboot structure.
 fn get_flags() -> MultibootFlags {
     MultibootFlags::from_bits_truncate(get_info().flags)
 }
 
-///Returns the multiboot structure.
+/// Returns the multiboot structure.
 fn get_info() -> &'static MultibootInformation {
     unsafe { &*STRUCT_BASE_ADDRESS }
 }
 
-///Provides an iterator for the memory map.
+/// Provides an iterator for the memory map.
 pub struct MemoryMapIterator {
     address: usize,
-    max_address: usize,
+    max_address: usize
 }
 
 impl MemoryMapIterator {
-    ///Creates a new iterator through the memory map.
+    /// Creates a new iterator through the memory map.
     fn new() -> MemoryMapIterator {
         if get_flags().contains(MMAP) {
             MemoryMapIterator {
                 address: to_virtual!(get_info().mmap_addr),
-                max_address: to_virtual!(get_info().mmap_addr + get_info().mmap_length),
+                max_address: to_virtual!(get_info().mmap_addr + get_info().mmap_length)
             }
         } else {
             MemoryMapIterator {
                 address: 0,
-                max_address: 0,
+                max_address: 0
             }
         }
     }
@@ -136,10 +136,10 @@ impl Iterator for MemoryMapIterator {
             self.address += mem::size_of::<u32>() + current_entry.size as usize;
 
             if current_entry.mem_type == 1 {
-                //only a type of 1 is usable memory
+                // only a type of 1 is usable memory
                 return Some(super::MemoryMapEntry {
                                 start: current_entry.base_addr,
-                                length: current_entry.length,
+                                length: current_entry.length
                             });
             }
         }
@@ -147,7 +147,7 @@ impl Iterator for MemoryMapIterator {
     }
 }
 
-///Returns the memory map given by the boot loader.
+/// Returns the memory map given by the boot loader.
 pub fn get_memory_map() -> MemoryMapIterator {
     MemoryMapIterator::new()
 }

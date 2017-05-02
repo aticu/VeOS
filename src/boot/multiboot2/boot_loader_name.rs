@@ -1,16 +1,17 @@
-//!Handles the boot loader name tag in multiboot2.
+//! Handles the boot loader name tag in multiboot2.
+
 use super::get_tag;
 
-///Represents the tag of the boot loader name.
+/// Represents the tag of the boot loader name.
 #[repr(C)]
 struct BootLoaderName {
-    //type = 2
+    // type = 2
     tag_type: u32,
     size: u32,
-    string: usize,
+    string: usize
 }
 
-///Returns the name of the boot loader.
+/// Returns the name of the boot loader.
 pub fn get_bootloader_name() -> &'static str {
     let tag_address: *const BootLoaderName = get_tag(2).expect("Boot loader name required.") as
                                              *const BootLoaderName;
