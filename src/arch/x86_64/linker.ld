@@ -47,13 +47,13 @@ SECTIONS {
         DATA_START = .;
         QUAD(_data_start);
         BSS_START = .;
-        QUAD(_data_end);
+        QUAD(_bss_start);
         BSS_END = .;
-        QUAD(_bss_end);
+        QUAD(_kernel_end);
         . = ALIGN(PAGE_SIZE);
     }
 
-    _data_end = . - KERNEL_OFFSET;
+    _bss_start = . - KERNEL_OFFSET;
 
     .bss : AT(ADDR(.bss) - KERNEL_OFFSET)
     {
@@ -74,5 +74,5 @@ SECTIONS {
         . = ALIGN(PAGE_SIZE);
     }
     
-    _bss_end = . - KERNEL_OFFSET;
+    _kernel_end = . - KERNEL_OFFSET;
 }

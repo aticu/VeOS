@@ -1,12 +1,12 @@
 use super::{Page, PageFrame};
 use super::page_table::{Level1, Level2, Level3, Level4, PageTable};
 use super::page_table_entry::*;
-use super::super::{PhysicalAddress, VIRTUAL_HIGH_MIN_ADDRESS, VIRTUAL_LOW_MAX_ADDRESS,
-                   VirtualAddress};
+use super::super::{VIRTUAL_HIGH_MIN_ADDRESS, VIRTUAL_LOW_MAX_ADDRESS};
+use memory::{PhysicalAddress, VirtualAddress};
 use core::ptr;
 use core::ptr::Unique;
 use sync::cpu_relax;
-use sync::mutex::Mutex;
+use sync::Mutex;
 use x86_64::instructions::tlb;
 
 /// The address of the current Level 4 table.
@@ -16,7 +16,7 @@ use x86_64::instructions::tlb;
 const L4_TABLE: *mut PageTable<Level4> = 0xfffffffffffff000 as *mut PageTable<Level4>;
 
 /// The base address for all temporary addresses.
-const TEMPORARY_ADDRESS_BASE: usize = 0xffffffffffe00000;
+const TEMPORARY_ADDRESS_BASE: usize = 0xffffffffffc00000;
 
 /// Returns true for a valid virtual address.
 macro_rules! valid_address {
@@ -63,8 +63,8 @@ impl CurrentPageTable {
     }
 
     /// Returns a mutable reference to the temporary mapping page table.
-    fn get_temporary_map_table_mut(&mut self) -> Option<&mut PageTable<Level1>> {
-        self.get_l1_mut(TEMPORARY_ADDRESS_BASE)
+    fn get_temporary_map_table(&mut self) -> &mut PageTable<Level1> {
+        self.get_l1_mut(TEMPORARY_ADDRESS_BASE).expect("Temporary page map not mapped.")
     }
 
     /// Returns a reference to the level 1 table corresponding to the given
@@ -94,8 +94,7 @@ impl CurrentPageTable {
     /// Tries to map the given page frame into the address space temporarily.
     fn try_temporary_map(&mut self, frame: &PageFrame) -> Option<Page> {
         let index = page_frame_hash(frame);
-        let mut temporary_map_table = self.get_temporary_map_table_mut()
-            .expect("Temporary page map not mapped.");
+        let mut temporary_map_table = self.get_temporary_map_table();
         let mut entry = &mut temporary_map_table[index];
 
         if !entry.flags().contains(TEMPORARY_TABLE_LOCK) {
@@ -104,8 +103,7 @@ impl CurrentPageTable {
             if entry.points_to() != Some(frame.get_address()) {
                 tlb::flush(::x86_64::VirtualAddress(virtual_address));
                 entry.set_address(frame.get_address());
-                entry.set_flags(TEMPORARY_TABLE_LOCK | PRESENT | WRITABLE | DISABLE_CACHE |
-                                NO_EXECUTE);
+                entry.set_flags(TEMPORARY_TABLE_LOCK | PRESENT | WRITABLE | DISABLE_CACHE | NO_EXECUTE);
             } else {
                 entry.add_flags(TEMPORARY_TABLE_LOCK);
             }
@@ -128,8 +126,7 @@ impl CurrentPageTable {
     /// Signals that the mapped page isn't used anymore.
     fn unmap_temporary_map(&mut self, frame: &PageFrame) {
         let index = page_frame_hash(frame);
-        let mut temporary_map_table = self.get_temporary_map_table_mut()
-            .expect("Temporary page map not mapped.");
+        let mut temporary_map_table = self.get_temporary_map_table();
         let mut entry = &mut temporary_map_table[index];
 
         assert!(entry.flags().contains(TEMPORARY_TABLE_LOCK));
@@ -165,19 +162,13 @@ impl CurrentPageTable {
     pub fn read_from_physical<T: Sized + Copy>(&mut self, physical_address: PhysicalAddress) -> T {
         let frame = PageFrame::from_address(physical_address);
         let page = self.temporary_map(&frame);
-
+        
         let virtual_address = page.get_address() | (physical_address & 0xfff);
         let data: T = unsafe { ptr::read(virtual_address as *mut T) };
 
         self.unmap_temporary_map(&frame);
 
         data
-    }
-
-    pub fn debug_test(&mut self) {
-        let address = 0x234a;
-        self.write_at_physical::<u32>(address, 0xcafebabe);
-        println!("{:x}", self.read_from_physical::<u32>(address));
     }
 }
 

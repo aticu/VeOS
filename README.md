@@ -12,7 +12,7 @@ In order to compile VeOS you'll need the following:
 Run `make iso` to create a bootable cd image of the kernel at `target/*architecture*-unknonwn-none-gnu/build/os-*architecture*.iso`.
 Or just run `make` to create the kernel binary at `target/*architecture*-unknonwn-none-gnu/build/kernel-*architecture*.bin`.
 
-##Acknowledgements
+## Acknowledgements
 A lot of this work is based on work from the following people/organizations or at least highly influenced by it:
 - Philipp Oppermann and his "[Writing an OS in Rust][1]" blog.
 - The contributors of the [spin crate][2].

@@ -2,14 +2,22 @@
 mod page_table;
 mod page_table_entry;
 mod current_page_table;
+mod free_list;
+mod frame_allocator;
 
-use super::{PhysicalAddress, VirtualAddress};
+use core::fmt;
+use memory::{PhysicalAddress, VirtualAddress};
 
 /// The size of a single page.
-const PAGE_SIZE: usize = 0x1000;
+pub const PAGE_SIZE: usize = 0x1000;
 
 /// Represents a page.
 pub struct Page(usize);
+
+/// Initializes the paging.
+pub fn init() {
+    free_list::init();
+}
 
 impl Page {
     /// Returns the page that contains the given virtual address.
@@ -20,6 +28,12 @@ impl Page {
     /// Returns the virtual address of this page.
     pub fn get_address(&self) -> VirtualAddress {
         self.0
+    }
+}
+
+impl fmt::Debug for Page {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Page: {:x}", self.0)
     }
 }
 
@@ -38,10 +52,10 @@ impl PageFrame {
     }
 }
 
-pub fn debug() {
-    current_page_table::CURRENT_PAGE_TABLE
-        .lock()
-        .debug_test();
+impl fmt::Debug for PageFrame {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "PageFrame: {:x}", self.0)
+    }
 }
 
 /// Tests for methods used in the paging module.

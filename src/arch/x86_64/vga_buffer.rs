@@ -6,7 +6,7 @@
 use boot;
 use core::fmt;
 use core::ptr::Unique;
-use sync::mutex::Mutex;
+use sync::Mutex;
 use volatile::Volatile;
 
 /// Represents a color in the buffer.

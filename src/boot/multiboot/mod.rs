@@ -1,5 +1,8 @@
 //! Handles the multiboot information structure.
 
+use core::mem;
+use memory::{get_kernel_end_address, get_kernel_start_address, FreeMemoryArea};
+
 /// Represents the multiboot information structure.
 #[repr(C)]
 struct MultibootInformation {
@@ -104,8 +107,12 @@ fn get_info() -> &'static MultibootInformation {
 
 /// Provides an iterator for the memory map.
 pub struct MemoryMapIterator {
+    /// The address of the current entry in the memory map.
     address: usize,
-    max_address: usize
+    /// The address after the last entry in the memory map.
+    max_address: usize,
+    /// The length of the segment withing the current entry after the kernel.
+    next_length: usize
 }
 
 impl MemoryMapIterator {
@@ -114,33 +121,49 @@ impl MemoryMapIterator {
         if get_flags().contains(MMAP) {
             MemoryMapIterator {
                 address: to_virtual!(get_info().mmap_addr),
-                max_address: to_virtual!(get_info().mmap_addr + get_info().mmap_length)
+                max_address: to_virtual!(get_info().mmap_addr + get_info().mmap_length),
+                next_length: 0
             }
         } else {
             MemoryMapIterator {
                 address: 0,
-                max_address: 0
+                max_address: 0,
+                next_length: 0
             }
         }
     }
 }
 
 impl Iterator for MemoryMapIterator {
-    type Item = super::MemoryMapEntry;
+    type Item = FreeMemoryArea;
 
-    fn next(&mut self) -> Option<super::MemoryMapEntry> {
-        use core::mem;
+    fn next(&mut self) -> Option<FreeMemoryArea> {
         while self.address < self.max_address {
             let current_entry = unsafe { &*(self.address as *const MmapEntry) };
 
+            if self.next_length > 0 {
+                let next_length = self.next_length;
+                self.next_length = 0;
+                return Some(FreeMemoryArea::new(get_kernel_end_address(), next_length));
+            }
+
             self.address += mem::size_of::<u32>() + current_entry.size as usize;
 
+            // only a type of 1 is usable memory
             if current_entry.mem_type == 1 {
-                // only a type of 1 is usable memory
-                return Some(super::MemoryMapEntry {
-                                start: current_entry.base_addr,
-                                length: current_entry.length
-                            });
+                if get_kernel_end_address() < current_entry.base_addr ||
+                   get_kernel_start_address() > current_entry.base_addr + current_entry.length {
+                    // if the kernel is before or after this segment
+                    return Some(FreeMemoryArea::new(current_entry.base_addr, current_entry.length));
+                } else if current_entry.base_addr <= get_kernel_start_address() {
+                    // should handle all other cases
+                    self.next_length = current_entry.base_addr + current_entry.length - get_kernel_end_address();
+                    if current_entry.base_addr != get_kernel_start_address() {
+                        return Some(FreeMemoryArea::new(current_entry.base_addr, get_kernel_start_address() - current_entry.base_addr));
+                    }
+                } else {
+                    panic!("There's a bug in the multiboot code.");
+                }
             }
         }
         None

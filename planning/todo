@@ -1,3 +1,5 @@
 Implement stack unwinding for better debugging
 Move the stack to the bss section and to a specific location in virtual memory
 Make page table locks more granular
+Make sure init functions can only be called once
+The multiboot information is not allocated yet

@@ -24,6 +24,7 @@ mod io;
 mod arch;
 mod boot;
 mod sync;
+mod memory;
 
 /// The name of the operating system.
 static OS_NAME: &str = "VeOS";
@@ -39,21 +40,14 @@ static OS_NAME: &str = "VeOS";
 #[no_mangle]
 pub extern "C" fn main(magic_number: u32, information_structure_address: usize) -> ! {
     unsafe { sync::disable_preemption() };
+    arch::init();
     boot::init(magic_number, information_structure_address);
     io::init();
+    memory::init();
     println!("Booted {} using {}...",
              OS_NAME,
              boot::get_bootloader_name());
-    for entry in boot::get_memory_map() {
-        println!("Base: {:x}, Length: {:x}", entry.start, entry.length);
-    }
-    arch::init();
-    arch::memory::debug();
 
-    loop {}
-    unsafe {
-        sync::enable_preemption();
-    }
     loop {}
 }
 

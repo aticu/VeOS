@@ -1,8 +1,8 @@
 section .multiboot_header
 
 extern LOADER_START
-extern _data_end
-extern _bss_end
+extern _bss_start
+extern _kernel_end
 extern start
 
 ;support for multiboot2
@@ -26,8 +26,8 @@ address_tag_start:
     dd address_tag_end - address_tag_start   ;the size of this tag
     dq multiboot2_start                      ;the address of the beginning of the header
     dq LOADER_START                          ;the address at which the text segment should be loaded
-    dq _data_end                             ;the address at which the data segment ends
-    dq _bss_end                              ;the address at which the bss segment ends
+    dq _bss_start                            ;the address at which the data segment ends
+    dq _kernel_end                           ;the address at which the bss segment ends
 address_tag_end:
 
 entry_tag_start:
@@ -55,7 +55,7 @@ multiboot_start:    ;start of multiboot header
     dd -(MULTIBOOT_MAGIC + MULTIBOOT_FLAGS)  ;checksum
     dd multiboot_start                       ;physical address of the header
     dd LOADER_START                          ;the address at which loading should start
-    dd _data_end                             ;the end address of the data segment
-    dd _bss_end                              ;the end address of the bss segment
+    dd _bss_start                            ;the end address of the data segment
+    dd _kernel_end                           ;the end address of the bss segment
     dd start                                 ;the entry point for the kernel
 multiboot_end:

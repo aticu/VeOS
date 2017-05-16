@@ -1,0 +1,7 @@
+arch::init()
+arch::write_fmt(...)
+arch::set_interrupt_state(bool) [already implemented]
+arch::sync::cpu_relax
+arch::sync::interrupts_enabled() -> bool
+arch::sync::disable_interrupts
+arch::sync::enable_interrupts

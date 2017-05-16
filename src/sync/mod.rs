@@ -3,6 +3,8 @@ pub mod mutex;
 
 use arch;
 
+pub use self::mutex::Mutex;
+
 /// Saves the state when disabling preemtion, so it can be restored later.
 #[derive(Default)]
 pub struct PreemptionState {

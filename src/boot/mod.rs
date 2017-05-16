@@ -5,6 +5,7 @@ mod freestanding;
 
 #[cfg(target_arch = "x86_64")]
 use arch::vga_buffer;
+use memory::FreeMemoryArea;
 
 /// Lists possiblities for boot sources.
 enum BootMethod {
@@ -16,28 +17,22 @@ enum BootMethod {
     Multiboot2
 }
 
-/// An entry in a memory map.
-#[derive(Debug, Clone, Copy)]
-pub struct MemoryMapEntry {
-    pub start: usize,
-    pub length: usize
-}
-
 /// Provides an iterator for a memory map.
 pub struct MemoryMapIterator {
     multiboot_iterator: multiboot::MemoryMapIterator
 }
 
 impl MemoryMapIterator {
+    /// Creates a new memory map iterator.
     fn new() -> MemoryMapIterator {
         MemoryMapIterator { multiboot_iterator: multiboot::get_memory_map() }
     }
 }
 
 impl Iterator for MemoryMapIterator {
-    type Item = MemoryMapEntry;
+    type Item = FreeMemoryArea;
 
-    fn next(&mut self) -> Option<MemoryMapEntry> {
+    fn next(&mut self) -> Option<FreeMemoryArea> {
         match *get_boot_method() {
             BootMethod::Multiboot => self.multiboot_iterator.next(),
             _ => None,

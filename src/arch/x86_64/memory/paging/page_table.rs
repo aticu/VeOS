@@ -1,7 +1,7 @@
 //! Contains code for dealing with page tables.
 
 use super::page_table_entry::*;
-use super::super::{PhysicalAddress, VirtualAddress};
+use memory::{PhysicalAddress, VirtualAddress};
 use core::marker::PhantomData;
 use core::ops::Index;
 use core::ops::IndexMut;
@@ -10,7 +10,9 @@ use core::ops::IndexMut;
 const ENTRY_NUMBER: usize = 512;
 
 /// Represents a page table level.
-pub trait PageTableLevel {}
+pub trait PageTableLevel {
+    fn get_level() -> usize;
+}
 
 /// Represents a page table level that is not one.
 pub trait ReducablePageTableLevel: PageTableLevel {
@@ -20,28 +22,44 @@ pub trait ReducablePageTableLevel: PageTableLevel {
 
 /// Page table level 4.
 pub struct Level4;
-impl PageTableLevel for Level4 {}
+impl PageTableLevel for Level4 {
+    fn get_level() -> usize {
+        4
+    }
+}
 impl ReducablePageTableLevel for Level4 {
     type NextLevel = Level3;
 }
 
 /// Page table level 3.
 pub struct Level3;
-impl PageTableLevel for Level3 {}
+impl PageTableLevel for Level3 {
+    fn get_level() -> usize {
+        3
+    }
+}
 impl ReducablePageTableLevel for Level3 {
     type NextLevel = Level2;
 }
 
 /// Page table level 2.
 pub struct Level2;
-impl PageTableLevel for Level2 {}
+impl PageTableLevel for Level2 {
+    fn get_level() -> usize {
+        2
+    }
+}
 impl ReducablePageTableLevel for Level2 {
     type NextLevel = Level1;
 }
 
 /// Page table level 1.
 pub struct Level1;
-impl PageTableLevel for Level1 {}
+impl PageTableLevel for Level1 {
+    fn get_level() -> usize {
+        1
+    }
+}
 
 /// Represents a page table.
 #[repr(C)]
@@ -75,35 +93,41 @@ impl<T: ReducablePageTableLevel> PageTable<T> {
     }
 }
 
-impl PageTable<Level1> {
-    /// Returns the index into the current level of the page table.
-    pub fn table_index(address: VirtualAddress) -> usize {
-        // address & (0o777 << (12 + 9 * 0))
-        (address >> (12 + 9 * 0)) & 0o777
-    }
-}
+//impl PageTable<Level1> {
+    ///// Returns the index into the current level of the page table.
+    //pub fn table_index(address: VirtualAddress) -> usize {
+        //// address & (0o777 << (12 + 9 * 0))
+        //(address >> (12 + 9 * 0)) & 0o777
+    //}
+//}
+//
+//impl PageTable<Level2> {
+    ///// Returns the index into the current level of the page table.
+    //pub fn table_index(address: VirtualAddress) -> usize {
+        //// address & (0o777 << (12 + 9 * 1))
+        //(address >> (12 + 9 * 1)) & 0o777
+    //}
+//}
+//
+//impl PageTable<Level3> {
+    ///// Returns the index into the current level of the page table.
+    //pub fn table_index(address: VirtualAddress) -> usize {
+        //// address & (0o777 << (12 + 9 * 2))
+        //(address >> (12 + 9 * 2)) & 0o777
+    //}
+//}
+//
+//impl PageTable<Level4> {
+    ///// Returns the index into the current level of the page table.
+    //pub fn table_index(address: VirtualAddress) -> usize {
+        //// address & (0o777 << (12 + 9 * 3))
+        //(address >> (12 + 9 * 3)) & 0o777
+    //}
+//}
 
-impl PageTable<Level2> {
-    /// Returns the index into the current level of the page table.
+impl<T: PageTableLevel> PageTable<T> {
     pub fn table_index(address: VirtualAddress) -> usize {
-        // address & (0o777 << (12 + 9 * 1))
-        (address >> (12 + 9 * 1)) & 0o777
-    }
-}
-
-impl PageTable<Level3> {
-    /// Returns the index into the current level of the page table.
-    pub fn table_index(address: VirtualAddress) -> usize {
-        // address & (0o777 << (12 + 9 * 2))
-        (address >> (12 + 9 * 2)) & 0o777
-    }
-}
-
-impl PageTable<Level4> {
-    /// Returns the index into the current level of the page table.
-    pub fn table_index(address: VirtualAddress) -> usize {
-        // address & (0o777 << (12 + 9 * 3))
-        (address >> (12 + 9 * 3)) & 0o777
+        (address >> (12 + 9 * (T::get_level() - 1))) & 0o777
     }
 }
 

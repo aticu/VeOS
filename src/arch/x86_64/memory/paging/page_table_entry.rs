@@ -1,6 +1,6 @@
 //! Handles page table entries.
 
-use super::super::PhysicalAddress;
+use memory::PhysicalAddress;
 use core::fmt;
 
 /// Serves as a mask for the physical address in a page table entry.
@@ -11,34 +11,34 @@ const PHYSICAL_ADDRESS_MASK: usize = 0xffffffffff << 12;
 pub struct PageTableEntry(u64);
 
 bitflags! {
-    ///The possible flags in a page table entry.
+    /// The possible flags in a page table entry.
     pub flags PageTableEntryFlags: u64 {
-        ///The page is present.
+        /// The page is present.
         const PRESENT = 1 << 0,
-        ///The page is writable.
+        /// The page is writable.
         const WRITABLE = 1 << 1,
-        ///The page is accessible in user mode.
+        /// The page is accessible in user mode.
         const USER_ACCESSIBLE = 1 << 2,
-        ///Writes will not be cached.
+        /// Writes will not be cached.
         const WRITE_TROUGH_CACHING = 1 << 3,
-        ///Page accesses will not be cached.
+        /// Page accesses will not be cached.
         const DISABLE_CACHE = 1 << 4,
-        ///The page was accessed.
+        /// The page was accessed.
         const ACCESSED = 1 << 5,
-        ///The page was written to.
+        /// The page was written to.
         const DIRTY = 1 << 6,
-        ///The page is a huge page.
+        /// The page is a huge page.
         const HUGE_PAGE = 1 << 7,
-        ///The page is global.
+        /// The page is global.
         ///
-        ///This means that it won't be flushed from the caches on an address space switch.
+        /// This means that it won't be flushed from the caches on an address space switch.
         const GLOBAL = 1 << 8,
-        ///Ensures mutual exclusion for temporary pages.
+        /// Ensures mutual exclusion for temporary pages.
         ///
-        ///It also makes sure that the page entry can't be changed while in use.
-        ///Only valid in the temporary mapping tables.
+        /// It also makes sure that the page entry can't be changed while in use.
+        /// Only valid in the temporary mapping tables.
         const TEMPORARY_TABLE_LOCK = 1 << 9,
-        ///Nothing on this page can be executed.
+        /// No code on this page can be executed.
         const NO_EXECUTE = 1 << 63,
     }
 }
