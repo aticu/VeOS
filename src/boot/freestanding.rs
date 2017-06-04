@@ -5,13 +5,15 @@ use arch::vga_buffer;
 
 /// Initialize the system without help of a boot loader.
 pub fn init() {
-    // TODO this gets called when the OS is booted using an unknown bootloader
-    // try to figure out all the necessary details using other methods here
+    // TODO: This gets called when the OS is booted using an unknown bootloader.
+    // It should try to figure out all the necessary details using other methods
+    // here.
 }
 
 /// Return the vga information.
+#[cfg(target_arch = "x86_64")]
 pub fn get_vga_info() -> vga_buffer::Info {
-    // currently this is just a best guess.
+    // Currently this is just a best guess.
     vga_buffer::Info {
         height: 25,
         width: 80,

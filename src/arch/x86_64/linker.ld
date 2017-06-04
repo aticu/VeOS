@@ -40,6 +40,8 @@ SECTIONS {
     .data : AT(ADDR(.data) - KERNEL_OFFSET)
     {
         *(.data .data.*)
+        KERNEL_END = .;
+        QUAD(_kernel_end);
         TEXT_START = .;
         QUAD(_text_start);
         RODATA_START = .;
@@ -49,7 +51,23 @@ SECTIONS {
         BSS_START = .;
         QUAD(_bss_start);
         BSS_END = .;
-        QUAD(_kernel_end);
+        QUAD(_bss_end);
+        TEMPORARY_MAP_TABLE = .;
+        QUAD(temporary_map);
+        L4_TABLE = .;
+        QUAD(l4_table);
+        L3_TABLE = .;
+        QUAD(l3_table);
+        L2_TABLE = .;
+        QUAD(l2_table);
+        STACK_L2_TABLE = .;
+        QUAD(stack_l2_table);
+        STACK_L1_TABLE = .;
+        QUAD(stack_l1_table);
+        STACK_BOTTOM = .;
+        QUAD(stack_bottom);
+        STACK_TOP = .;
+        QUAD(stack_top);
         . = ALIGN(PAGE_SIZE);
     }
 
@@ -60,18 +78,23 @@ SECTIONS {
         *(.bss .bss.*)
         *(COMMON)
         . = ALIGN(PAGE_SIZE);
+        temporary_map = . - KERNEL_OFFSET;
+        . += PAGE_SIZE;
+        _bss_end = . - KERNEL_OFFSET;
+        stack_bottom = . - KERNEL_OFFSET;
+        . += STACK_SIZE;
+        stack_top = . - KERNEL_OFFSET;
+        . = ALIGN(PAGE_SIZE);
         l4_table = . - KERNEL_OFFSET;
         . += PAGE_SIZE;
         l3_table = . - KERNEL_OFFSET;
         . += PAGE_SIZE;
         l2_table = . - KERNEL_OFFSET;
         . += PAGE_SIZE;
-        temporary_map = . - KERNEL_OFFSET;
+        stack_l2_table = . - KERNEL_OFFSET;
         . += PAGE_SIZE;
-        stack_bottom = . - KERNEL_OFFSET;
-        . += STACK_SIZE;
-        stack_top = . - KERNEL_OFFSET;
-        . = ALIGN(PAGE_SIZE);
+        stack_l1_table = . - KERNEL_OFFSET;
+        . += PAGE_SIZE;
     }
     
     _kernel_end = . - KERNEL_OFFSET;

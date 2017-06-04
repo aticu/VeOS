@@ -1,7 +1,6 @@
 global long_mode_start
 
 extern main
-extern KERNEL_OFFSET
 
 section .init
 long_mode_start: ;first 64-bit code to be executed
@@ -12,8 +11,7 @@ long_mode_start: ;first 64-bit code to be executed
     mov fs, ax
     mov gs, ax
 
-    mov rax, KERNEL_OFFSET ;make the stack pointer virtual
-    add rsp, rax
+    mov rsp, 0xfffffe8000000000 ;make the stack pointer point to the virtual stack top
 
     mov rax, main
     jmp rax

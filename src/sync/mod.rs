@@ -1,9 +1,9 @@
 //! Handles synchronization within the kernel.
 pub mod mutex;
 
-use arch;
 
 pub use self::mutex::Mutex;
+use arch;
 
 /// Saves the state when disabling preemtion, so it can be restored later.
 #[derive(Default)]
@@ -26,6 +26,14 @@ impl PreemptionState {
     /// Restores the saved preemption state.
     unsafe fn restore(&self) {
         arch::set_interrupt_state(self.interrupts_enabled);
+    }
+
+    /// Copies the preemption state.
+    ///
+    /// # Safety
+    /// - Make sure that every preemption state is properly restored only once.
+    pub unsafe fn copy(&self) -> PreemptionState {
+        PreemptionState { interrupts_enabled: self.interrupts_enabled }
     }
 }
 

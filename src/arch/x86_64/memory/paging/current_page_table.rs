@@ -1,13 +1,18 @@
+//! Handles interactions with the current page table.
+
 use super::{Page, PageFrame};
-use super::page_table::{Level1, Level2, Level3, Level4, PageTable};
+use super::inactive_page_table::InactivePageTable;
+use super::page_table::{Level1, Level4, PageTable};
 use super::page_table_entry::*;
-use super::super::{VIRTUAL_HIGH_MIN_ADDRESS, VIRTUAL_LOW_MAX_ADDRESS};
-use memory::{PhysicalAddress, VirtualAddress};
+use super::page_table_manager::PageTableManager;
+use core::cell::UnsafeCell;
+use core::ops::{Deref, DerefMut};
 use core::ptr;
 use core::ptr::Unique;
-use sync::cpu_relax;
-use sync::Mutex;
+use memory::PhysicalAddress;
+use sync::{Mutex, PreemptionState};
 use x86_64::instructions::tlb;
+use x86_64::registers::control_regs;
 
 /// The address of the current Level 4 table.
 ///
@@ -18,131 +23,158 @@ const L4_TABLE: *mut PageTable<Level4> = 0xfffffffffffff000 as *mut PageTable<Le
 /// The base address for all temporary addresses.
 const TEMPORARY_ADDRESS_BASE: usize = 0xffffffffffc00000;
 
-/// Returns true for a valid virtual address.
-macro_rules! valid_address {
-    ($address: expr) => {{
-        (VIRTUAL_LOW_MAX_ADDRESS >= $address || $address >= VIRTUAL_HIGH_MIN_ADDRESS)
-    }};
+/// The method to access the current page table.
+//pub static CURRENT_PAGE_TABLE: Mutex<CurrentPageTable> =
+    //Mutex::new(unsafe { CurrentPageTable::new() });
+pub static CURRENT_PAGE_TABLE: CurrentPageTableLock = unsafe { CurrentPageTableLock::new(CurrentPageTable::new()) };
+
+/// Protects the current page table from being accessed directly.
+///
+/// This serves to stop the page table from being switched while being accessed.
+pub struct CurrentPageTableLock {
+    current_page_table: UnsafeCell<CurrentPageTable>,
+    reference_count: Mutex<usize>
 }
 
-/// The method to access the current page table.
-pub static CURRENT_PAGE_TABLE: Mutex<CurrentPageTable> =
-    Mutex::new(unsafe { CurrentPageTable::new() });
+// This is safe because the page table will manage it's own exclusion internally.
+unsafe impl Sync for CurrentPageTableLock {}
+
+impl CurrentPageTableLock {
+    /// Creates a new current page table lock.
+    ///
+    /// # Safety
+    /// This should only ever get called once at compile time.
+    const unsafe fn new(table: CurrentPageTable) -> CurrentPageTableLock {
+        CurrentPageTableLock {
+            current_page_table: UnsafeCell::new(table),
+            reference_count: Mutex::new(0)
+        }
+    }
+
+    /// Locks the current page table.
+    pub fn lock(&self) -> CurrentPageTableReference {
+        let mut rc: &mut usize = &mut self.reference_count.lock();
+        *rc += 1;
+        CurrentPageTableReference {
+            current_page_table: unsafe { &mut *self.current_page_table.get() },
+            reference_count: &self.reference_count
+        }
+    }
+}
+
+/// Serves as a reference to a locked current page table.
+pub struct CurrentPageTableReference<'a> {
+    current_page_table: &'a mut CurrentPageTable,
+    reference_count: &'a Mutex<usize>
+}
+
+impl<'a> Drop for CurrentPageTableReference<'a> {
+    fn drop(&mut self) {
+        let mut rc: &mut usize = &mut self.reference_count.lock();
+        *rc -= 1;
+    }
+}
+
+impl<'a> Deref for CurrentPageTableReference<'a> {
+    type Target = CurrentPageTable;
+
+    fn deref(&self) -> &CurrentPageTable {
+        self.current_page_table
+    }
+}
+
+impl<'a> DerefMut for CurrentPageTableReference<'a> {
+    fn deref_mut(&mut self) -> &mut CurrentPageTable {
+        self.current_page_table
+    }
+}
 
 /// Owns the page table currently in use.
 pub struct CurrentPageTable {
     l4_table: Unique<PageTable<Level4>>
 }
 
+impl PageTableManager for CurrentPageTable {
+    fn get_l4(&self) -> &PageTable<Level4> {
+        unsafe { self.l4_table.as_ref() }
+    }
+
+    fn get_l4_mut(&mut self) -> &mut PageTable<Level4> {
+        unsafe { self.l4_table.as_mut() }
+    }
+}
+
 impl CurrentPageTable {
     /// Returns the current page table.
     ///
-    /// #Safety
-    /// At any point in time there should only be exactly one current page
+    /// # Safety
+    /// - At any point in time there should only be exactly one current page
     /// table struct.
     const unsafe fn new() -> CurrentPageTable {
         CurrentPageTable { l4_table: Unique::new(L4_TABLE) }
     }
 
-    /// Returns a reference to the level 4 page table.
-    fn get_l4(&self) -> &PageTable<Level4> {
-        unsafe { self.l4_table.get() }
+    /// Tries to map an inactive page table.
+    ///
+    /// Returns true if the mapping was successful.
+    ///
+    /// # Safety
+    /// - Should not be called while another inactive table is mapped.
+    pub unsafe fn map_inactive(&mut self, frame: &PageFrame) -> PreemptionState {
+        let mut l4 = self.get_l4_mut();
+        let mut entry = &mut l4[509];
+        let preemption_state = entry.lock();
+        if !entry.flags().contains(PRESENT) {
+            entry.set_flags(PRESENT | WRITABLE | NO_EXECUTE).set_address(frame.get_address());
+        }
+
+        preemption_state
     }
 
-    /// Returns a mutable reference to the level 4 page table.
-    fn get_l4_mut(&mut self) -> &mut PageTable<Level4> {
-        unsafe { self.l4_table.get_mut() }
-    }
-
-    /// Returns the corresponding physical address to a virtual address.
-    #[allow(dead_code)]
-    pub fn translate_address(&self, address: VirtualAddress) -> Option<PhysicalAddress> {
-        self.get_l1(address)
-            .and_then(|l1| l1[PageTable::<Level1>::table_index(address)].points_to())
-            .map(|page_address| page_address + (address & 0xfff))
+    /// Unmaps the currently mapped inactive page table.
+    pub fn unmap_inactive(&mut self, preemption_state: &PreemptionState) {
+        let mut l4 = self.get_l4_mut();
+        let mut entry = &mut l4[509];
+        debug_assert!(entry.flags().contains(PRESENT));
+        entry.remove_flags(PRESENT);
+        entry.unlock(&preemption_state);
     }
 
     /// Returns a mutable reference to the temporary mapping page table.
     fn get_temporary_map_table(&mut self) -> &mut PageTable<Level1> {
-        self.get_l1_mut(TEMPORARY_ADDRESS_BASE).expect("Temporary page map not mapped.")
-    }
-
-    /// Returns a reference to the level 1 table corresponding to the given
-    /// address.
-    fn get_l1(&self, address: VirtualAddress) -> Option<&PageTable<Level1>> {
-        assert!(valid_address!(address));
-
-        let l4 = self.get_l4();
-
-        l4.get_next_level(PageTable::<Level4>::table_index(address))
-            .and_then(|l3| l3.get_next_level(PageTable::<Level3>::table_index(address)))
-            .and_then(|l2| l2.get_next_level(PageTable::<Level2>::table_index(address)))
-    }
-
-    /// Returns a mutable reference to the level 1 table corresponding to the
-    /// given address.
-    fn get_l1_mut(&mut self, address: VirtualAddress) -> Option<&mut PageTable<Level1>> {
-        assert!(valid_address!(address));
-
         let l4 = self.get_l4_mut();
 
-        l4.get_next_level_mut(PageTable::<Level4>::table_index(address))
-            .and_then(|l3| l3.get_next_level_mut(PageTable::<Level3>::table_index(address)))
-            .and_then(|l2| l2.get_next_level_mut(PageTable::<Level2>::table_index(address)))
-    }
-
-    /// Tries to map the given page frame into the address space temporarily.
-    fn try_temporary_map(&mut self, frame: &PageFrame) -> Option<Page> {
-        let index = page_frame_hash(frame);
-        let mut temporary_map_table = self.get_temporary_map_table();
-        let mut entry = &mut temporary_map_table[index];
-
-        if !entry.flags().contains(TEMPORARY_TABLE_LOCK) {
-            let virtual_address = TEMPORARY_ADDRESS_BASE + (index << 12);
-
-            if entry.points_to() != Some(frame.get_address()) {
-                tlb::flush(::x86_64::VirtualAddress(virtual_address));
-                entry.set_address(frame.get_address());
-                entry.set_flags(TEMPORARY_TABLE_LOCK | PRESENT | WRITABLE | DISABLE_CACHE | NO_EXECUTE);
-            } else {
-                entry.add_flags(TEMPORARY_TABLE_LOCK);
-            }
-            Some(Page::from_address(virtual_address))
-        } else {
-            None
-        }
-    }
-
-    /// Maps the given page frame to a page temporarily.
-    fn temporary_map(&mut self, frame: &PageFrame) -> Page {
-        let mut map = self.try_temporary_map(frame);
-        while map.is_none() {
-            cpu_relax();
-            map = self.try_temporary_map(frame);
-        }
-        map.unwrap()
-    }
-
-    /// Signals that the mapped page isn't used anymore.
-    fn unmap_temporary_map(&mut self, frame: &PageFrame) {
-        let index = page_frame_hash(frame);
-        let mut temporary_map_table = self.get_temporary_map_table();
-        let mut entry = &mut temporary_map_table[index];
-
-        assert!(entry.flags().contains(TEMPORARY_TABLE_LOCK));
-
-        entry.remove_flags(TEMPORARY_TABLE_LOCK);
+        l4.get_next_level_mut(TEMPORARY_ADDRESS_BASE)
+            .and_then(|l3| l3.get_next_level_mut(TEMPORARY_ADDRESS_BASE))
+            .and_then(|l2| l2.get_next_level_mut(TEMPORARY_ADDRESS_BASE))
+            .expect("Temporary page table not mapped.")
     }
 
     /// Performs the given action with the mapped page.
-    pub fn with_temporary_page<F>(&mut self, frame: &PageFrame, action: F)
-        where F: Fn(&mut Page)
+    pub fn with_temporary_page<F, T>(&mut self, frame: &PageFrame, action: F) -> T
+        where F: Fn(&mut Page) -> T
     {
-        let mut map = self.temporary_map(frame);
+        // Map the page.
+        let index = page_frame_hash(frame);
+        let mut temporary_map_table = self.get_temporary_map_table();
+        let mut entry = &mut temporary_map_table[index];
+        let preemption_state = entry.lock();
 
-        action(&mut map);
+        let virtual_address = TEMPORARY_ADDRESS_BASE + (index << 12);
 
-        self.unmap_temporary_map(frame);
+        if entry.points_to() != Some(frame.get_address()) {
+            tlb::flush(::x86_64::VirtualAddress(virtual_address));
+            entry.set_address(frame.get_address());
+            entry.set_flags(PRESENT | WRITABLE | DISABLE_CACHE | NO_EXECUTE);
+        }
+
+        // Perform the action.
+        let result: T = action(&mut Page::from_address(virtual_address));
+
+        // Unlock this entry.
+        entry.unlock(&preemption_state);
+
+        result
     }
 
     /// Writes the given value to the given physical address.
@@ -160,15 +192,33 @@ impl CurrentPageTable {
 
     /// Reads from the given physical address.
     pub fn read_from_physical<T: Sized + Copy>(&mut self, physical_address: PhysicalAddress) -> T {
-        let frame = PageFrame::from_address(physical_address);
-        let page = self.temporary_map(&frame);
-        
-        let virtual_address = page.get_address() | (physical_address & 0xfff);
-        let data: T = unsafe { ptr::read(virtual_address as *mut T) };
+        self.with_temporary_page(&PageFrame::from_address(physical_address), |page| {
+            let virtual_address = page.get_address() | (physical_address & 0xfff);
 
-        self.unmap_temporary_map(&frame);
+            unsafe {
+                ptr::read(virtual_address as *mut T)
+            }
+        })
+    }
 
-        data
+    /// Switches to the new page table returning the current one.
+    ///
+    /// The old page table will not be mapped into the new one. This should be done manually.
+    pub unsafe fn switch(&mut self, new_table: InactivePageTable) -> InactivePageTable {
+        let old_frame = PageFrame::from_address(control_regs::cr3().0 as PhysicalAddress);
+        let old_table = InactivePageTable::from_frame(old_frame, &new_table);
+
+        let new_frame = new_table.get_frame();
+
+        drop(new_table);
+
+        // Make the switch.
+        control_regs::cr3_write(::x86_64::PhysicalAddress(new_frame.get_address() as u64));
+
+        // Map the now inactive old table.
+        self.map_inactive(&old_frame);
+
+        old_table
     }
 }
 

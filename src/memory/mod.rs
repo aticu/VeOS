@@ -1,8 +1,7 @@
 //! Handles all memory related things.
 
-use core::fmt;
-
 pub use arch::memory::*;
+use core::fmt;
 
 /// Represents a physical address.
 pub type PhysicalAddress = usize;
@@ -43,7 +42,10 @@ impl FreeMemoryArea {
 
 impl fmt::Debug for FreeMemoryArea {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Start: {:x}, Length: {:x}", self.start_address, self.length)
+        write!(f,
+               "Start: {:x}, Length: {:x}",
+               self.start_address,
+               self.length)
     }
 }
 

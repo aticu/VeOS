@@ -75,7 +75,7 @@ impl Buffer {
 
     /// Writes a character to this buffer.
     fn write_char(&mut self, row_position: usize, column_position: usize, character: ScreenChar) {
-        let start = unsafe { self.address.get_mut() as *mut Volatile<ScreenChar> };
+        let start = self.address.as_ptr();
         unsafe {
             let position_ptr = start.offset((row_position * self.width + column_position) as isize);
             (&mut *position_ptr).write(character);
@@ -84,7 +84,7 @@ impl Buffer {
 
     /// Reads a character from this buffer.
     fn read_char(&self, row_position: usize, column_position: usize) -> ScreenChar {
-        let start = unsafe { self.address.get() as *const Volatile<ScreenChar> };
+        let start = unsafe { self.address.as_ref() as *const Volatile<ScreenChar> };
         unsafe {
             let position_ptr = start.offset((row_position * self.width + column_position) as isize);
             (&*position_ptr).read()
@@ -155,9 +155,7 @@ impl Writer {
 
     /// Shifts the given line upwards.
     fn shift_line(&mut self, line: usize) {
-        let height = self.buffer.height;
-
-        for i in 0..height {
+        for i in 0..self.buffer.width {
             let char_below = self.buffer.read_char(line, i);
 
             self.buffer.write_char((line - 1), i, char_below);

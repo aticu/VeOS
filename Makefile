@@ -27,7 +27,7 @@ ifeq ($(build_type),release)
 endif
 rust_compiler := xargo
 
-.PHONY: all clean run iso run_verbose objdump cargo doc doc_open doctest test
+.PHONY: all clean run iso run_verbose objdump cargo doc doc_open doctest test debug
 
 all: $(kernel)
 
@@ -36,6 +36,9 @@ clean:
 
 run: $(iso)
 	qemu-system-x86_64 -cdrom $(iso) --no-reboot -s
+
+debug: $(iso)
+	qemu-system-x86_64 -cdrom $(iso) -d int --no-reboot -s -S
 
 run_verbose: $(iso)
 	qemu-system-x86_64 -cdrom $(iso) -d int --no-reboot -s

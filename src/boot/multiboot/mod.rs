@@ -1,7 +1,7 @@
 //! Handles the multiboot information structure.
 
 use core::mem;
-use memory::{get_kernel_end_address, get_kernel_start_address, FreeMemoryArea};
+use memory::{FreeMemoryArea, get_kernel_end_address, get_kernel_start_address};
 
 /// Represents the multiboot information structure.
 #[repr(C)]
@@ -13,7 +13,7 @@ struct MultibootInformation {
     cmdline: u32,
     mods_count: u32,
     mods_addr: u32,
-    elf_num: u32, // only elf tags are supported, because this kernel is an elf file
+    elf_num: u32, // Only elf tags are supported, because this kernel is an ELF file.
     elf_size: u32,
     elf_addr: u32,
     elf_shndx: u32,
@@ -73,7 +73,7 @@ struct MmapEntry {
 }
 
 /// The base address for the information strucuture.
-// only valid after init
+// This is only valid after init was called.
 static mut STRUCT_BASE_ADDRESS: *const MultibootInformation = 0 as *const MultibootInformation;
 
 /// Initializes the multiboot module.
@@ -90,7 +90,7 @@ pub fn get_bootloader_name() -> &'static str {
     if get_flags().contains(BOOT_LOADER_NAME) {
         from_c_str!(to_virtual!(get_info().boot_loader_name)).unwrap()
     } else {
-        // no specific name given by the boot loader
+        // When no specific name was given by the boot loader.
         "a multiboot compliant bootloader"
     }
 }
@@ -149,17 +149,20 @@ impl Iterator for MemoryMapIterator {
 
             self.address += mem::size_of::<u32>() + current_entry.size as usize;
 
-            // only a type of 1 is usable memory
+            // Only a type of 1 is usable memory.
             if current_entry.mem_type == 1 {
                 if get_kernel_end_address() < current_entry.base_addr ||
                    get_kernel_start_address() > current_entry.base_addr + current_entry.length {
-                    // if the kernel is before or after this segment
+                    // If the kernel is before or after this segment.
                     return Some(FreeMemoryArea::new(current_entry.base_addr, current_entry.length));
                 } else if current_entry.base_addr <= get_kernel_start_address() {
-                    // should handle all other cases
-                    self.next_length = current_entry.base_addr + current_entry.length - get_kernel_end_address();
+                    // This should handle all other cases.
+                    self.next_length = current_entry.base_addr + current_entry.length -
+                                       get_kernel_end_address();
                     if current_entry.base_addr != get_kernel_start_address() {
-                        return Some(FreeMemoryArea::new(current_entry.base_addr, get_kernel_start_address() - current_entry.base_addr));
+                        return Some(FreeMemoryArea::new(current_entry.base_addr,
+                                                        get_kernel_start_address() -
+                                                        current_entry.base_addr));
                     }
                 } else {
                     panic!("There's a bug in the multiboot code.");

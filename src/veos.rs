@@ -2,7 +2,7 @@
 #![feature(const_fn)]
 #![feature(unique)]
 #![feature(asm)]
-#![feature(conservative_impl_trait)]
+#![feature(integer_atomics)]
 #![no_std]
 #![warn(missing_docs)]
 
@@ -16,6 +16,8 @@ extern crate spin;
 #[macro_use]
 extern crate bitflags;
 extern crate x86_64;
+#[macro_use]
+extern crate lazy_static;
 
 #[macro_use]
 mod macros;
@@ -43,10 +45,11 @@ pub extern "C" fn main(magic_number: u32, information_structure_address: usize) 
     arch::init();
     boot::init(magic_number, information_structure_address);
     io::init();
-    memory::init();
     println!("Booted {} using {}...",
              OS_NAME,
              boot::get_bootloader_name());
+    memory::init();
+    println!("Memory initialization finished.");
 
     loop {}
 }

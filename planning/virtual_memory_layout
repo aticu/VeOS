@@ -1,7 +1,8 @@
 The current virtual memory layout is planned like this:
 
 -Level 4 page table entries 0-255 can be freely used by processes (except for the page at address 0, which remains unmapped).
--Level 4 page table entries 256-508 are currently reserved for the operating system.
+-Level 4 page table entries 256-507 are currently reserved for the operating system.
+-Level 4 page table entry 508 is used for the kernel stack.
 -Level 4 page table entry 509 is reserved for temporarily mapping an inactive page table for modification.
 -Level 4 page table entry 510 is reserved for temporarily mapping arbitrary pages for directly accessing physical memory.
 -Level 4 page table entry 511 is reserved for a recursive mapping of the currently active page table.

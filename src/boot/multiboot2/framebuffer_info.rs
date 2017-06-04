@@ -17,7 +17,7 @@ pub struct FramebufferInfo {
     framebuffer_bpp: u8,
     framebuffer_type: u8,
     reserved: u8,
-    color_info: u32 // this is just a placeholder, this depends on the framebuffer_type
+    color_info: u32 // This is just a placeholder, this depends on the framebuffer_type.
 }
 
 /// Returns the VGA buffer information requested.

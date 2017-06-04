@@ -56,7 +56,7 @@ pub fn init(magic_number: u32, information_structure_address: usize) {
     };
 }
 
-/// Identifies the boot_method.
+/// Identifies the boot method.
 fn set_boot_method(magic_number: u32) {
     unsafe {
         BOOT_METHOD = match magic_number {

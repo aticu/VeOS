@@ -33,60 +33,6 @@ use core::sync::atomic::{ATOMIC_BOOL_INIT, AtomicBool, Ordering};
 /// the standard
 /// library.
 ///
-/// # Simple examples
-///
-/// ```
-/// use spin;
-/// let spin_mutex = spin::Mutex::new(0);
-///
-/// // Modify the data
-/// {
-///     let mut data = spin_mutex.lock();
-///     *data = 2;
-/// }
-///
-/// // Read the data
-/// let answer =
-/// {
-///     let data = spin_mutex.lock();
-///     *data
-/// };
-///
-/// assert_eq!(answer, 2);
-/// ```
-///
-/// # Thread-safety example
-///
-/// ```
-/// use spin;
-/// use std::sync::{Arc, Barrier};
-///
-/// let numthreads = 1000;
-/// let spin_mutex = Arc::new(spin::Mutex::new(0));
-///
-/// // We use a barrier to ensure the readout happens after all writing
-/// let barrier = Arc::new(Barrier::new(numthreads + 1));
-///
-/// for _ in (0..numthreads)
-/// {
-///     let my_barrier = barrier.clone();
-///     let my_lock = spin_mutex.clone();
-///     std::thread::spawn(move||
-///     {
-///         let mut guard = my_lock.lock();
-///         *guard += 1;
-///
-///         // Release the lock to prevent a deadlock
-///         drop(guard);
-///         my_barrier.wait();
-///     });
-/// }
-///
-/// barrier.wait();
-///
-/// let answer = { *spin_mutex.lock() };
-/// assert_eq!(answer, numthreads);
-/// ```
 pub struct Mutex<T: ?Sized> {
     lock: AtomicBool,
     preemption_state: UnsafeCell<PreemptionState>,
@@ -108,21 +54,6 @@ unsafe impl<T: ?Sized + Send> Send for Mutex<T> {}
 
 impl<T> Mutex<T> {
     /// Creates a new spinlock wrapping the supplied data.
-    ///
-    /// May be used statically:
-    ///
-    /// ```
-    /// #![feature(const_fn)]
-    /// use spin;
-    ///
-    /// static MUTEX: spin::Mutex<()> = spin::Mutex::new(());
-    ///
-    /// fn demo() {
-    ///     let lock = MUTEX.lock();
-    ///     // do something with lock
-    ///     drop(lock);
-    /// }
-    /// ```
     pub const fn new(user_data: T) -> Mutex<T> {
         Mutex {
             lock: ATOMIC_BOOL_INIT,
@@ -175,17 +106,6 @@ impl<T: ?Sized> Mutex<T> {
     ///
     /// The returned value may be dereferenced for data access
     /// and the lock will be dropped when the guard falls out of scope.
-    ///
-    /// ```
-    /// let mylock = spin::Mutex::new(0);
-    /// {
-    ///     let mut data = mylock.lock();
-    ///     // The lock is now locked and the data can be accessed
-    ///     *data += 1;
-    ///     // The lock is implicitly dropped
-    /// }
-    ///
-    /// ```
     pub fn lock(&self) -> MutexGuard<T> {
         self.obtain_lock();
         MutexGuard {
