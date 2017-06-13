@@ -188,6 +188,8 @@ impl Writer {
 
     /// Initializes the buffer.
     fn init(&mut self, info: Info) {
+        assert_has_not_been_called!("The VGA buffer should only be initialized once.");
+
         self.buffer.height = info.height;
         self.buffer.width = info.width;
         self.buffer.address = unsafe { Unique::new(info.address as *mut _) };

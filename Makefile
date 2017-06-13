@@ -27,39 +27,57 @@ ifeq ($(build_type),release)
 endif
 rust_compiler := xargo
 
-.PHONY: all clean run iso run_verbose objdump cargo doc doc_open doctest test debug
-
+.PHONY: all
 all: $(kernel)
 
+.PHONY: clean
 clean:
 	rm -rf target
 
+.PHONY: run
 run: $(iso)
 	qemu-system-x86_64 -cdrom $(iso) --no-reboot -s
 
+.PHONY: debug
 debug: $(iso)
 	qemu-system-x86_64 -cdrom $(iso) -d int --no-reboot -s -S
 
+.PHONY: run_verbose
 run_verbose: $(iso)
 	qemu-system-x86_64 -cdrom $(iso) -d int --no-reboot -s
 
+.PHONY: iso
 iso: $(iso)
 
+.PHONY: doc
 doc:
 	cargo rustdoc -- --no-defaults --passes collapse-docs --passes unindent-comments --passes strip-priv-imports
 
+.PHONY: doc_open
 doc_open: doc
 	xdg-open target/doc/veos/index.html
 
+.PHONY: fmt
+fmt:
+	cargo-fmt -- --write-mode=overwrite
+
+.PHONY: fmt-diff
+fmt-diff:
+	cargo-fmt -- --write-mode=diff
+
+.PHONY: doctest
 doctest:
 	cargo rustdoc -- --no-defaults --passes collapse-docs --passes unindent-comments --passes strip-priv-imports --test
 
+.PHONY: test
 test: doctest
 	RUSTFLAGS+=" -A dead_code" cargo test
 
+.PHONY: objdump
 objdump: $(kernel)
 	objdump $(kernel) -D -C --disassembler-options=intel-mnemonic | less
 
+.PHONY: hexdump
 hexdump: $(kernel)
 	hexdump $(kernel) | less
 
@@ -76,5 +94,6 @@ $(assembly_object_files): $(build_dir)/%.o : $(src_dir)/%.asm
 	@mkdir -p $(shell dirname $@)
 	$(assembler) $(assembler_flags) $< -o $@
 
+.PHONY: cargo
 cargo:
 	$(rust_compiler) build $(rust_compiler_flags)

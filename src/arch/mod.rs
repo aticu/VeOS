@@ -1,12 +1,11 @@
 //! Abstracts architecture details.
 //!
 //! The job of this module is to have submodules for each architecture and to
-//! provide interfaces
+//! provide interfaces to them.
 
 
 #[cfg(target_arch = "x86_64")]
 pub use self::x86_64::*;
-/// to them.
 
 use core::fmt;
 #[cfg(target_arch = "x86_64")]
@@ -27,6 +26,9 @@ pub fn write_fmt(args: fmt::Arguments) {
 }
 
 /// Sets the state of being interruptable to the given state.
+///
+/// # Safety
+/// - Don't use this function directly, rather use the sync module.
 pub unsafe fn set_interrupt_state(state: bool) {
     if state {
         sync::enable_interrupts();

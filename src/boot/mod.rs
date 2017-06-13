@@ -47,6 +47,8 @@ static mut BOOT_METHOD: BootMethod = BootMethod::Unknown;
 
 /// Initializes the boot module and all the data it provides.
 pub fn init(magic_number: u32, information_structure_address: usize) {
+    assert_has_not_been_called!("Boot information should only be initialized once.");
+
     set_boot_method(magic_number);
 
     match *get_boot_method() {

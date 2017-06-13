@@ -5,6 +5,8 @@ use arch::vga_buffer;
 
 /// Initialize the system without help of a boot loader.
 pub fn init() {
+    assert_has_not_been_called!("Bootloader initialization should only be performed once.");
+
     // TODO: This gets called when the OS is booted using an unknown bootloader.
     // It should try to figure out all the necessary details using other methods
     // here.

@@ -206,6 +206,8 @@ impl<'a> Iterator for FreeListIterator<'a> {
 
 /// Initializes the list of free page frames.
 pub fn init() {
+    assert_has_not_been_called!("The free list should only be initialized once.");
+
     let mut free_list = FREE_LIST.lock();
     for entry in boot::get_memory_map() {
         unsafe { free_list.insert(entry) };

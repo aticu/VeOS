@@ -1,5 +1,9 @@
 //! Handles all memory related things.
 
+mod allocator;
+
+#[cfg(not(test))]
+use alloc::oom::set_oom_handler;
 pub use arch::memory::*;
 use core::fmt;
 
@@ -15,6 +19,18 @@ pub struct FreeMemoryArea {
     pub start_address: PhysicalAddress,
     /// The length of the chunk.
     pub length: usize
+}
+
+bitflags! {
+    /// The flags a page could possibly have.
+    pub flags PageFlags: u8 {
+        /// Whether the page can be read from.
+        const READABLE = 1 << 0,
+        /// Whether the page can be written to.
+        const WRITABLE = 1 << 1,
+        /// Whether code on the page can be executed.
+        const EXECUTABLE = 1 << 2
+    }
 }
 
 impl FreeMemoryArea {
@@ -34,8 +50,8 @@ impl FreeMemoryArea {
     /// Returns the same area except for the first frame.
     pub fn without_first_frame(&self) -> FreeMemoryArea {
         FreeMemoryArea {
-            start_address: self.start_address + paging::PAGE_SIZE,
-            length: self.length - paging::PAGE_SIZE
+            start_address: self.start_address + PAGE_SIZE,
+            length: self.length - PAGE_SIZE
         }
     }
 }
@@ -50,6 +66,19 @@ impl fmt::Debug for FreeMemoryArea {
 }
 
 /// Initializes the memory managing part of the kernel.
+#[cfg(not(test))]
 pub fn init() {
+    assert_has_not_been_called!("Memory state should only be initialized once.");
+
     ::arch::memory::init();
+
+    set_oom_handler(oom);
+}
+
+/// This function gets called when the system is out of memory.
+///
+/// # Safety
+/// - This should never be called directly.
+fn oom() -> ! {
+    panic!("Out of memory!");
 }

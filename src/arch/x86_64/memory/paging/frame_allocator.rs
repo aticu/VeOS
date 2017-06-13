@@ -16,6 +16,7 @@ unsafe impl Sync for FrameAllocator {}
 
 /// The page frame allocator of the kernel.
 lazy_static! {
+    /// The frame allocator used by the kernel.
     pub static ref FRAME_ALLOCATOR: FrameAllocator = FrameAllocator {
         free_frames: {
             let mut number = 0;

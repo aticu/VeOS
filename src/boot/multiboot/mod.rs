@@ -78,6 +78,8 @@ static mut STRUCT_BASE_ADDRESS: *const MultibootInformation = 0 as *const Multib
 
 /// Initializes the multiboot module.
 pub fn init(information_structure_address: usize) {
+    assert_has_not_been_called!("The multiboot module should only be initialized once.");
+
     unsafe {
         STRUCT_BASE_ADDRESS = to_virtual!(information_structure_address) as
                               *const MultibootInformation

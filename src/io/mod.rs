@@ -4,6 +4,7 @@
 
 /// Initializes all IO devices.
 pub fn init() {
+    assert_has_not_been_called!("IO components should only be initialized once");
     if cfg!(target_arch = "x86_64") {
         ::arch::vga_buffer::init();
     }

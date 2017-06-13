@@ -51,6 +51,8 @@ impl Iterator for BasicTagIterator {
 
 /// Initializes the multiboot2 module.
 pub fn init(information_structure_address: usize) {
+    assert_has_not_been_called!("The multiboot2 module should only be initialized once.");
+
     assert!(check_validity(information_structure_address));
     unsafe { STRUCT_BASE_ADDRESS = information_structure_address };
 }

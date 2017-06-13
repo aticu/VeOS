@@ -1,7 +1,7 @@
-/// Creates an &'static str from a c string.
+/// Creates a `&'static str` from a c string.
 ///
-/// Converts the string at the given address from a c string to a rust &'static
-/// str.
+/// Converts the string at the given address from a c string to a rust
+/// `&'static str`.
 /// Optionally if the length is known, the process can be sped up, by passing
 /// it.
 #[macro_export]
@@ -55,4 +55,3 @@ macro_rules! valid_address {
         }
     }};
 }
-

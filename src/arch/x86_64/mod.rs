@@ -11,6 +11,7 @@ use x86_64::registers::*;
 
 /// Initializes the machine state for the x86_64 architecture.
 pub fn init() {
+    assert_has_not_been_called!("x86_64 specific initialization code should only be called once.");
     unsafe {
         // Enable syscall/sysret instructions and the NXE bit in the page table.
         wrmsr(msr::IA32_EFER, rdmsr(msr::IA32_EFER) | 1 << 11 | 1);

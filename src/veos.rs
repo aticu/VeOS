@@ -3,6 +3,8 @@
 #![feature(unique)]
 #![feature(asm)]
 #![feature(integer_atomics)]
+#![feature(alloc, collections)]
+#![feature(oom)]
 #![no_std]
 #![warn(missing_docs)]
 
@@ -18,6 +20,14 @@ extern crate bitflags;
 extern crate x86_64;
 #[macro_use]
 extern crate lazy_static;
+#[macro_use]
+extern crate once;
+extern crate allocator_stub;
+#[cfg(not(test))]
+extern crate alloc;
+#[cfg(not(test))]
+#[macro_use]
+extern crate collections;
 
 #[macro_use]
 mod macros;
@@ -34,9 +44,10 @@ static OS_NAME: &str = "VeOS";
 /// The main entry point for the operating system.
 ///
 /// This is what should get called by the loader.
+///
 /// #Arguments
-/// `magic_number` should contain a number that identifies a boot loader.
-/// `information_structure_address` is used for boot loaders that pass
+/// - `magic_number` should contain a number that identifies a boot loader.
+/// - `information_structure_address` is used for boot loaders that pass
 /// additional information to the operating system.
 #[cfg(not(test))]
 #[no_mangle]
@@ -49,7 +60,6 @@ pub extern "C" fn main(magic_number: u32, information_structure_address: usize) 
              OS_NAME,
              boot::get_bootloader_name());
     memory::init();
-    println!("Memory initialization finished.");
 
     loop {}
 }
@@ -74,5 +84,12 @@ extern "C" fn eh_personality() {
 pub extern "C" fn panic_fmt(fmt: core::fmt::Arguments, file: &'static str, line: u32) -> ! {
     println!("PANIC! in file '{}' at line {}:", file, line);
     println!("{}", fmt);
-    loop {}
+    unsafe {
+        sync::disable_preemption();
+    }
+    loop {
+        unsafe {
+            sync::cpu_halt();
+        }
+    }
 }

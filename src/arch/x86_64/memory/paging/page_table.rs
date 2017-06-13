@@ -1,7 +1,7 @@
 //! Contains code for dealing with page tables.
 
-use super::page_table_entry::*;
 use super::frame_allocator::FRAME_ALLOCATOR;
+use super::page_table_entry::*;
 use core::marker::PhantomData;
 use core::ops::Index;
 use core::ops::IndexMut;
@@ -90,7 +90,7 @@ impl<T: ReducablePageTableLevel> PageTable<T> {
         let flags = self[index].flags();
         debug_assert!(!flags.contains(HUGE_PAGE));
         // TODO: here would be the place to check whether the page is swapped out
-        
+
         let new_table = if !flags.contains(PRESENT) {
             // create a new table
             let frame = FRAME_ALLOCATOR.allocate();
@@ -100,7 +100,9 @@ impl<T: ReducablePageTableLevel> PageTable<T> {
         } else {
             false
         };
-        let table = unsafe { &mut *(((self as *const _ as usize | index << 3) << 9) as *mut PageTable<T::NextLevel>) };
+        let table = unsafe {
+            &mut *(((self as *const _ as usize | index << 3) << 9) as *mut PageTable<T::NextLevel>)
+        };
         if new_table {
             // zero the table out
             table.zero();
@@ -116,7 +118,9 @@ impl<T: ReducablePageTableLevel> PageTable<T> {
     }
 
     /// Returns a mutable reference to next page table of there is one.
-    pub fn get_next_level_mut(&mut self, address: VirtualAddress) -> Option<&mut PageTable<T::NextLevel>> {
+    pub fn get_next_level_mut(&mut self,
+                              address: VirtualAddress)
+                              -> Option<&mut PageTable<T::NextLevel>> {
         let index = PageTable::<T>::table_index(address);
         self.get_next_level_address(index)
             .map(|address| unsafe { &mut *(address as *mut PageTable<T::NextLevel>) })

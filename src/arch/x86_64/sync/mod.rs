@@ -14,13 +14,31 @@ pub fn cpu_relax() {
     }
 }
 
+/// Halts the cpu, until it is woken again.
+///
+/// # Safety
+/// - Don't use this function directly, rather use the interface through the
+/// sync module.
+#[inline(always)]
+pub unsafe fn cpu_halt() {
+    asm!("hlt" :::: "volatile");
+}
+
 /// Disables interrupts.
+///
+/// # Safety
+/// - Don't use this function directly, rather use the interface through the
+/// sync module.
 #[inline(always)]
 pub unsafe fn disable_interrupts() {
     interrupts::disable();
 }
 
 /// Enables interrupts.
+///
+/// # Safety
+/// - Don't use this function directly, rather use the interface through the
+/// sync module.
 #[inline(always)]
 pub unsafe fn enable_interrupts() {
     interrupts::enable();

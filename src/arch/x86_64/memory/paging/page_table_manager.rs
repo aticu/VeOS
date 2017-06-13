@@ -1,11 +1,11 @@
 //! Uses a trait that has general page table managing functions.
 
-use core::ops::{Deref, DerefMut};
-use memory::{VirtualAddress, PhysicalAddress};
 use super::{Page, PageFrame};
 use super::frame_allocator::FRAME_ALLOCATOR;
-use super::page_table::{PageTable, Level4, Level2, Level1};
-use super::page_table_entry::{PageTableEntry, PageTableEntryFlags, PRESENT};
+use super::page_table::{Level1, Level2, Level4, PageTable};
+use super::page_table_entry::{PRESENT, PageTableEntry, PageTableEntryFlags};
+use core::ops::{Deref, DerefMut};
+use memory::{PhysicalAddress, VirtualAddress};
 use sync::PreemptionState;
 use x86_64::instructions::tlb;
 
@@ -42,6 +42,7 @@ impl<'a> Drop for Level1TableReference<'a> {
     }
 }
 
+/// A reference to a page table entry in a locked level 1 page table.
 pub struct PageTableEntryReference<'a> {
     table_reference: Level1TableReference<'a>
 }
@@ -62,10 +63,12 @@ impl<'a> DerefMut for PageTableEntryReference<'a> {
     }
 }
 
+/// Structs managing a level 4 page table and it's decendants can implement
+/// this to manage paging.
 pub trait PageTableManager {
     /// Returns a reference to the level 4 page table.
     fn get_l4(&self) -> &PageTable<Level4>;
-    
+
     /// Returns a mutable reference to the level 4 page table.
     fn get_l4_mut(&mut self) -> &mut PageTable<Level4>;
 
@@ -96,54 +99,71 @@ pub trait PageTableManager {
                     } else {
                         None
                     }
-                }
-                None => None
+                },
+                None => None,
             }
         };
 
         match preemption_state {
-            Some(preemption_state) => Some(Level1TableReference {
-                table: self.get_l4_mut().get_next_level_mut(address).and_then(|l3| l3.get_next_level_mut(address)).unwrap(),
-                address,
-                preemption_state
-            }),
-            None => None
+            Some(preemption_state) => {
+                Some(Level1TableReference {
+                         table: self.get_l4_mut()
+                             .get_next_level_mut(address)
+                             .and_then(|l3| l3.get_next_level_mut(address))
+                             .unwrap(),
+                         address,
+                         preemption_state
+                     })
+            },
+            None => None,
         }
     }
 
-    /// Returns a reference to the level 1 table at the given address, possibly creating it.
+    /// Returns a reference to the level 1 table at the given address, possibly
+    /// creating it.
     ///
-    /// This creates new page tables if the parent tables for the wanted table are not already mapped.
+    /// This creates new page tables if the parent tables for the wanted table
+    /// are not already mapped.
     fn get_l1_and_map(&mut self, address: VirtualAddress) -> Level1TableReference {
         assert!(valid_address!(address));
-        
+
 
         let table_index = PageTable::<Level2>::table_index(address);
         let preemption_state = {
-            let l2 = self.get_l4_mut().next_level_and_map(address).next_level_and_map(address);
+            let l2 = self.get_l4_mut()
+                .next_level_and_map(address)
+                .next_level_and_map(address);
             let l2_entry = &mut l2[table_index];
             l2_entry.lock()
         };
 
         // Make sure the next level is mapped.
-        self.get_l4_mut().next_level_and_map(address).next_level_and_map(address).next_level_and_map(address);
+        self.get_l4_mut()
+            .next_level_and_map(address)
+            .next_level_and_map(address)
+            .next_level_and_map(address);
 
         Level1TableReference {
-            table: self.get_l4_mut().next_level_and_map(address).next_level_and_map(address),
+            table: self.get_l4_mut()
+                .next_level_and_map(address)
+                .next_level_and_map(address),
             address,
             preemption_state
         }
     }
 
-    /// Returns a reference to the page table entry corresponding to the given address.
+    /// Returns a reference to the page table entry corresponding to the given
+    /// address.
     ///
-    /// This creates new page tables if the parent tables for the wanted table are not already mapped.
+    /// This creates new page tables if the parent tables for the wanted table
+    /// are not already mapped.
     fn get_entry_and_map(&mut self, address: VirtualAddress) -> PageTableEntryReference {
         let l1 = self.get_l1_and_map(address);
         PageTableEntryReference { table_reference: l1 }
     }
 
-    /// Returns a mutable reference to the level 1 page table entry corresponding to the given address.
+    /// Returns a mutable reference to the level 1 page table entry
+    /// corresponding to the given address.
     fn get_entry(&mut self, address: VirtualAddress) -> Option<PageTableEntryReference> {
         let l1 = self.get_l1(address);
         l1.map(|l1| PageTableEntryReference { table_reference: l1 })
@@ -154,7 +174,9 @@ pub trait PageTableManager {
         let target_address = page.get_address();
         let mut entry = self.get_entry_and_map(target_address);
 
-        entry.set_address(frame.get_address()).set_flags(flags | PRESENT);
+        entry
+            .set_address(frame.get_address())
+            .set_flags(flags | PRESENT);
     }
 
     /// Maps the given page to an allocated frame with the given flags.
@@ -165,10 +187,15 @@ pub trait PageTableManager {
     }
 
     /// Unmaps the given page.
-    fn unmap_page(&mut self, page: Page) {
+    ///
+    /// # Safety
+    /// - Make sure the page isn't referenced anywhere anymore.
+    unsafe fn unmap_page(&mut self, page: Page) {
         let entry = self.get_entry(page.get_address());
 
-        entry.expect("Trying to unmap a page that isn't mapped.").unmap();
+        entry
+            .expect("Trying to unmap a page that isn't mapped.")
+            .unmap();
         tlb::flush(::x86_64::VirtualAddress(page.get_address()));
     }
 }

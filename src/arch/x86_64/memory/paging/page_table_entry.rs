@@ -1,11 +1,11 @@
 //! Handles page table entries.
 
+use super::PageFrame;
+use super::frame_allocator::FRAME_ALLOCATOR;
 use core::fmt;
 use core::sync::atomic::{AtomicU64, Ordering};
 use memory::PhysicalAddress;
-use super::PageFrame;
-use super::frame_allocator::FRAME_ALLOCATOR;
-use sync::{PreemptionState, disable_preemption, restore_preemption_state, cpu_relax};
+use sync::{PreemptionState, cpu_relax, disable_preemption, restore_preemption_state};
 
 /// Serves as a mask for the physical address in a page table entry.
 const PHYSICAL_ADDRESS_MASK: usize = 0xffffffffff << 12;
@@ -87,13 +87,6 @@ impl PageTableEntry {
         self
     }
 
-    /// Adds the given flags to the entry.
-    pub fn add_flags(&mut self, flags: PageTableEntryFlags) -> &mut PageTableEntry {
-        let mut current_flags = self.flags();
-        current_flags.insert(flags);
-        self.set_flags(current_flags)
-    }
-
     /// Removes the given flags from the entry.
     pub fn remove_flags(&mut self, flags: PageTableEntryFlags) -> &mut PageTableEntry {
         let mut current_flags = self.flags();
@@ -103,7 +96,8 @@ impl PageTableEntry {
 
     /// Unmaps and deallocates the frame this entry points to.
     pub fn unmap(&mut self) {
-        let address = self.points_to().expect("Trying to unmap and unmapped page.");
+        let address = self.points_to()
+            .expect("Trying to unmap and unmapped page.");
         unsafe { FRAME_ALLOCATOR.deallocate(PageFrame::from_address(address)) };
         self.0 = 0;
     }
@@ -120,7 +114,8 @@ impl PageTableEntry {
             unsafe {
                 preemption_state = disable_preemption();
             }
-            let lock_switch = atomic_lock.fetch_or(ENTRY_LOCK.bits(), Ordering::Acquire) & ENTRY_LOCK.bits() == 0;
+            let lock_switch = atomic_lock.fetch_or(ENTRY_LOCK.bits(), Ordering::Acquire) &
+                              ENTRY_LOCK.bits() == 0;
             if lock_switch {
                 break;
             } else {
@@ -138,7 +133,8 @@ impl PageTableEntry {
         preemption_state
     }
 
-    /// Unlocks the pages this entry points to and restores the preemption state.
+    /// Unlocks the pages this entry points to and restores the preemption
+    /// state.
     pub fn unlock(&mut self, preemption_state: &PreemptionState) {
         self.0 = self.0 & !ENTRY_LOCK.bits();
         unsafe {

@@ -1,7 +1,6 @@
 //! Handles synchronization within the kernel.
 pub mod mutex;
 
-
 pub use self::mutex::Mutex;
 use arch;
 
@@ -14,12 +13,12 @@ pub struct PreemptionState {
 
 impl PreemptionState {
     /// Reads the current state of preemption.
-    pub fn new() -> PreemptionState {
+    fn new() -> PreemptionState {
         PreemptionState { interrupts_enabled: arch::sync::interrupts_enabled() }
     }
 
     /// Statically returns a default preemption state.
-    pub const fn default() -> PreemptionState {
+    const fn default() -> PreemptionState {
         PreemptionState { interrupts_enabled: false }
     }
 
@@ -43,7 +42,19 @@ pub fn cpu_relax() {
     arch::sync::cpu_relax();
 }
 
+/// Halts the CPU.
+///
+/// # Safety
+/// - If preemption is disabled, the execution can never be returned.
+#[inline(always)]
+pub unsafe fn cpu_halt() {
+    arch::sync::cpu_halt();
+}
+
 /// Disables preemption and returns the previous state.
+///
+/// # Safety
+/// - The returned `PreemptionState` must be restored.
 pub unsafe fn disable_preemption() -> PreemptionState {
     let state = PreemptionState::new();
 
@@ -53,11 +64,17 @@ pub unsafe fn disable_preemption() -> PreemptionState {
 }
 
 /// Reenables preemption to the saved state.
+///
+/// # Safety
+/// - No locks should be held when restoring the `PreemptionState`.
 pub unsafe fn restore_preemption_state(state: &PreemptionState) {
     state.restore();
 }
 
 /// Enables preemption.
+///
+/// # Safety
+/// - Enabling preemption directly should only be done during initialization.
 pub unsafe fn enable_preemption() {
     arch::sync::enable_interrupts();
 }

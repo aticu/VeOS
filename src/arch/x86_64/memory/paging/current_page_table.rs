@@ -24,9 +24,8 @@ const L4_TABLE: *mut PageTable<Level4> = 0xfffffffffffff000 as *mut PageTable<Le
 const TEMPORARY_ADDRESS_BASE: usize = 0xffffffffffc00000;
 
 /// The method to access the current page table.
-//pub static CURRENT_PAGE_TABLE: Mutex<CurrentPageTable> =
-    //Mutex::new(unsafe { CurrentPageTable::new() });
-pub static CURRENT_PAGE_TABLE: CurrentPageTableLock = unsafe { CurrentPageTableLock::new(CurrentPageTable::new()) };
+pub static CURRENT_PAGE_TABLE: CurrentPageTableLock =
+    unsafe { CurrentPageTableLock::new(CurrentPageTable::new()) };
 
 /// Protects the current page table from being accessed directly.
 ///
@@ -36,7 +35,8 @@ pub struct CurrentPageTableLock {
     reference_count: Mutex<usize>
 }
 
-// This is safe because the page table will manage it's own exclusion internally.
+// This is safe because the page table will manage it's own exclusion
+// internally.
 unsafe impl Sync for CurrentPageTableLock {}
 
 impl CurrentPageTableLock {
@@ -125,7 +125,9 @@ impl CurrentPageTable {
         let mut entry = &mut l4[509];
         let preemption_state = entry.lock();
         if !entry.flags().contains(PRESENT) {
-            entry.set_flags(PRESENT | WRITABLE | NO_EXECUTE).set_address(frame.get_address());
+            entry
+                .set_flags(PRESENT | WRITABLE | NO_EXECUTE)
+                .set_address(frame.get_address());
         }
 
         preemption_state
@@ -195,18 +197,17 @@ impl CurrentPageTable {
         self.with_temporary_page(&PageFrame::from_address(physical_address), |page| {
             let virtual_address = page.get_address() | (physical_address & 0xfff);
 
-            unsafe {
-                ptr::read(virtual_address as *mut T)
-            }
+            unsafe { ptr::read(virtual_address as *mut T) }
         })
     }
 
     /// Switches to the new page table returning the current one.
     ///
-    /// The old page table will not be mapped into the new one. This should be done manually.
+    /// The old page table will not be mapped into the new one. This should be
+    /// done manually.
     pub unsafe fn switch(&mut self, new_table: InactivePageTable) -> InactivePageTable {
         let old_frame = PageFrame::from_address(control_regs::cr3().0 as PhysicalAddress);
-        let old_table = InactivePageTable::from_frame(old_frame, &new_table);
+        let old_table = InactivePageTable::from_frame(old_frame.copy(), &new_table);
 
         let new_frame = new_table.get_frame();
 

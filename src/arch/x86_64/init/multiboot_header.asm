@@ -17,7 +17,7 @@ multiboot2_start:   ;start of multiboot2 header
     dd MULTIBOOT2_MAGIC
     dd MULTIBOOT2_ARCHITECTURE  ;protected mode i386
     dd multiboot2_end - multiboot2_start   ;length of header
-    dd -(MULTIBOOT2_MAGIC + MULTIBOOT2_ARCHITECTURE + (multiboot2_end - multiboot2_start))  ;checksum
+    dd 0x100000000 -(MULTIBOOT2_MAGIC + MULTIBOOT2_ARCHITECTURE + (multiboot2_end - multiboot2_start))  ;checksum
 
     ;optional tags here
 address_tag_start:
