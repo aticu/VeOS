@@ -15,6 +15,7 @@ use super::*;
 use core::fmt;
 use memory;
 use memory::{PageFlags, PhysicalAddress, VirtualAddress};
+use x86_64::instructions::tables::{DescriptorTablePointer, lgdt};
 
 /// Initializes the paging.
 pub fn init() {
@@ -72,6 +73,7 @@ unsafe fn remap_kernel() {
         };
 
         // Map the text section.
+        // TODO: This doesn't seem to be read only. Check that some time.
         map_section(RODATA_START - TEXT_START, TEXT_START, GLOBAL);
 
         // Map the rodata section.
@@ -87,6 +89,11 @@ unsafe fn remap_kernel() {
                     BSS_START,
                     WRITABLE | GLOBAL | NO_EXECUTE);
     }
+
+    // Map the GDT.
+    new_page_table.map_page_at(Page::from_address(to_virtual!(GDT)),
+                               PageFrame::from_address(GDT),
+                               GLOBAL | NO_EXECUTE);
 
     // Map the VGA buffer.
     new_page_table.map_page_at(Page::from_address(to_virtual!(0xb8000)),
@@ -111,6 +118,9 @@ unsafe fn remap_kernel() {
     FRAME_ALLOCATOR.deallocate(PageFrame::from_address(L2_TABLE));
     FRAME_ALLOCATOR.deallocate(PageFrame::from_address(STACK_L2_TABLE));
     FRAME_ALLOCATOR.deallocate(PageFrame::from_address(STACK_L1_TABLE));
+
+    // Reload the now invalid GDT.
+    lgdt(&*(GDT_PTR as *const DescriptorTablePointer));
 }
 
 /// Represents a page.

@@ -5,6 +5,9 @@
 #![feature(integer_atomics)]
 #![feature(alloc, collections)]
 #![feature(oom)]
+#![feature(naked_functions)]
+#![feature(core_intrinsics)]
+#![feature(use_extern_macros)]
 #![no_std]
 #![warn(missing_docs)]
 

@@ -65,6 +65,7 @@ impl PageTableLevel for Level1 {
 /// Represents a page table.
 #[repr(C)]
 pub struct PageTable<T> {
+    /// Represents the entries in a page table.
     entries: [PageTableEntry; ENTRY_NUMBER],
     level: PhantomData<T>
 }

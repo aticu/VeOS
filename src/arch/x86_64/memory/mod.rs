@@ -51,6 +51,10 @@ extern "C" {
     static STACK_BOTTOM: PhysicalAddress;
     /// The top of the initial kernel stack.
     static STACK_TOP: PhysicalAddress;
+    /// The start address of the GDT.
+    static GDT: PhysicalAddress;
+    /// The address of the struct to construct a GDT.
+    static GDT_PTR: PhysicalAddress;
 }
 
 /// The physical address at which the kernel starts.

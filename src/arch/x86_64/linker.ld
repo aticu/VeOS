@@ -2,7 +2,7 @@ ENTRY(start)
 OUTPUT_FORMAT(elf64-x86-64)
 
 PAGE_SIZE = CONSTANT(COMMONPAGESIZE);
-STACK_SIZE = 16K;
+STACK_SIZE = 32K;
 LOADER_START = 1M;
 KERNEL_OFFSET = 0xffff800000000000;
 
@@ -12,6 +12,7 @@ SECTIONS {
     .init :
     {
         KEEP(*(.multiboot_header))
+        *(.gdt)
         *(.init)
         . = ALIGN(PAGE_SIZE);
     }
@@ -68,6 +69,10 @@ SECTIONS {
         QUAD(stack_bottom);
         STACK_TOP = .;
         QUAD(stack_top);
+        GDT = .;
+        QUAD(gdt);
+        GDT_PTR = .;
+        QUAD(gdt.virtual_pointer + KERNEL_OFFSET);
         . = ALIGN(PAGE_SIZE);
     }
 

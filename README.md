@@ -16,7 +16,7 @@ Or just run `make` to create the kernel binary at `target/*architecture*-unknonw
 A lot of this work is based on work from the following people/organizations or at least highly influenced by it:
 - Philipp Oppermann and his "[Writing an OS in Rust][1]" blog.
 - The contributors of the [spin crate][2].
-- Eric Kidd his [blog][3].
+- Eric Kidd's [blog][3].
 - The [OSDev wiki][4].
 
 [1]: http://os.phil-opp.com/ "Writing an OS in Rust"
