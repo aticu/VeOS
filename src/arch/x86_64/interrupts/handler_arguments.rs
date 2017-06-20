@@ -14,7 +14,11 @@ pub struct ExceptionStackFrame {
 
 impl fmt::Debug for ExceptionStackFrame {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "RIP: {:x}, RSP: {:x}, RFLAGS: {:x}", self.instruction_pointer, self.stack_pointer, self.cpu_flags)
+        write!(f,
+               "RIP: {:x}, RSP: {:x}, RFLAGS: {:x}",
+               self.instruction_pointer,
+               self.stack_pointer,
+               self.cpu_flags)
     }
 }
 
@@ -40,7 +44,8 @@ pub struct SavedRegisters {
 
 impl fmt::Debug for SavedRegisters {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Register state:
+        write!(f,
+               "Register state:
 rax = {:>016x},
 rbx = {:>016x},
 rcx = {:>016x},
@@ -56,21 +61,21 @@ r12 = {:>016x},
 r13 = {:>016x},
 r14 = {:>016x},
 r15 = {:>016x}",
-        self.rax,
-        self.rbx,
-        self.rcx,
-        self.rdx,
-        self.rsi,
-        self.rdi,
-        self.rbp,
-        self.r8,
-        self.r9,
-        self.r10,
-        self.r11,
-        self.r12,
-        self.r13,
-        self.r14,
-        self.r15)
+               self.rax,
+               self.rbx,
+               self.rcx,
+               self.rdx,
+               self.rsi,
+               self.rdi,
+               self.rbp,
+               self.r8,
+               self.r9,
+               self.r10,
+               self.r11,
+               self.r12,
+               self.r13,
+               self.r14,
+               self.r15)
     }
 }
 
@@ -89,4 +94,3 @@ bitflags! {
         const INSTRUCTION_FETCH = 1 << 4
     }
 }
-

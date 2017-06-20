@@ -115,19 +115,6 @@ impl<T: ?Sized> Mutex<T> {
         }
     }
 
-    /// Force unlock the spinlock.
-    ///
-    /// This is *extremely* unsafe if the lock is not held by the current
-    /// thread. However, this can be useful in some instances for exposing the
-    /// lock to FFI that doesn't know how to deal with RAII.
-    ///
-    /// If the lock isn't held, this is a no-op.
-    #[allow(dead_code)]
-    pub unsafe fn force_unlock(&self) {
-        self.lock.store(false, Ordering::Release);
-        restore_preemption_state(&*self.preemption_state.get());
-    }
-
     /// Tries to lock the mutex. If it is already locked, it will return None.
     /// Otherwise it returns
     /// a guard within Some.

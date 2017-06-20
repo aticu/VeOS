@@ -79,6 +79,13 @@ pub fn map_page(start_address: VirtualAddress, flags: PageFlags) {
     paging::map_page(start_address, flags);
 }
 
+/// Maps the given page to the given frame using the given flags.
+pub fn map_page_at(page_address: VirtualAddress,
+                   frame_address: PhysicalAddress,
+                   flags: PageFlags) {
+    paging::map_page_at(page_address, frame_address, flags);
+}
+
 /// Unmaps the given page.
 ///
 /// # Safety

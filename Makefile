@@ -36,15 +36,15 @@ clean:
 
 .PHONY: run
 run: $(iso)
-	qemu-system-x86_64 -cdrom $(iso) --no-reboot -s
+	qemu-system-x86_64 -cdrom $(iso) --no-reboot -smp cores=4 -s
 
 .PHONY: debug
 debug: $(iso)
-	qemu-system-x86_64 -cdrom $(iso) -d int --no-reboot -s -S
+	qemu-system-x86_64 -cdrom $(iso) -d int --no-reboot -smp cores=4 -s -S
 
 .PHONY: run_verbose
 run_verbose: $(iso)
-	qemu-system-x86_64 -cdrom $(iso) -d int --no-reboot -s
+	qemu-system-x86_64 -cdrom $(iso) -d int --no-reboot -smp cores=4 -s
 
 .PHONY: iso
 iso: $(iso)

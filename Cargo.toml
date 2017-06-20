@@ -17,6 +17,7 @@ spin = "0.4"
 bitflags = "0.8"
 allocator_stub = "0.1"
 once = "0.3"
+raw-cpuid = "3"
 
 [dependencies.lazy_static]
 version = "0.2"

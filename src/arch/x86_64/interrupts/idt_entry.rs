@@ -1,11 +1,12 @@
 //! Contains the code to handle an IDT-entry.
 
+use super::handler_arguments::{ExceptionStackFrame, SavedRegisters};
 use core::fmt;
 use core::marker::PhantomData;
-use super::handler_arguments::{ExceptionStackFrame, SavedRegisters};
 use x86_64::instructions::segmentation;
 
-/// A trait to differentiate between IDT entries with and without error codes at the type level.
+/// A trait to differentiate between IDT entries with and without error codes
+/// at the type level.
 pub trait ErrorCode {}
 
 /// Represents a handler function for an interrupt with an error code.
@@ -39,8 +40,13 @@ pub struct IdtEntry<T: ErrorCode> {
 
 impl<T: ErrorCode> fmt::Debug for IdtEntry<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let ptr: u64 = self.fn_ptr_low as u64 | (self.fn_ptr_mid as u64) << 16 | (self.fn_ptr_high as u64) << 32;
-        write!(f, "IdtEntry: (Function: {:x}, GDT selector: {}, {:?})", ptr, self.gdt_selector, self.options)
+        let ptr: u64 = self.fn_ptr_low as u64 | (self.fn_ptr_mid as u64) << 16 |
+                       (self.fn_ptr_high as u64) << 32;
+        write!(f,
+               "IdtEntry: (Function: {:x}, GDT selector: {}, {:?})",
+               ptr,
+               self.gdt_selector,
+               self.options)
     }
 }
 
@@ -73,9 +79,22 @@ bitflags! {
 
 impl fmt::Debug for IdtEntryOptions {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let gate_type = if self.0 & TRAP_GATE.bits() > 0 { "Trap gate" } else { "Interrupt gate" };
-        let present = if self.0 & PRESENT.bits() > 0 { "P" } else { "Not p" };
-        write!(f, "Stack: {}, {}, DPL: {}, {}resent", self.0 & STACK_TABLE_INDEX.bits(), gate_type, (self.0 & DPL.bits()) >> 13, present)
+        let gate_type = if self.0 & TRAP_GATE.bits() > 0 {
+            "Trap gate"
+        } else {
+            "Interrupt gate"
+        };
+        let present = if self.0 & PRESENT.bits() > 0 {
+            "P"
+        } else {
+            "Not p"
+        };
+        write!(f,
+               "Stack: {}, {}, DPL: {}, {}resent",
+               self.0 & STACK_TABLE_INDEX.bits(),
+               gate_type,
+               (self.0 & DPL.bits()) >> 13,
+               present)
     }
 }
 
@@ -221,7 +240,8 @@ macro_rules! handler_without_error_code {
 /// Create a new interrupt handler with an error code.
 macro_rules! handler_with_error_code {
     ($handler: ident) => {{
-        IdtEntry::<$crate::arch::interrupts::idt_entry::WithErrorCode>::new(handler!(Errorcode: $handler))
+        IdtEntry::<$crate::arch::interrupts::idt_entry::WithErrorCode>
+            ::new(handler!(Errorcode: $handler))
     }}
 }
 
@@ -242,7 +262,10 @@ impl<T: ErrorCode> IdtEntry<T> {
             error_code: PhantomData
         };
 
-        entry.set_stack_table_index(0).set_dpl(0).set_trap_gate();
+        entry
+            .set_stack_table_index(0)
+            .set_dpl(0)
+            .set_trap_gate();
 
         entry
     }

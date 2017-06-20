@@ -1,12 +1,20 @@
+arch::early_init()
 arch::init()
 arch::write_fmt(...)
 arch::set_interrupt_state(bool) [already implemented]
 
 arch::sync::cpu_relax()
+arch::sync::cpu_halt()
 arch::sync::interrupts_enabled() -> bool
 arch::sync::disable_interrupts()
 arch::sync::enable_interrupts()
 
 arch::memory::init()
 arch::memory::map_page(VirtualAddress, PageFlags)
+arch::memory::map_page_at(VirtualAddress, PhysicalAddress, PageFlags)
 arch::memory::unmap_page(VirtualAddress)
+arch::memory::get_kernel_start_address
+arch::memory::get_kernel_end_address
+arch::memory::PAGE_SIZE
+arch::memory::HEAP_MAX_SIZE
+arch::memory::HEAP_START

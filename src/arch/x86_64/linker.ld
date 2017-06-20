@@ -12,14 +12,19 @@ SECTIONS {
     .init :
     {
         KEEP(*(.multiboot_header))
-        *(.gdt)
         *(.init)
         . = ALIGN(PAGE_SIZE);
     }
 
-    . += KERNEL_OFFSET;
+    _text_start = .;
 
-    _text_start = . - KERNEL_OFFSET;
+    .gdt :
+    {
+        *(.gdt)
+        . = ALIGN(PAGE_SIZE);
+    }
+
+    . += KERNEL_OFFSET;
 
     .text : AT(ADDR(.text) - KERNEL_OFFSET)
     {

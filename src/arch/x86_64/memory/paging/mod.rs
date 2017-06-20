@@ -26,21 +26,38 @@ pub fn init() {
     unsafe { remap_kernel() };
 }
 
-/// Maps the given page using the given flags.
-pub fn map_page(start_address: VirtualAddress, flags: PageFlags) {
-    let mut real_flags = PRESENT;
+fn convert_flags(flags: PageFlags) -> PageTableEntryFlags {
+    let mut entry_flags = PRESENT;
 
     if flags.contains(memory::WRITABLE) {
-        real_flags |= WRITABLE;
+        entry_flags |= WRITABLE;
     }
 
     if !flags.contains(memory::EXECUTABLE) {
-        real_flags |= NO_EXECUTE;
+        entry_flags |= NO_EXECUTE;
     }
 
+    if flags.contains(memory::NO_CACHE) {
+        entry_flags |= DISABLE_CACHE;
+    }
+
+    entry_flags
+}
+
+/// Maps the given page to the given frame using the given flags.
+pub fn map_page_at(page_address: VirtualAddress, frame_address: VirtualAddress, flags: PageFlags) {
     CURRENT_PAGE_TABLE
         .lock()
-        .map_page(Page::from_address(start_address), real_flags);
+        .map_page_at(Page::from_address(page_address),
+                     PageFrame::from_address(frame_address),
+                     convert_flags(flags));
+}
+
+/// Maps the given page using the given flags.
+pub fn map_page(start_address: VirtualAddress, flags: PageFlags) {
+    CURRENT_PAGE_TABLE
+        .lock()
+        .map_page(Page::from_address(start_address), convert_flags(flags));
 }
 
 /// Unmaps the given page.

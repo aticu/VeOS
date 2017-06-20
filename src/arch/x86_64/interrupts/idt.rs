@@ -1,7 +1,7 @@
 //! Models the interrupt descriptor table.
 
-use core::mem::size_of;
 use super::idt_entry::{IdtEntry, WithErrorCode, WithoutErrorCode};
+use core::mem::size_of;
 use x86_64::instructions::tables::{DescriptorTablePointer, lidt};
 
 /// Represents the interrupt descriptor table.

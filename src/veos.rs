@@ -26,6 +26,7 @@ extern crate lazy_static;
 #[macro_use]
 extern crate once;
 extern crate allocator_stub;
+extern crate raw_cpuid;
 #[cfg(not(test))]
 extern crate alloc;
 #[cfg(not(test))]
@@ -55,15 +56,27 @@ static OS_NAME: &str = "VeOS";
 #[cfg(not(test))]
 #[no_mangle]
 pub extern "C" fn main(magic_number: u32, information_structure_address: usize) -> ! {
-    unsafe { sync::disable_preemption() };
-    arch::init();
+    unsafe {
+        sync::disable_preemption();
+    }
+
+    arch::early_init();
     boot::init(magic_number, information_structure_address);
     io::init();
     println!("Booted {} using {}...",
              OS_NAME,
              boot::get_bootloader_name());
     memory::init();
+    arch::init();
 
+    let extended_info = raw_cpuid::CpuId::new().get_extended_function_info();
+    let unwrapped_info = extended_info.unwrap();
+    println!("The processor is a {}",
+             unwrapped_info.processor_brand_string().unwrap());
+
+    unsafe {
+        sync::enable_preemption();
+    }
     loop {}
 }
 

@@ -4,21 +4,27 @@ mod idt;
 #[macro_use]
 mod idt_entry;
 mod handler_arguments;
+mod lapic;
+mod ioapic;
 
+use self::handler_arguments::*;
 use self::idt::Idt;
 use self::idt_entry::IdtEntry;
-use self::handler_arguments::*;
 use x86_64::registers::control_regs;
 
 lazy_static! {
     /// The interrupt descriptor table used by the kernel.
     static ref IDT: Idt = {
         let mut idt = Idt::new();
-        
+
         idt.divide_by_zero = handler_without_error_code!(divide_by_zero_handler);
         idt.breakpoint = handler_without_error_code!(breakpoint_handler);
         idt.page_fault = handler_with_error_code!(page_fault_handler);
         idt.page_fault.set_interrupt_gate();
+        idt.interrupts[0] = handler_without_error_code!(timer_handler);
+        idt.interrupts[0].set_interrupt_gate();
+        idt.interrupts[1] = handler_without_error_code!(irq1_handler);
+        idt.interrupts[1].set_interrupt_gate();
 
         idt
     };
@@ -31,10 +37,16 @@ pub fn init() {
     unsafe {
         IDT.load();
     }
+
+    lapic::init();
+    lapic::set_periodic_timer(1000);
+
+    ioapic::init();
 }
 
 /// The divide by zero exception handler of the kernel.
-extern "C" fn divide_by_zero_handler(stack_frame: &mut ExceptionStackFrame, regs: &mut SavedRegisters) {
+extern "C" fn divide_by_zero_handler(stack_frame: &mut ExceptionStackFrame,
+                                     regs: &mut SavedRegisters) {
     println!("DIVIDE BY ZERO!");
     println!("{:?}", stack_frame);
     println!("{:?}", regs);
@@ -42,7 +54,8 @@ extern "C" fn divide_by_zero_handler(stack_frame: &mut ExceptionStackFrame, regs
 }
 
 /// The breakpoint exception handler of the kernel.
-extern "C" fn breakpoint_handler(stack_frame: &mut ExceptionStackFrame, regs: &mut SavedRegisters) {
+extern "C" fn breakpoint_handler(stack_frame: &mut ExceptionStackFrame,
+                                 regs: &mut SavedRegisters) {
     println!("BREAKPOINT!");
     println!("{:?}", stack_frame);
     println!("{:?}", regs);
@@ -50,11 +63,25 @@ extern "C" fn breakpoint_handler(stack_frame: &mut ExceptionStackFrame, regs: &m
 }
 
 /// The page fault handler of the kernel.
-extern "C" fn page_fault_handler(stack_frame: &mut ExceptionStackFrame, regs: &mut SavedRegisters, error_code: u64) {
+extern "C" fn page_fault_handler(stack_frame: &mut ExceptionStackFrame,
+                                 regs: &mut SavedRegisters,
+                                 error_code: u64) {
     println!("PAGE FAULT!");
     println!("Address: {:x}", control_regs::cr2());
-    println!("Error code: {:?}", PageFaultErrorCode::from_bits_truncate(error_code));
+    println!("Error code: {:?}",
+             PageFaultErrorCode::from_bits_truncate(error_code));
     println!("{:?}", stack_frame);
     println!("{:?}", regs);
     loop {}
+}
+
+extern "C" fn timer_handler(stack_frame: &mut ExceptionStackFrame, regs: &mut SavedRegisters) {
+    println!("Timer interrupt");
+    lapic::signal_eoi();
+}
+
+extern "C" fn irq1_handler(stack_frame: &mut ExceptionStackFrame, regs: &mut SavedRegisters) {
+    let scancode = unsafe { ::x86_64::instructions::port::inb(0x60) };
+    println!("Scancode: {}", scancode);
+    lapic::signal_eoi();
 }

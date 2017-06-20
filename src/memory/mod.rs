@@ -24,12 +24,14 @@ pub struct FreeMemoryArea {
 bitflags! {
     /// The flags a page could possibly have.
     pub flags PageFlags: u8 {
-        /// Whether the page can be read from.
+        /// Set if the page can be read from.
         const READABLE = 1 << 0,
-        /// Whether the page can be written to.
+        /// Set if the page can be written to.
         const WRITABLE = 1 << 1,
-        /// Whether code on the page can be executed.
-        const EXECUTABLE = 1 << 2
+        /// Set if code on the page can be executed.
+        const EXECUTABLE = 1 << 2,
+        /// Set if the page should not be cached.
+        const NO_CACHE = 1 << 3
     }
 }
 
