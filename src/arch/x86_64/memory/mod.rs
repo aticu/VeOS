@@ -11,7 +11,19 @@ const VIRTUAL_LOW_MAX_ADDRESS: VirtualAddress = 0x00000fffffffffff;
 const VIRTUAL_HIGH_MIN_ADDRESS: VirtualAddress = 0xffff800000000000;
 
 /// The top of the stack after the kernel has been remapped.
-const FINAL_STACK_TOP: VirtualAddress = 0xfffffe8000000000;
+pub const FINAL_STACK_TOP: VirtualAddress = 0xfffffe8000000000;
+
+/// The base address of the syscall stack area.
+pub const SYSCALL_STACK_AREA_BASE: VirtualAddress = 0xfffffe0000000000;
+
+/// The base address of the interrupt stack area.
+pub const INTERRUPT_STACK_AREA_BASE: VirtualAddress = 0xfffffe4000000000;
+
+/// The offset of the start addresses of thread kernel stacks.
+pub const STACK_OFFSET: usize = 0x400000;
+
+/// The maximum size of a thread kernel stack.
+pub const STACK_MAX_SIZE: usize = 0x200000;
 
 /// The start address of the heap.
 pub const HEAP_START: usize = 0xfffffd8000000000;
@@ -51,10 +63,6 @@ extern "C" {
     static STACK_BOTTOM: PhysicalAddress;
     /// The top of the initial kernel stack.
     static STACK_TOP: PhysicalAddress;
-    /// The start address of the GDT.
-    static GDT: PhysicalAddress;
-    /// The address of the struct to construct a GDT.
-    static GDT_PTR: PhysicalAddress;
 }
 
 /// The physical address at which the kernel starts.
@@ -75,8 +83,8 @@ pub fn init() {
 }
 
 /// Maps the given page using the given flags.
-pub fn map_page(start_address: VirtualAddress, flags: PageFlags) {
-    paging::map_page(start_address, flags);
+pub fn map_page(page_address: VirtualAddress, flags: PageFlags) {
+    paging::map_page(page_address, flags);
 }
 
 /// Maps the given page to the given frame using the given flags.
@@ -84,6 +92,10 @@ pub fn map_page_at(page_address: VirtualAddress,
                    frame_address: PhysicalAddress,
                    flags: PageFlags) {
     paging::map_page_at(page_address, frame_address, flags);
+}
+
+pub fn get_page_flags(page_address: VirtualAddress) -> PageFlags {
+    paging::get_page_flags(page_address)
 }
 
 /// Unmaps the given page.

@@ -4,7 +4,20 @@ The current virtual memory layout is planned like this:
 -Level 4 page table entry 256 is used for the kernel code.
 -Level 4 page table entries 257-506 are currently reserved.
 -Level 4 page table entry 507 is used for the kernel heap.
--Level 4 page table entry 508 is used for the kernel stack.
+-Level 4 page table entry 508 is used for the kernel stacks.
 -Level 4 page table entry 509 is reserved for temporarily mapping an inactive page table for modification.
 -Level 4 page table entry 510 is reserved for temporarily mapping arbitrary pages for directly accessing physical memory.
 -Level 4 page table entry 511 is reserved for a recursive mapping of the currently active page table.
+
+Layout of the kernel stacks:
+-There are two kind of kernel stacks: the syscall stack and the interrupt stack.
+-Level 3 page table entries 0-255 are used for the syscall stacks.
+-Level 3 page table entries 256-511 are used for the interrupt stacks.
+-The low 8 bits of the level 3 page table entry and the high 8 bits of the level 2 page table entry make up the thread id within the process.
+-Each stack can use exactly one level 1 page table of space. The lowest bit of the level 2 page table entry must be one.
+-Doing it this way has the following properties:
+    -The stack area for syscall stacks starts at the virtual address 0xfffffe0000000000.
+    -The stack area for interrupt stacks starts at the virtual address 0xfffffe4000000000.
+    -There can be up to 65536 threads within a process.
+    -Each stack has a maximum size of 2mb (0x200000).
+    -There is a 2mb guarding region behind each stack to catch stack overflows.

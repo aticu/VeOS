@@ -43,7 +43,7 @@ bitflags! {
         const NO_EXECUTE = 1 << 63,
 
         /// The flags used for page tables.
-        const PAGE_TABLE_FLAGS = PRESENT.bits | WRITABLE.bits
+        const PAGE_TABLE_FLAGS = PRESENT.bits | WRITABLE.bits | USER_ACCESSIBLE.bits
     }
 }
 
@@ -68,8 +68,6 @@ impl PageTableEntry {
     }
 
     /// Sets the address of this entry.
-    ///
-    /// Returns the entry for convenience when chaining functions.
     pub fn set_address(&mut self, address: PhysicalAddress) -> &mut PageTableEntry {
         assert_eq!(address & !PHYSICAL_ADDRESS_MASK, 0);
         self.0 &= !PHYSICAL_ADDRESS_MASK as u64; // Clear address field first.

@@ -15,7 +15,6 @@ use super::*;
 use core::fmt;
 use memory;
 use memory::{PageFlags, PhysicalAddress, VirtualAddress};
-use x86_64::instructions::tables::{DescriptorTablePointer, lgdt};
 
 /// Initializes the paging.
 pub fn init() {
@@ -26,6 +25,7 @@ pub fn init() {
     unsafe { remap_kernel() };
 }
 
+/// Converts the general `PageFlags` to x86_64-specific flags.
 fn convert_flags(flags: PageFlags) -> PageTableEntryFlags {
     let mut entry_flags = PRESENT;
 
@@ -41,7 +41,43 @@ fn convert_flags(flags: PageFlags) -> PageTableEntryFlags {
         entry_flags |= DISABLE_CACHE;
     }
 
+    if flags.contains(memory::USER_ACCESSIBLE) {
+        entry_flags |= USER_ACCESSIBLE;
+    }
+
     entry_flags
+}
+
+/// Returns the flags for the given page, if the page is mapped.
+pub fn get_page_flags(page_address: VirtualAddress) -> PageFlags {
+    let mut flags = PageFlags::empty();
+    let mut table = CURRENT_PAGE_TABLE.lock();
+
+    if let Some(entry) = table.get_entry(Page::from_address(page_address).get_address()) {
+        let entry_flags = entry.flags();
+
+        if entry_flags.contains(PRESENT) {
+            flags |= ::memory::PRESENT;
+        }
+
+        if entry_flags.contains(WRITABLE) {
+            flags |= memory::WRITABLE;
+        }
+
+        if !entry_flags.contains(NO_EXECUTE) {
+            flags |= memory::EXECUTABLE;
+        }
+
+        if entry_flags.contains(DISABLE_CACHE) {
+            flags |= memory::NO_CACHE;
+        }
+
+        if entry_flags.contains(USER_ACCESSIBLE) {
+            flags |= memory::USER_ACCESSIBLE;
+        }
+    }
+
+    flags
 }
 
 /// Maps the given page to the given frame using the given flags.
@@ -54,10 +90,10 @@ pub fn map_page_at(page_address: VirtualAddress, frame_address: VirtualAddress, 
 }
 
 /// Maps the given page using the given flags.
-pub fn map_page(start_address: VirtualAddress, flags: PageFlags) {
+pub fn map_page(page_address: VirtualAddress, flags: PageFlags) {
     CURRENT_PAGE_TABLE
         .lock()
-        .map_page(Page::from_address(start_address), convert_flags(flags));
+        .map_page(Page::from_address(page_address), convert_flags(flags));
 }
 
 /// Unmaps the given page.
@@ -90,7 +126,6 @@ unsafe fn remap_kernel() {
         };
 
         // Map the text section.
-        // TODO: This doesn't seem to be read only. Check that some time.
         map_section(RODATA_START - TEXT_START, TEXT_START, GLOBAL);
 
         // Map the rodata section.
@@ -106,11 +141,6 @@ unsafe fn remap_kernel() {
                     BSS_START,
                     WRITABLE | GLOBAL | NO_EXECUTE);
     }
-
-    // Map the GDT.
-    new_page_table.map_page_at(Page::from_address(to_virtual!(GDT)),
-                               PageFrame::from_address(GDT),
-                               GLOBAL | NO_EXECUTE);
 
     // Map the VGA buffer.
     new_page_table.map_page_at(Page::from_address(to_virtual!(0xb8000)),
@@ -135,9 +165,6 @@ unsafe fn remap_kernel() {
     FRAME_ALLOCATOR.deallocate(PageFrame::from_address(L2_TABLE));
     FRAME_ALLOCATOR.deallocate(PageFrame::from_address(STACK_L2_TABLE));
     FRAME_ALLOCATOR.deallocate(PageFrame::from_address(STACK_L1_TABLE));
-
-    // Reload the now invalid GDT.
-    lgdt(&*(GDT_PTR as *const DescriptorTablePointer));
 }
 
 /// Represents a page.

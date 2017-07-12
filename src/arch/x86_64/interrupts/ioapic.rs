@@ -24,11 +24,6 @@ pub fn init() {
     irq1.set_trigger_mode(EDGE_SENSITIVE);
     irq1.set_polarity(HIGH_ACTIVE_PIN_POLARITY);
 
-    let mut irq3 = IORedirectionEntry::new();
-    irq3.set_vector(0x22);
-    irq3.set_trigger_mode(EDGE_SENSITIVE);
-    irq3.set_polarity(HIGH_ACTIVE_PIN_POLARITY);
-
     set_irq(1, irq1);
 }
 

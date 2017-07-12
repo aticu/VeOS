@@ -1,3 +1,5 @@
+This list serves as an inspiration for implementing new features. Not as a definitive list of planned features.
+
 Legend:
 
 i - Implemented
@@ -7,8 +9,7 @@ p - Partially implemented
 General:
 i amd64 64-bit mode support
 n SMP
-n basic rust OS-library
-n basic rust program-library
+n userspace rust std support
 
 Scheduling:
 n differentiating between IO-heavy and CPU-heavy processes
@@ -19,13 +20,14 @@ n priority-inversion handling
 n cpu-burst handling
 
 Interrupts:
-n general handlers
-n system timer
+i general handlers
+i system timer
 n nested interrupts
 
 Memory Managment:
-n basic allocator/deallocator
-n paging/virtual memory (second chance algorithm)
+i basic allocator/deallocator
+i paging/virtual memory
+n swapping
 n thrashing prevention
 
 Interface:

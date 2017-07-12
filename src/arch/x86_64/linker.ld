@@ -2,7 +2,7 @@ ENTRY(start)
 OUTPUT_FORMAT(elf64-x86-64)
 
 PAGE_SIZE = CONSTANT(COMMONPAGESIZE);
-STACK_SIZE = 32K;
+STACK_SIZE = 128K;
 LOADER_START = 1M;
 KERNEL_OFFSET = 0xffff800000000000;
 
@@ -17,12 +17,6 @@ SECTIONS {
     }
 
     _text_start = .;
-
-    .gdt :
-    {
-        *(.gdt)
-        . = ALIGN(PAGE_SIZE);
-    }
 
     . += KERNEL_OFFSET;
 
@@ -74,10 +68,6 @@ SECTIONS {
         QUAD(stack_bottom);
         STACK_TOP = .;
         QUAD(stack_top);
-        GDT = .;
-        QUAD(gdt);
-        GDT_PTR = .;
-        QUAD(gdt.virtual_pointer + KERNEL_OFFSET);
         . = ALIGN(PAGE_SIZE);
     }
 

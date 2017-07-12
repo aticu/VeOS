@@ -1,9 +1,11 @@
 //! This module contains the code  of the arguments for the interrupt handlers.
 
 use core::fmt;
+use x86_64::registers::flags::Flags;
 
 /// Represents the stack frame of an exception handler.
 #[repr(C)]
+#[derive(Clone, Copy)]
 pub struct ExceptionStackFrame {
     pub instruction_pointer: u64,
     pub code_segment: u64,
@@ -15,15 +17,18 @@ pub struct ExceptionStackFrame {
 impl fmt::Debug for ExceptionStackFrame {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f,
-               "RIP: {:x}, RSP: {:x}, RFLAGS: {:x}",
+               "RIP: {:x}, RSP: {:x}, RFLAGS: {:?}, Code Segment: {:x}, Stack Segment: {:x}",
                self.instruction_pointer,
                self.stack_pointer,
-               self.cpu_flags)
+               Flags::from_bits_truncate(self.cpu_flags as usize),
+               self.code_segment,
+               self.stack_segment)
     }
 }
 
 /// Represents the registers saved on the stack of the exception handler.
 #[repr(C)]
+#[derive(Clone, Copy)]
 pub struct SavedRegisters {
     pub r15: u64,
     pub r14: u64,

@@ -56,10 +56,10 @@ impl InactivePageTable {
         // Set up some invariants.
         table[510]
             .set_address(TEMPORARY_MAP_TABLE)
-            .set_flags(PRESENT | WRITABLE);
+            .set_flags(PRESENT | WRITABLE | NO_EXECUTE);
         table[511]
             .set_address(frame.get_address())
-            .set_flags(PRESENT | WRITABLE);
+            .set_flags(PRESENT | WRITABLE | NO_EXECUTE);
 
         InactivePageTable {
             l4_table: Unique::new(L4_TABLE),

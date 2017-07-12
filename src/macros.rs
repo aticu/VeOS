@@ -55,3 +55,47 @@ macro_rules! valid_address {
         }
     }};
 }
+
+/// Used to define statics that are local to each cpu core.
+macro_rules! cpu_local {
+    ($(#[$attr: meta])* static ref $name: ident : $type: ty = $val: expr;) => {
+        lazy_static! {
+            $(#[$attr])*
+            static ref $name: ::multitasking::CPULocal<$type> = {
+                use alloc::Vec;
+                use multitasking::get_cpu_num;
+
+                let cpu_num = get_cpu_num();
+                let mut vec = Vec::with_capacity(cpu_num);
+
+                for _ in 0..cpu_num {
+                    vec.push($val);
+                }
+
+                unsafe {
+                    ::multitasking::CPULocal::new(vec)
+                }
+            };
+        }
+    };
+    ($(#[$attr: meta])* pub static ref $name: ident : $type: ty = $val: expr;) => {
+        lazy_static! {
+            $(#[$attr])*
+            pub static ref $name: ::multitasking::CPULocal<$type> = {
+                use alloc::Vec;
+                use multitasking::get_cpu_num;
+
+                let cpu_num = get_cpu_num();
+                let mut vec = Vec::with_capacity(cpu_num);
+
+                for _ in 0..cpu_num {
+                    vec.push($val);
+                }
+
+                unsafe {
+                    ::multitasking::CPULocal::new(vec)
+                }
+            };
+        }
+    };
+}

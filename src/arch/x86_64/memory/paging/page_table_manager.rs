@@ -181,6 +181,10 @@ pub trait PageTableManager {
 
     /// Maps the given page to an allocated frame with the given flags.
     fn map_page(&mut self, page: Page, flags: PageTableEntryFlags) {
+        if let Some(entry) = self.get_entry(page.get_address()) {
+            debug_assert!(!entry.flags().contains(PRESENT));
+        }
+
         let frame = FRAME_ALLOCATOR.allocate();
 
         self.map_page_at(page, frame, flags);

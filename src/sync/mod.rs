@@ -70,11 +70,3 @@ pub unsafe fn disable_preemption() -> PreemptionState {
 pub unsafe fn restore_preemption_state(state: &PreemptionState) {
     state.restore();
 }
-
-/// Enables preemption.
-///
-/// # Safety
-/// - Enabling preemption directly should only be done during initialization.
-pub unsafe fn enable_preemption() {
-    arch::sync::enable_interrupts();
-}

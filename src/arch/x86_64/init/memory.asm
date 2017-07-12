@@ -1,9 +1,8 @@
 global gdt
 global gdt.code
 global gdt.pointer
-global gdt.virtual_pointer
 
-section .gdt
+section .init
 align 4096
 gdt:
     dq 0 ;required
@@ -13,6 +12,3 @@ gdt:
 .pointer:
     dw .gdt_end - gdt - 1
     dq gdt
-.virtual_pointer:
-    dw .gdt_end - gdt - 1
-    dq gdt + 0xffff800000000000

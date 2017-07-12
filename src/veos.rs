@@ -3,13 +3,16 @@
 #![feature(unique)]
 #![feature(asm)]
 #![feature(integer_atomics)]
-#![feature(alloc, collections)]
-#![feature(oom)]
+#![feature(alloc)]
 #![feature(naked_functions)]
 #![feature(core_intrinsics)]
 #![feature(use_extern_macros)]
+#![feature(allocator_internals)]
+#![feature(allocator_api)]
+#![feature(global_allocator)]
 #![no_std]
 #![warn(missing_docs)]
+#![default_lib_allocator]
 
 //! The VeOS operating system.
 //!
@@ -25,13 +28,10 @@ extern crate x86_64;
 extern crate lazy_static;
 #[macro_use]
 extern crate once;
-extern crate allocator_stub;
 extern crate raw_cpuid;
 #[cfg(not(test))]
-extern crate alloc;
-#[cfg(not(test))]
 #[macro_use]
-extern crate collections;
+extern crate alloc;
 
 #[macro_use]
 mod macros;
@@ -41,9 +41,15 @@ mod arch;
 mod boot;
 mod sync;
 mod memory;
+mod multitasking;
+mod syscalls;
 
 /// The name of the operating system.
 static OS_NAME: &str = "VeOS";
+
+use memory::allocator::Allocator;
+#[global_allocator]
+static ALLOCATOR: Allocator = Allocator;
 
 /// The main entry point for the operating system.
 ///
@@ -75,12 +81,12 @@ pub extern "C" fn main(magic_number: u32, information_structure_address: usize) 
              unwrapped_info.processor_brand_string().unwrap());
 
     unsafe {
-        sync::enable_preemption();
+        asm!("int3");
     }
+
     loop {}
 }
 
-// TODO: add support for stack unwinding
 #[cfg(not(test))]
 #[lang = "eh_personality"]
 extern "C" fn eh_personality() {

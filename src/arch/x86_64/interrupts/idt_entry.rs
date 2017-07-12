@@ -1,9 +1,9 @@
 //! Contains the code to handle an IDT-entry.
 
 use super::handler_arguments::{ExceptionStackFrame, SavedRegisters};
+use super::super::gdt::KERNEL_CODE_SEGMENT;
 use core::fmt;
 use core::marker::PhantomData;
-use x86_64::instructions::segmentation;
 
 /// A trait to differentiate between IDT entries with and without error codes
 /// at the type level.
@@ -25,7 +25,7 @@ impl ErrorCode for WithoutErrorCode {}
 pub struct IdtEntry<T: ErrorCode> {
     /// Bits 0-15 of the handler function address.
     fn_ptr_low: u16,
-    /// The segment selector of the GDT.
+    /// The code segment selector in the GDT.
     gdt_selector: u16,
     /// The options of the IDT entry.
     options: IdtEntryOptions,
@@ -85,12 +85,12 @@ impl fmt::Debug for IdtEntryOptions {
             "Interrupt gate"
         };
         let present = if self.0 & PRESENT.bits() > 0 {
-            "P"
+            "Present"
         } else {
-            "Not p"
+            "Not present"
         };
         write!(f,
-               "Stack: {}, {}, DPL: {}, {}resent",
+               "Stack: {}, {}, DPL: {}, {}",
                self.0 & STACK_TABLE_INDEX.bits(),
                gate_type,
                (self.0 & DPL.bits()) >> 13,
@@ -250,7 +250,7 @@ impl<T: ErrorCode> IdtEntry<T> {
     pub fn new(handler: extern "C" fn()) -> IdtEntry<T> {
         let fn_ptr = handler as u64;
         let mut options = IdtEntryOptions::new();
-        let segment_selector = segmentation::cs().index() << 3 | segmentation::cs().rpl() as u16;
+        let segment_selector = KERNEL_CODE_SEGMENT.0;
         options.set_used();
         let mut entry = IdtEntry {
             fn_ptr_low: fn_ptr as u16,

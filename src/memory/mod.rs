@@ -1,9 +1,7 @@
 //! Handles all memory related things.
 
-mod allocator;
+pub mod allocator;
 
-#[cfg(not(test))]
-use alloc::oom::set_oom_handler;
 pub use arch::memory::*;
 use core::fmt;
 
@@ -31,7 +29,11 @@ bitflags! {
         /// Set if code on the page can be executed.
         const EXECUTABLE = 1 << 2,
         /// Set if the page should not be cached.
-        const NO_CACHE = 1 << 3
+        const NO_CACHE = 1 << 3,
+        /// Set if the page should be accessible from user mode.
+        const USER_ACCESSIBLE = 1 << 4,
+        /// Set if the page is currently present.
+        const PRESENT = 1 << 5
     }
 }
 
@@ -73,14 +75,9 @@ pub fn init() {
     assert_has_not_been_called!("Memory state should only be initialized once.");
 
     ::arch::memory::init();
-
-    set_oom_handler(oom);
 }
 
 /// This function gets called when the system is out of memory.
-///
-/// # Safety
-/// - This should never be called directly.
-fn oom() -> ! {
+pub fn oom() -> ! {
     panic!("Out of memory!");
 }
