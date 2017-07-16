@@ -2,7 +2,6 @@
 
 use super::gdt::{KERNEL_CODE_SEGMENT, KERNEL_DATA_SEGMENT, USER_CODE_SEGMENT, USER_DATA_SEGMENT};
 use super::interrupts::handler_arguments::{ExceptionStackFrame, SavedRegisters};
-use multitasking::TCB;
 
 // TODO: Floating point state is not saved yet.
 /// Saves the an execution context.
@@ -25,8 +24,7 @@ impl Context {
     }
 
     // TODO: Remove me, I'm only for testing.
-    pub fn test(id: usize,
-                function: u64,
+    pub fn test(function: u64,
                 arg1: u64,
                 arg2: u64,
                 arg3: u64,
@@ -53,7 +51,7 @@ impl Context {
             rax: 0
         };
         use x86_64::registers::flags::Flags;
-        use memory::*;
+
         let stack_frame = ExceptionStackFrame {
             instruction_pointer: function,
             code_segment: USER_CODE_SEGMENT.0 as u64,

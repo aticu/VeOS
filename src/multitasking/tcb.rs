@@ -82,8 +82,7 @@ impl TCB {
             user_stack,
             state: ThreadState::Ready,
             priority: 1,
-            context: Context::test(id as usize,
-                                   (0x10000 * (id as usize + 1) + function as usize % 0x1000) as
+            context: Context::test((0x10000 * (id as usize + 1) + function as usize % 0x1000) as
                                    u64,
                                    arg1,
                                    arg2,

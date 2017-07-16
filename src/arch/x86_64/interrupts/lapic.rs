@@ -2,6 +2,8 @@
 //! Controller (LAPIC).
 
 use memory::{NO_CACHE, PhysicalAddress, READABLE, VirtualAddress, WRITABLE, map_page_at};
+use raw_cpuid::CpuId;
+use sync::{disable_preemption, restore_preemption_state};
 
 /// The physical base address of the memory mapped LAPIC.
 const LAPIC_BASE: PhysicalAddress = 0xfee00000;
@@ -33,8 +35,23 @@ const SPURIOUS_INTERRUPT: usize = 0xf0;
 /// The offset for the timer inital count register.
 const TIMER_INITIAL_COUNT: usize = 0x380;
 
+/// The offset for the task priority register.
+const TASK_PRIORITY_REGISTER: usize = 0x80;
+
+/// The offset for the interrupt command register (bits 0-31).
+const INTERRUPT_COMMAND_REGISTER_LOW: usize = 0x300;
+
+/// The offset for the interrupt command register (bits 32-63).
+const INTERRUPT_COMMAND_REGISTER_HIGH: usize = 0x310;
+
 /// The offset for the end of interrupt register.
 const END_OF_INTERRUPT: usize = 0xb0;
+
+/// The offset of the logical destination register.
+const LOGICAL_DESTINATION_REGISTER: usize = 0xd0;
+
+/// The offset of the destination format register.
+const DESTINATION_FORMAT_REGISTER: usize = 0xe0;
 
 /// Initializes the LAPIC.
 pub fn init() {
@@ -44,13 +61,15 @@ pub fn init() {
                 LAPIC_BASE,
                 READABLE | WRITABLE | NO_CACHE);
 
+    let cpu_id = CpuId::new().get_feature_info().unwrap().initial_local_apic_id();
+    let logical_id = cpu_id % 8;
+
     let mut inactive_register = LVTRegister::new();
     inactive_register.set_inactive();
 
     let mut lint0_register = LVTRegister::new();
     lint0_register.set_delivery_mode(EXTINT_DELIVERY_MODE);
     lint0_register.set_trigger_mode(LEVEL_SENSITIVE);
-    lint0_register.set_inactive();
 
     let mut lint1_register = LVTRegister::new();
     lint1_register.set_delivery_mode(NMI_DELIVERY_MODE);
@@ -61,21 +80,32 @@ pub fn init() {
     timer_register.set_vector(0x20);
 
     unsafe {
+        // Deactivate currently unused interrupts.
         set_lvt_register(CMCI_INTERRUPT, inactive_register);
         set_lvt_register(THERMAL_SENSOR_INTERRUPT, inactive_register);
         set_lvt_register(PERFORMANCE_COUNTER_INTERRUPT, inactive_register);
         set_lvt_register(ERROR_INTERRUPT, inactive_register);
 
+        // Set the local interrupt registers.
         set_lvt_register(LINT0_INTERRUPT, lint0_register);
         set_lvt_register(LINT1_INTERRUPT, lint1_register);
 
+        // Set the timer interrupt register.
         set_lvt_register(TIMER_INTERRUPT, timer_register);
         set_register(TIMER_INITIAL_COUNT, 0);
 
+        // Enable the LAPIC.
         set_register(SPURIOUS_INTERRUPT, 0x12f);
 
+        // Set the local interrupt registers again, to make sure they have the right value.
         set_lvt_register(LINT0_INTERRUPT, lint0_register);
         set_lvt_register(LINT1_INTERRUPT, lint1_register);
+
+        // Use flat logical destinations.
+        set_register(DESTINATION_FORMAT_REGISTER, 0b1111 << 28);
+
+        // Set the processor to its logical destination address.
+        set_register(LOGICAL_DESTINATION_REGISTER, (logical_id as u32) << 24);
     }
 }
 
@@ -94,6 +124,28 @@ pub fn set_periodic_timer(delay: u32) {
     }
 }
 
+/// Sets the task priority for the local APIC.
+pub fn set_priority(value: u8) {
+    unsafe {
+        set_register(TASK_PRIORITY_REGISTER, value as u32);
+    }
+}
+
+/// Sets the ICR to the specified value.
+fn set_icr(value: u64) {
+    let value_low = value as u32;
+    let value_high = (value >> 32) as u32;
+
+    unsafe {
+        let preemption_state = disable_preemption();
+
+        set_register(INTERRUPT_COMMAND_REGISTER_HIGH, value_high);
+        set_register(INTERRUPT_COMMAND_REGISTER_LOW, value_low);
+
+        restore_preemption_state(&preemption_state);
+    }
+}
+
 /// Returns the base address for the LAPIC of this CPU.
 fn get_lapic_base() -> VirtualAddress {
     to_virtual!(LAPIC_BASE)
@@ -109,6 +161,37 @@ unsafe fn set_register(offset: usize, value: u32) {
 /// Sets an LVT register.
 unsafe fn set_lvt_register(offset: usize, register: LVTRegister) {
     set_register(offset, register.0);
+}
+
+/// Issues an interrupt to the current CPU.
+pub fn issue_self_interrupt(vector: u8) {
+    issue_interrupt(SELF, vector);
+}
+
+/// Issues the given interrupt for the given target(s).
+fn issue_interrupt(target: InterruptDestinationMode, vector: u8) {
+    assert!(target.intersects(SELF | ALL | ALL_EXCLUDING_SELF));
+
+    let mut icr = target.bits();
+    icr |= vector as u64;
+
+    set_icr(icr);
+}
+
+bitflags! {
+    /// The possible destination modes for interrupts.
+    flags InterruptDestinationMode: u64 {
+        /// The destination address for the interrupt is logical.
+        const LOGICAL = 1 << 11,
+        /// The destination address for the interrupt is physical.
+        const PHYSICAL = 0 << 11,
+        /// The interrupt addresses the only the current CPU.
+        const SELF = 0b01 << 18,
+        /// The interrupt addresses all CPUS.
+        const ALL = 0b10 << 18,
+        /// The interrupt addresses all but the current CPU.
+        const ALL_EXCLUDING_SELF = 0b11 << 18
+    }
 }
 
 /// Represents a register belonging to the local vector table.

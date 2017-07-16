@@ -18,9 +18,11 @@ A lot of this work is based on work from the following people/organizations or a
 - The contributors of the [spin crate][2].
 - Eric Kidd's [blog][3].
 - The [OSDev wiki][4].
+- The [Redox][6] project.
 
 [1]: http://os.phil-opp.com/ "Writing an OS in Rust"
 [2]: https://crates.io/crates/spin "The spin crate on crates.io"
 [3]: http://www.randomhacks.net/bare-metal-rust/ "Bare Metal Rust: Building kernels in Rust"
 [4]: http://wiki.osdev.org/Main_Page "OSDev wiki Main Page"
 [5]: https://www.rust-lang.org/
+[6]: https://www.redox-os.org

@@ -67,7 +67,6 @@ extern "C" fn breakpoint_handler(stack_frame: &mut ExceptionStackFrame,
     let (registers, exception_stack_frame) = context.get_parts();
     *regs = registers;
     *stack_frame = exception_stack_frame;
-    // loop {}
 }
 
 /// The page fault handler of the kernel.

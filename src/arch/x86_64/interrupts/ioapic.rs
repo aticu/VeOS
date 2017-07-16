@@ -21,8 +21,6 @@ pub fn init() {
 
     let mut irq1 = IORedirectionEntry::new();
     irq1.set_vector(0x21);
-    irq1.set_trigger_mode(EDGE_SENSITIVE);
-    irq1.set_polarity(HIGH_ACTIVE_PIN_POLARITY);
 
     set_irq(1, irq1);
 }
@@ -37,6 +35,8 @@ fn set_register(reg: u8, value: u32) {
 
 /// Sets the given IRQ number to the specified value.
 fn set_irq(number: u8, value: IORedirectionEntry) {
+    assert!(number < 24);
+
     let reg = 0x10 + number * 2;
 
     // Disable the entry, before setting the destination.
@@ -63,6 +63,8 @@ bitflags! {
         const DELIVERY_MODE = 0b111 << 8,
         /// Delivers the interrupt to the specified vector.
         const FIXED_DELIVERY_MODE = 0b000 << 8,
+        /// Delivers the interrupt to the processor with the lowest priority.
+        const LOWEST_PRIORITY_DELIVERY_MODE = 0b001 << 8,
         /// Delivers an SMI interrupt.
         const SMI_DELIVERY_MODE = 0b010 << 8,
         /// Delivers an NMI interrupt.
@@ -109,7 +111,11 @@ impl IORedirectionEntry {
     fn new() -> IORedirectionEntry {
         let mut register = IORedirectionEntry(0);
         register.set_active();
-        register.set_delivery_mode(FIXED_DELIVERY_MODE);
+        register.set_delivery_mode(LOWEST_PRIORITY_DELIVERY_MODE);
+        register.set_trigger_mode(EDGE_SENSITIVE);
+        register.set_polarity(HIGH_ACTIVE_PIN_POLARITY);
+        // 0xff sends the interrupt to all processors.
+        register.set_destination(PHYSICAL_DESTINATION_MODE, 0xff);
 
         register
     }
@@ -149,7 +155,12 @@ impl IORedirectionEntry {
     }
 
     /// Sets the destination for this interrupt.
-    fn set_destination(&mut self, dest: u8) {
+    fn set_destination(&mut self, mode: IORedirectionEntryFlags, dest: u8) {
+        // Set the destination mode.
+        self.0 &= !DESTINATION_MODE.bits();
+        self.0 |= mode.bits();
+
+        // Set the actual destination.
         self.0 &= !DESTINATION.bits();
         self.0 |= (dest as u64) << 56;
     }

@@ -95,7 +95,7 @@ impl PageTableEntry {
     /// Unmaps and deallocates the frame this entry points to.
     pub fn unmap(&mut self) {
         let address = self.points_to()
-            .expect("Trying to unmap and unmapped page.");
+            .expect("Trying to unmap an unmapped page.");
         unsafe { FRAME_ALLOCATOR.deallocate(PageFrame::from_address(address)) };
         self.0 = 0;
     }
