@@ -25,6 +25,8 @@ arch::memory::INTERRUPT_STACK_AREA_BASE: VirtualAddress
 arch::memory::STACK_OFFSET: usize
 arch::memory::STACK_MAX_SIZE
 
+arch::context::switch_context()
+
 arch::Context
 arch::STACK_TYPE: StackType
 arch::MAX_THREAD_COUNT: u16

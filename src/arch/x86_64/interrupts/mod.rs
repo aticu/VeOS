@@ -91,10 +91,10 @@ extern "C" fn timer_handler(stack_frame: &mut ExceptionStackFrame, regs: &mut Sa
     use multitasking::schedule;
     use arch::Context;
 
+    print!("!");
+
     let context = Context::new(*regs, *stack_frame);
-    let mut current_thread = CURRENT_THREAD.lock();
-    current_thread.context = context;
-    drop(current_thread);
+    CURRENT_THREAD.lock().context = context;
 
     schedule();
 
@@ -102,7 +102,6 @@ extern "C" fn timer_handler(stack_frame: &mut ExceptionStackFrame, regs: &mut Sa
     *regs = registers;
     *stack_frame = exception_stack_frame;
 
-    println!("!");
     lapic::signal_eoi();
 }
 

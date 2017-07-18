@@ -5,7 +5,6 @@ use super::interrupts::handler_arguments::{ExceptionStackFrame, SavedRegisters};
 
 // TODO: Floating point state is not saved yet.
 /// Saves the an execution context.
-#[derive(Clone)]
 pub struct Context {
     exception_stack_frame: ExceptionStackFrame,
     saved_registers: SavedRegisters
@@ -102,4 +101,9 @@ impl Context {
     pub fn get_parts(&self) -> (SavedRegisters, ExceptionStackFrame) {
         (self.saved_registers, self.exception_stack_frame)
     }
+}
+
+/// Switches the context from the old thread to the current thread.
+pub fn switch_context(old_context: &mut Context, new_context: &Context) {
+    println!("");
 }

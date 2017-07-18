@@ -1,9 +1,10 @@
 //! Provides and manages thread control blocks.
 
-use super::Stack;
-use super::stack::AccessType;
 use arch::Context;
 use core::cmp::Ordering;
+use core::fmt;
+use super::Stack;
+use super::stack::AccessType;
 
 /// Represents the possible states a thread can have.
 #[derive(PartialEq)]
@@ -24,6 +25,12 @@ pub struct TCB {
     pub state: ThreadState,
     pub priority: i32,
     pub context: Context
+}
+
+impl fmt::Debug for TCB {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Thread <ID: {}>", self.id)
+    }
 }
 
 impl PartialEq for TCB {
@@ -106,5 +113,24 @@ impl TCB {
             priority: i32::min_value(),
             context: Context::idle_context(stack_pointer)
         }
+    }
+
+    /// Returns true if the thread state is dead.
+    pub fn is_dead(&self) -> bool {
+        self.state == ThreadState::Dead
+    }
+
+    /// Sets the thread state to ready if applicable.
+    pub fn set_ready(&mut self) {
+        if !self.is_dead() {
+            self.state == ThreadState::Ready;
+        }
+    }
+
+    /// Sets the thread state to running.
+    pub fn set_running(&mut self) {
+        assert!(!self.is_dead(), "Trying to run a dead thread: {:?}", self);
+
+        self.state == ThreadState::Running;
     }
 }

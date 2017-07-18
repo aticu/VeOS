@@ -115,6 +115,18 @@ impl<T: ?Sized> Mutex<T> {
         }
     }
 
+    /// Returns a reference to the contained data, without locking the mutex.
+    ///
+    /// This intended for use in the scheduler, where no locks should be held while switching
+    /// contexts.
+    ///
+    /// # Safety
+    /// This function is **very** unsafe.
+    /// - Make sure that mutual exclusion is guaranteed for the accessed data.
+    pub unsafe fn without_locking(&self) -> &T {
+        &*self.data.get()
+    }
+
     /// Tries to lock the mutex. If it is already locked, it will return None.
     /// Otherwise it returns
     /// a guard within Some.

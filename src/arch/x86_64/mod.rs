@@ -86,6 +86,3 @@ pub fn get_cpu_num() -> usize {
         .unwrap()
         .max_logical_processor_ids() as usize
 }
-
-/// Switches from the old context to the next context.
-pub fn switch_context(_: Context, _: Context) {}

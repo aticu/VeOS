@@ -1,57 +1,82 @@
 //! This module implements a scheduler.
 
-use super::{READY_LIST, TCB, ThreadState};
-use arch::switch_context;
+use super::{READY_LIST, TCB};
+use arch::context::switch_context;
 use core::mem::swap;
 use sync::Mutex;
+use sync::{disable_preemption, restore_preemption_state};
 use x86_64::instructions::halt;
 
 lazy_static! {
     pub static ref CURRENT_THREAD: Mutex<TCB> = Mutex::new(TCB::idle_tcb());
 }
+cpu_local! {
+    static mut ref OLD_THREAD: Option<TCB> = None;
+}
 
 pub static mut THREAD_ID: u16 = 0;
 
-/// Schedules the next thread to run and switches the context to it.
+/// Schedules the next thread to run and dispatches it.
 pub fn schedule() {
+    // No interrupts during scheduling (this essentially locks OLD_THREAD).
+    let preemption_state = unsafe { disable_preemption() };
+
+    assert!(OLD_THREAD.is_none());
+
     let mut ready_list = READY_LIST.lock();
-    let mut new_thread = ready_list.pop().expect("No thread in the ready list.");
-    let mut old_thread = CURRENT_THREAD.lock();
 
-    unsafe {
-        THREAD_ID = new_thread.id;
-    }
-
-    let kill_old = old_thread.state == ThreadState::Dead;
-
-    old_thread.state = ThreadState::Ready;
-    new_thread.state = ThreadState::Running;
-
-    if new_thread >= *old_thread {
-        swap(&mut *old_thread, &mut new_thread);
-
-        // The references are swapped now, so old_thread points to the new thread and
-        // vice versa.
-        let (new_thread, old_thread) = (old_thread, new_thread);
-
-        let (new_thread_context, old_thread_context) = (new_thread.context.clone(),
-                                                        old_thread.context.clone());
-
-        if !kill_old {
-            // Return the old thread to the ready list.
-            ready_list.push(old_thread);
-        } else {
-            // Kill the old thread by dropping it.
-            drop(old_thread);
+    // Only switch if actually needed.
+    if ready_list.peek().unwrap() >= &CURRENT_THREAD.lock() {
+        // Move the new thread to the temporary spot for old threads.
+        unsafe {
+            (*OLD_THREAD).set(Some(ready_list.pop().unwrap()));
         }
 
-        // Make sure that no locks are held when actually switching the context.
+        // Make sure no locks are held when switching.
         drop(ready_list);
-        drop(new_thread);
 
-        switch_context(new_thread_context, old_thread_context);
+        // Now swap the references.
+        unsafe {
+            swap(&mut *CURRENT_THREAD.lock(), OLD_THREAD.as_mut().as_mut().unwrap());
+        }
+
+        // OLD_THREAD holds the thread that was previously running.
+        // CURRENT_THREAD now holds the thread that is to run now.
+
+        unsafe {
+            THREAD_ID = CURRENT_THREAD.lock().id;
+        }
+
+        if OLD_THREAD.as_ref().unwrap().is_dead() {
+            // Kill the old thread by dropping it.
+            unsafe {
+                OLD_THREAD.as_mut().take();
+            }
+        } else {
+            // Otherwise it must be ready again.
+            unsafe {
+                OLD_THREAD.as_mut().as_mut().unwrap().set_ready();
+            }
+        }
+        CURRENT_THREAD.lock().set_running();
+
+        // This is where the actual switch happens.
+        unsafe {
+            switch_context(&mut OLD_THREAD.as_mut().as_mut().unwrap().context, &CURRENT_THREAD.without_locking().context);
+        }
+
+        if OLD_THREAD.is_some() {
+            unsafe {
+                READY_LIST.lock().push(OLD_THREAD.as_mut().take().unwrap());
+            }
+        }
     } else {
-        ready_list.push(new_thread);
+        // Ensure that the correct drop order is used.
+        drop(ready_list);
+    }
+
+    unsafe {
+        restore_preemption_state(&preemption_state);
     }
 }
 

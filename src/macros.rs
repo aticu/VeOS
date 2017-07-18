@@ -59,9 +59,24 @@ macro_rules! valid_address {
 /// Used to define statics that are local to each cpu core.
 macro_rules! cpu_local {
     ($(#[$attr: meta])* static ref $name: ident : $type: ty = $val: expr;) => {
+        __cpu_local_internal!($(#[$attr])*, CPULocal, $name, $type, $val);
+    };
+    ($(#[$attr: meta])* pub static ref $name: ident : $type: ty = $val: expr;) => {
+        __cpu_local_internal!($(#[$attr])*, pub, CPULocal, $name, $type, $val);
+    };
+    ($(#[$attr: meta])* static mut ref $name: ident : $type: ty = $val: expr;) => {
+        __cpu_local_internal!($(#[$attr])*, CPULocalMut, $name, $type, $val);
+    };
+    ($(#[$attr: meta])* pub static mut ref $name: ident : $type: ty = $val: expr;) => {
+        __cpu_local_internal!($(#[$attr])*, pub, CPULocalMut, $name, $type, $val);
+    };
+}
+
+macro_rules! __cpu_local_internal {
+    ($(#[$attr: meta])*, pub, $wrapper_type: ident, $name: ident, $type: ty, $val: expr) => {
         lazy_static! {
             $(#[$attr])*
-            static ref $name: ::multitasking::CPULocal<$type> = {
+            pub static ref $name: ::multitasking::$wrapper_type<$type> = {
                 use alloc::Vec;
                 use multitasking::get_cpu_num;
 
@@ -73,15 +88,15 @@ macro_rules! cpu_local {
                 }
 
                 unsafe {
-                    ::multitasking::CPULocal::new(vec)
+                    ::multitasking::$wrapper_type::new(vec)
                 }
             };
         }
     };
-    ($(#[$attr: meta])* pub static ref $name: ident : $type: ty = $val: expr;) => {
+    ($(#[$attr: meta])*, $wrapper_type: ident, $name: ident, $type: ty, $val: expr) => {
         lazy_static! {
             $(#[$attr])*
-            pub static ref $name: ::multitasking::CPULocal<$type> = {
+            static ref $name: ::multitasking::$wrapper_type<$type> = {
                 use alloc::Vec;
                 use multitasking::get_cpu_num;
 
@@ -93,7 +108,7 @@ macro_rules! cpu_local {
                 }
 
                 unsafe {
-                    ::multitasking::CPULocal::new(vec)
+                    ::multitasking::$wrapper_type::new(vec)
                 }
             };
         }

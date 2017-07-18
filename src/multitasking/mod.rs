@@ -5,7 +5,7 @@ mod stack;
 pub mod scheduler;
 mod cpu_local;
 
-pub use self::cpu_local::CPULocal;
+pub use self::cpu_local::{CPULocal, CPULocalMut};
 pub use self::scheduler::{CURRENT_THREAD, THREAD_ID, schedule};
 pub use self::stack::{Stack, StackType};
 pub use self::tcb::{TCB, ThreadState};
