@@ -73,7 +73,7 @@ impl TCB {
                     (function - 0xffff800000000000 + 0x1000) as usize,
                     READABLE | WRITABLE | EXECUTABLE | USER_ACCESSIBLE);
 
-        let syscall_stack = Stack::new(0x3000,
+        let syscall_stack = Stack::new(0x5000,
                                        STACK_MAX_SIZE,
                                        SYSCALL_STACK_AREA_BASE + STACK_OFFSET * (id as usize + 1),
                                        AccessType::KernelOnly);
@@ -81,7 +81,8 @@ impl TCB {
                                     0x1000,
                                     0x1000 * (id as usize + 1),
                                     AccessType::UserAccessible);
-        let stack_pointer = user_stack.current_stack_pointer as u64;
+        let stack_pointer = user_stack.base_stack_pointer as u64;
+        let syscall_stack_pointer = syscall_stack.base_stack_pointer;
 
         TCB {
             id,
@@ -97,13 +98,14 @@ impl TCB {
                                    arg4,
                                    arg5,
                                    arg6,
-                                   stack_pointer)
+                                   stack_pointer,
+                                   syscall_stack_pointer)
         }
     }
 
     pub fn idle_tcb() -> TCB {
         let user_stack = Stack::new(0x3000, 0x10000, 0x1000000, AccessType::KernelOnly);
-        let stack_pointer = user_stack.current_stack_pointer as u64;
+        let stack_pointer = user_stack.base_stack_pointer as u64;
 
         TCB {
             id: 0,

@@ -4,7 +4,7 @@ use super::{READY_LIST, TCB};
 use arch::context::switch_context;
 use core::mem::swap;
 use sync::Mutex;
-use sync::{disable_preemption, restore_preemption_state};
+use sync::{disable_preemption, restore_preemption_state, enable_preemption};
 use x86_64::instructions::halt;
 
 lazy_static! {
@@ -21,12 +21,19 @@ pub fn schedule() {
     // No interrupts during scheduling (this essentially locks OLD_THREAD).
     let preemption_state = unsafe { disable_preemption() };
 
-    assert!(OLD_THREAD.is_none());
+    debug_assert!(OLD_THREAD.is_none());
 
     let mut ready_list = READY_LIST.lock();
 
+    // TODO: Start the timer again here to ensure fairness.
+
+    // TODO: Rework this part.
+    let schedule_needed = ready_list.peek().is_some();
+    let schedule_needed = schedule_needed && ready_list.peek().unwrap() >= &CURRENT_THREAD.lock();
+    let schedule_needed = schedule_needed || CURRENT_THREAD.lock().is_dead();
+
     // Only switch if actually needed.
-    if ready_list.peek().unwrap() >= &CURRENT_THREAD.lock() {
+    if schedule_needed {
         // Move the new thread to the temporary spot for old threads.
         unsafe {
             (*OLD_THREAD).set(Some(ready_list.pop().unwrap()));
@@ -47,13 +54,8 @@ pub fn schedule() {
             THREAD_ID = CURRENT_THREAD.lock().id;
         }
 
-        if OLD_THREAD.as_ref().unwrap().is_dead() {
-            // Kill the old thread by dropping it.
-            unsafe {
-                OLD_THREAD.as_mut().take();
-            }
-        } else {
-            // Otherwise it must be ready again.
+        if !OLD_THREAD.as_ref().unwrap().is_dead() {
+            // If the thread isn't dead, set it's state to ready.
             unsafe {
                 OLD_THREAD.as_mut().as_mut().unwrap().set_ready();
             }
@@ -65,11 +67,7 @@ pub fn schedule() {
             switch_context(&mut OLD_THREAD.as_mut().as_mut().unwrap().context, &CURRENT_THREAD.without_locking().context);
         }
 
-        if OLD_THREAD.is_some() {
-            unsafe {
-                READY_LIST.lock().push(OLD_THREAD.as_mut().take().unwrap());
-            }
-        }
+        after_context_switch();
     } else {
         // Ensure that the correct drop order is used.
         drop(ready_list);
@@ -80,14 +78,35 @@ pub fn schedule() {
     }
 }
 
+/// This function should get called after calling `context_switch` to perform clean up.
+pub fn after_context_switch() {
+    if OLD_THREAD.is_some() {
+        if OLD_THREAD.as_ref().unwrap().is_dead() {
+            unsafe {
+                OLD_THREAD.as_mut().take();
+            }
+        }
+        else {
+            unsafe {
+                READY_LIST.lock().push(OLD_THREAD.as_mut().take().unwrap());
+            }
+        }
+    }
+}
+
 /// This function gets executed whenever there is nothing else to execute.
 ///
 /// It can perform various tasks, such as cleaning up unused resources.
 ///
 /// Once it's done performing it's tasks, it halts.
-pub fn idle() {
+pub fn idle() -> ! {
+    // TODO: Peform initial cleanup here.
+    unsafe {
+        enable_preemption();
+    }
+    schedule();
     loop {
-        println!("IDLE");
+        // TODO: Perform periodic cleanup here.
         unsafe {
             halt();
         }

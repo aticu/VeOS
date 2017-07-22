@@ -12,7 +12,7 @@ mod gdt;
 
 pub use self::context::Context;
 use self::gdt::GDT;
-use multitasking::StackType;
+use multitasking::{StackType, CURRENT_THREAD};
 use raw_cpuid::CpuId;
 use x86_64::instructions::{rdmsr, wrmsr};
 use x86_64::registers::*;
@@ -85,4 +85,13 @@ pub fn get_cpu_num() -> usize {
         .get_feature_info()
         .unwrap()
         .max_logical_processor_ids() as usize
+}
+
+/// This is called once per processor to enter the first user mode thread.
+pub unsafe fn enter_first_user_code() -> ! {
+    let stack_pointer = CURRENT_THREAD.without_locking().context.kernel_stack_pointer;
+    asm!("mov rsp, $0
+          ret"
+          : : "r"(stack_pointer) : : "intel", "volatile");
+    unreachable!();
 }

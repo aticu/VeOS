@@ -81,7 +81,8 @@ pub extern "C" fn main(magic_number: u32, information_structure_address: usize) 
              unwrapped_info.processor_brand_string().unwrap());
 
     unsafe {
-        asm!("int3");
+        //asm!("int3");
+        arch::enter_first_user_code();
     }
 
     loop {}

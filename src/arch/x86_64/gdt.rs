@@ -39,7 +39,7 @@ pub struct Gdt {
 }
 
 cpu_local! {
-    static ref TSS: TaskStateSegment = {
+    pub static mut ref TSS: TaskStateSegment = {
         let mut tss = TaskStateSegment::new();
         tss.privilege_stack_table[0] = VirtualAddress(FINAL_STACK_TOP);
         tss

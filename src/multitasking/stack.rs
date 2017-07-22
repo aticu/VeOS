@@ -39,7 +39,7 @@ pub struct Stack {
     ///
     /// # Note
     /// This is only valid when the stack is not currently in use.
-    pub current_stack_pointer: VirtualAddress,
+    pub base_stack_pointer: VirtualAddress,
     /// The access type for this stack.
     access_type: AccessType
 }
@@ -57,7 +57,6 @@ impl fmt::Debug for Stack {
 impl Drop for Stack {
     fn drop(&mut self) {
         self.resize(0);
-        loop {}
     }
 }
 
@@ -74,7 +73,7 @@ impl Stack {
                     top_address: start_address,
                     bottom_address: start_address,
                     max_size,
-                    current_stack_pointer: start_address,
+                    base_stack_pointer: start_address,
                     access_type
                 }
             }

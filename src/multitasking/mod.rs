@@ -22,7 +22,7 @@ lazy_static! {
 ]));
 }
 
-fn thread(amount: u64, character: char) {
+pub fn thread(amount: u64, character: char) {
     let mut curr_amount = 0;
     while curr_amount < amount {
         unsafe {

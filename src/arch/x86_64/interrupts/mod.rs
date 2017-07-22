@@ -92,21 +92,20 @@ extern "C" fn timer_handler(stack_frame: &mut ExceptionStackFrame, regs: &mut Sa
     use arch::Context;
 
     print!("!");
-
-    let context = Context::new(*regs, *stack_frame);
-    CURRENT_THREAD.lock().context = context;
+    lapic::signal_eoi();
 
     schedule();
-
-    let (registers, exception_stack_frame) = CURRENT_THREAD.lock().context.get_parts();
-    *regs = registers;
-    *stack_frame = exception_stack_frame;
-
-    lapic::signal_eoi();
 }
+
+static mut TID: u16 = 5;
 
 extern "C" fn irq1_handler(_: &mut ExceptionStackFrame, _: &mut SavedRegisters) {
     let scancode = unsafe { ::x86_64::instructions::port::inb(0x60) };
+    let character = (scancode % 10) + '0' as u8;
+    ::multitasking::READY_LIST.lock().push(::multitasking::TCB::test(unsafe { TID }, ::multitasking::thread as u64, 10, character as u64, 0, 0, 0, 0));
+    unsafe { TID += 1 };
     println!("Scancode: {}", scancode);
     lapic::signal_eoi();
+
+    ::multitasking::schedule();
 }
