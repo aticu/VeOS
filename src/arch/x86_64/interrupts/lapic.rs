@@ -131,6 +131,13 @@ pub fn set_priority(value: u8) {
     }
 }
 
+/// Gets the current task priority for the local APIC.
+pub fn get_priority() -> u8 {
+    unsafe {
+        get_register(TASK_PRIORITY_REGISTER) as u8
+    }
+}
+
 /// Sets the ICR to the specified value.
 fn set_icr(value: u64) {
     let value_low = value as u32;
@@ -152,13 +159,31 @@ fn get_lapic_base() -> VirtualAddress {
 }
 
 /// Sets a LAPIC register.
+/// 
+/// # Safety
+/// - Ensure the LAPIC is mapped.
+/// - Setting registers incorrectly can cause interrupts to behave unexpected.
 unsafe fn set_register(offset: usize, value: u32) {
     assert!(offset < 0x1000);
 
     *((get_lapic_base() + offset) as *mut u32) = value;
 }
 
+/// Gets a LAPIC register.
+/// 
+/// # Safety
+/// - Ensure the LAPIC is mapped.
+unsafe fn get_register(offset: usize) -> u32 {
+    assert!(offset < 0x1000);
+
+    *((get_lapic_base() + offset) as *mut u32)
+}
+
 /// Sets an LVT register.
+/// 
+/// # Safety
+/// - Ensure the LAPIC is mapped.
+/// - Setting registers incorrectly can cause interrupts to behave unexpected.
 unsafe fn set_lvt_register(offset: usize, register: LVTRegister) {
     set_register(offset, register.0);
 }

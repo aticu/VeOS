@@ -5,13 +5,15 @@
 pub mod vga_buffer;
 pub mod memory;
 pub mod sync;
-pub mod interrupts;
+mod interrupts;
 pub mod context;
 mod syscalls;
 mod gdt;
 
 pub use self::context::Context;
 use self::gdt::GDT;
+use self::interrupts::SCHEDULE_INTERRUPT_NUM;
+use self::interrupts::issue_self_interrupt;
 use multitasking::{StackType, CURRENT_THREAD};
 use raw_cpuid::CpuId;
 use x86_64::instructions::{rdmsr, wrmsr};
@@ -88,10 +90,18 @@ pub fn get_cpu_num() -> usize {
 }
 
 /// This is called once per processor to enter the first user mode thread.
-pub unsafe fn enter_first_user_code() -> ! {
+///
+/// # Safety
+/// - This should only be called once.
+pub unsafe fn enter_first_thread() -> ! {
     let stack_pointer = CURRENT_THREAD.without_locking().context.kernel_stack_pointer;
     asm!("mov rsp, $0
           ret"
           : : "r"(stack_pointer) : : "intel", "volatile");
     unreachable!();
+}
+
+/// This function starts a scheduling operation.
+pub fn schedule() {
+    issue_self_interrupt(SCHEDULE_INTERRUPT_NUM);
 }

@@ -5,11 +5,11 @@
 #![feature(integer_atomics)]
 #![feature(alloc)]
 #![feature(naked_functions)]
-#![feature(core_intrinsics)]
 #![feature(use_extern_macros)]
 #![feature(allocator_internals)]
 #![feature(allocator_api)]
 #![feature(global_allocator)]
+#![feature(abi_x86_interrupt)]
 #![no_std]
 #![warn(missing_docs)]
 #![default_lib_allocator]
@@ -81,11 +81,8 @@ pub extern "C" fn main(magic_number: u32, information_structure_address: usize) 
              unwrapped_info.processor_brand_string().unwrap());
 
     unsafe {
-        //asm!("int3");
-        arch::enter_first_user_code();
+        arch::enter_first_thread();
     }
-
-    loop {}
 }
 
 #[cfg(not(test))]

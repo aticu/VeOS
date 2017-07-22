@@ -4,6 +4,7 @@ arch::write_fmt(...)
 arch::set_interrupt_state(bool) [already implemented]
 arch::get_cpu_id() -> usize
 arch::get_cpu_num() -> usize
+arch::schedule()
 
 arch::sync::cpu_relax()
 arch::sync::cpu_halt()

@@ -3,33 +3,35 @@
 use core::mem::size_of;
 use memory::VirtualAddress;
 use multitasking::scheduler::{idle, after_context_switch};
-use super::interrupts::handler_arguments::{ExceptionStackFrame, SavedRegisters};
-use super::gdt::{KERNEL_CODE_SEGMENT, KERNEL_DATA_SEGMENT, USER_CODE_SEGMENT, USER_DATA_SEGMENT};
+use super::gdt::{USER_CODE_SEGMENT, USER_DATA_SEGMENT};
+use x86_64::structures::idt::ExceptionStackFrame;
 
 // TODO: Floating point state is not saved yet.
 /// Saves the an execution context.
 pub struct Context {
-    exception_stack_frame: ExceptionStackFrame,
-    saved_registers: SavedRegisters,
     pub kernel_stack_pointer: VirtualAddress,
     base_pointer: VirtualAddress
 }
 
-impl Context {
-    /// Creates a new context from the saved registers and the exception stack
-    /// frame.
-    pub fn new(saved_registers: SavedRegisters,
-               exception_stack_frame: ExceptionStackFrame,
-               kernel_stack_pointer: VirtualAddress)
-               -> Context {
-        Context {
-            exception_stack_frame,
-            saved_registers,
-            kernel_stack_pointer,
-            base_pointer: kernel_stack_pointer
-        }
-    }
+struct SavedRegisters {
+    r15: u64,
+    r14: u64,
+    r13: u64,
+    r12: u64,
+    r11: u64,
+    r10: u64,
+    r9: u64,
+    r8: u64,
+    rbp: u64,
+    rdi: u64,
+    rsi: u64,
+    rdx: u64,
+    rcx: u64,
+    rbx: u64,
+    rax: u64
+}
 
+impl Context {
     // TODO: Remove me, I'm only for testing.
     pub fn test(function: u64,
                 arg1: u64,
@@ -61,63 +63,28 @@ impl Context {
         use x86_64::registers::flags::Flags;
 
         let stack_frame = ExceptionStackFrame {
-            instruction_pointer: function,
+            instruction_pointer: ::x86_64::VirtualAddress(function as usize),
             code_segment: USER_CODE_SEGMENT.0 as u64,
             cpu_flags: (Flags::IF | Flags::A1).bits() as u64,
-            stack_pointer,
+            stack_pointer: ::x86_64::VirtualAddress(stack_pointer as usize),
             stack_segment: USER_DATA_SEGMENT.0 as u64
         };
 
-        let kernel_stack_pointer = unsafe { set_initial_stack(kernel_stack_pointer, &stack_frame, &regs) };
+        let kernel_stack_pointer = unsafe { set_initial_stack(kernel_stack_pointer, stack_frame, regs) };
 
         Context {
-            exception_stack_frame: stack_frame,
-            saved_registers: regs,
             kernel_stack_pointer,
             base_pointer: kernel_stack_pointer
         }
     }
 
     pub fn idle_context(stack_pointer: u64) -> Context {
-        let regs = SavedRegisters {
-            r15: 0,
-            r14: 0,
-            r13: 0,
-            r12: 0,
-            r11: 0,
-            r10: 0,
-            r9: 0,
-            r8: 0,
-            rbp: 0,
-            rdi: 0,
-            rsi: 0,
-            rdx: 0,
-            rcx: 0,
-            rbx: 0,
-            rax: 0
-        };
-        use x86_64::registers::flags::Flags;
-
         let stack_pointer = unsafe { set_idle_stack(stack_pointer) };
 
-        let stack_frame = ExceptionStackFrame {
-            instruction_pointer: idle as u64,
-            code_segment: KERNEL_CODE_SEGMENT.0 as u64,
-            cpu_flags: (Flags::IF | Flags::A1).bits() as u64,
-            stack_pointer,
-            stack_segment: KERNEL_DATA_SEGMENT.0 as u64
-        };
         Context {
-            exception_stack_frame: stack_frame,
-            saved_registers: regs,
             kernel_stack_pointer: stack_pointer as usize,
             base_pointer: stack_pointer as usize
         }
-    }
-
-    /// Returns the parts that the context is made from.
-    pub fn get_parts(&self) -> (SavedRegisters, ExceptionStackFrame) {
-        (self.saved_registers, self.exception_stack_frame)
     }
 }
 
@@ -150,12 +117,12 @@ unsafe fn set_idle_stack(stack_pointer: u64) -> u64 {
     stack_pointer
 }
 
-unsafe fn set_initial_stack(stack_pointer: usize, stack_frame: &ExceptionStackFrame, saved_registers: &SavedRegisters) -> usize {
+unsafe fn set_initial_stack(stack_pointer: usize, stack_frame: ExceptionStackFrame, saved_registers: SavedRegisters) -> usize {
     let mut stack_pointer = stack_pointer;
     stack_pointer -= size_of::<ExceptionStackFrame>();
-    *(stack_pointer as *mut ExceptionStackFrame) = *stack_frame;
+    *(stack_pointer as *mut ExceptionStackFrame) = stack_frame;
     stack_pointer -= size_of::<SavedRegisters>();
-    *(stack_pointer as *mut SavedRegisters) = *saved_registers;
+    *(stack_pointer as *mut SavedRegisters) = saved_registers;
     stack_pointer -= 8;
     *(stack_pointer as *mut u64) = enter_thread as u64;
     stack_pointer

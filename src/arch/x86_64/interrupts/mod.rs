@@ -1,34 +1,29 @@
 //! Handles interrupts on the x86_64 architecture.
 
-mod idt;
-#[macro_use]
-mod idt_entry;
-pub mod handler_arguments;
 mod lapic;
 mod ioapic;
 
-use self::handler_arguments::*;
-use self::idt::Idt;
-use self::idt_entry::IdtEntry;
+pub use self::lapic::issue_self_interrupt;
+use multitasking::scheduler::schedule_next_thread;
 use x86_64::registers::control_regs;
+use x86_64::structures::idt::{Idt, ExceptionStackFrame, PageFaultErrorCode};
+use x86_64::instructions::interrupts;
 
-// TODO: When using a lazy static here, the system slows down a lot. Check out
-// why.
-cpu_local! {
+pub const SCHEDULE_INTERRUPT_NUM: u8 = 0x22;
+
+lazy_static! {
     /// The interrupt descriptor table used by the kernel.
     static ref IDT: Idt = {
         let mut idt = Idt::new();
 
-        idt.divide_by_zero = handler_without_error_code!(divide_by_zero_handler);
-        idt.breakpoint = handler_without_error_code!(breakpoint_handler);
-        idt.page_fault = handler_with_error_code!(page_fault_handler);
-        idt.page_fault.set_interrupt_gate();
-        idt.interrupts[0] = handler_without_error_code!(timer_handler);
-        idt.interrupts[0].set_interrupt_gate();
-        idt.interrupts[1] = handler_without_error_code!(irq1_handler);
-        idt.interrupts[1].set_interrupt_gate();
-        // The spurious interrupt handler.
-        idt.interrupts[0xf] = handler_without_error_code!(empty_handler);
+        idt.divide_by_zero.set_handler_fn(divide_by_zero_handler);
+        idt.breakpoint.set_handler_fn(breakpoint_handler);
+        idt.page_fault.set_handler_fn(page_fault_handler);
+        idt.interrupts[0].set_handler_fn(timer_handler);
+        idt.interrupts[1].set_handler_fn(irq1_handler);
+        idt.interrupts[2].set_handler_fn(schedule_interrupt);
+        // Spurious interrupt handler.
+        idt.interrupts[0xf].set_handler_fn(empty_handler);
 
         idt
     };
@@ -38,9 +33,7 @@ cpu_local! {
 pub fn init() {
     assert_has_not_been_called!("Interrupts should only be initialized once.");
 
-    unsafe {
-        IDT.load();
-    }
+    IDT.load();
 
     lapic::init();
     lapic::set_periodic_timer(150);
@@ -48,64 +41,78 @@ pub fn init() {
     ioapic::init();
 }
 
+macro_rules! irq_interrupt {
+    ($name: ident $content: tt) => {
+        extern "x86-interrupt" fn $name(_: &mut ExceptionStackFrame) {
+            let old_priority = lapic::get_priority();
+            lapic::set_priority(0x20);
+            unsafe {
+                interrupts::enable();
+            }
+
+            $content
+
+            unsafe {
+                interrupts::disable();
+            }
+            lapic::signal_eoi();
+            lapic::set_priority(old_priority);
+        }
+    };
+}
+
 /// The divide by zero exception handler of the kernel.
-extern "C" fn divide_by_zero_handler(stack_frame: &mut ExceptionStackFrame,
-                                     regs: &mut SavedRegisters) {
+extern "x86-interrupt" fn divide_by_zero_handler(stack_frame: &mut ExceptionStackFrame) {
     println!("DIVIDE BY ZERO!");
     println!("{:?}", stack_frame);
-    println!("{:?}", regs);
     loop {}
 }
 
 /// The breakpoint exception handler of the kernel.
-extern "C" fn breakpoint_handler(stack_frame: &mut ExceptionStackFrame,
-                                 regs: &mut SavedRegisters) {
-    use multitasking::CURRENT_THREAD;
-    use multitasking::schedule;
-    schedule();
-    let context = &CURRENT_THREAD.lock().context;
-    let (registers, exception_stack_frame) = context.get_parts();
-    *regs = registers;
-    *stack_frame = exception_stack_frame;
-}
-
-/// The page fault handler of the kernel.
-extern "C" fn page_fault_handler(stack_frame: &mut ExceptionStackFrame,
-                                 regs: &mut SavedRegisters,
-                                 error_code: u64) {
-    println!("PAGE FAULT!");
-    println!("Address: {:x}", control_regs::cr2());
-    println!("Error code: {:?}",
-             PageFaultErrorCode::from_bits_truncate(error_code));
-    println!("Page flags: {:?}",
-             super::memory::get_page_flags(control_regs::cr2().0));
+extern "x86-interrupt" fn breakpoint_handler(stack_frame: &mut ExceptionStackFrame) {
+    println!("BREAKPOINT");
     println!("{:?}", stack_frame);
-    println!("{:?}", regs);
     loop {}
 }
 
-extern "C" fn empty_handler(_: &mut ExceptionStackFrame, _: &mut SavedRegisters) {}
+/// The page fault handler of the kernel.
+extern "x86-interrupt" fn page_fault_handler(stack_frame: &mut ExceptionStackFrame, error_code: PageFaultErrorCode) {
+    println!("PAGE FAULT!");
+    println!("Address: {:x}", control_regs::cr2());
+    println!("Error code: {:?}",
+             error_code);
+    println!("Page flags: {:?}",
+             super::memory::get_page_flags(control_regs::cr2().0));
+    println!("{:?}", stack_frame);
+    loop {}
+}
 
-extern "C" fn timer_handler(stack_frame: &mut ExceptionStackFrame, regs: &mut SavedRegisters) {
-    use multitasking::CURRENT_THREAD;
-    use multitasking::schedule;
-    use arch::Context;
+extern "x86-interrupt" fn schedule_interrupt(_: &mut ExceptionStackFrame) {
+
+    lapic::signal_eoi();
+    unsafe {
+        schedule_next_thread();
+    }
+}
+
+extern "x86-interrupt" fn empty_handler(_: &mut ExceptionStackFrame) {}
+
+irq_interrupt!(timer_handler {
+    use arch::schedule;
 
     print!("!");
-    lapic::signal_eoi();
-
     schedule();
-}
+});
 
 static mut TID: u16 = 5;
 
-extern "C" fn irq1_handler(_: &mut ExceptionStackFrame, _: &mut SavedRegisters) {
+irq_interrupt!(irq1_handler {
     let scancode = unsafe { ::x86_64::instructions::port::inb(0x60) };
     let character = (scancode % 10) + '0' as u8;
     ::multitasking::READY_LIST.lock().push(::multitasking::TCB::test(unsafe { TID }, ::multitasking::thread as u64, 10, character as u64, 0, 0, 0, 0));
     unsafe { TID += 1 };
-    println!("Scancode: {}", scancode);
-    lapic::signal_eoi();
 
-    ::multitasking::schedule();
-}
+    ::arch::schedule();
+
+    lapic::signal_eoi();
+});

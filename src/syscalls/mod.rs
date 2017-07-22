@@ -1,6 +1,7 @@
 //! This module handles system calls.
 
-use multitasking::{CURRENT_THREAD, ThreadState, schedule};
+use arch::schedule;
+use multitasking::{CURRENT_THREAD, ThreadState};
 
 /// This function accepts the syscalls and calls the corresponding handlers.
 pub fn syscall_handler(num: u64, arg1: u64, _: u64, _: u64, _: u64, _: u64, _: u64) -> u64 {

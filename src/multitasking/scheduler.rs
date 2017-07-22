@@ -17,9 +17,12 @@ cpu_local! {
 pub static mut THREAD_ID: u16 = 0;
 
 /// Schedules the next thread to run and dispatches it.
-pub fn schedule() {
+///
+/// # Safety
+/// - This function should not be called directly. Rather call `arch::schedule`.
+pub unsafe fn schedule_next_thread() {
     // No interrupts during scheduling (this essentially locks OLD_THREAD).
-    let preemption_state = unsafe { disable_preemption() };
+    let preemption_state = disable_preemption();
 
     debug_assert!(OLD_THREAD.is_none());
 
@@ -35,37 +38,27 @@ pub fn schedule() {
     // Only switch if actually needed.
     if schedule_needed {
         // Move the new thread to the temporary spot for old threads.
-        unsafe {
-            (*OLD_THREAD).set(Some(ready_list.pop().unwrap()));
-        }
+        (*OLD_THREAD).set(Some(ready_list.pop().unwrap()));
 
         // Make sure no locks are held when switching.
         drop(ready_list);
 
         // Now swap the references.
-        unsafe {
-            swap(&mut *CURRENT_THREAD.lock(), OLD_THREAD.as_mut().as_mut().unwrap());
-        }
+        swap(&mut *CURRENT_THREAD.lock(), OLD_THREAD.as_mut().as_mut().unwrap());
 
         // OLD_THREAD holds the thread that was previously running.
         // CURRENT_THREAD now holds the thread that is to run now.
 
-        unsafe {
-            THREAD_ID = CURRENT_THREAD.lock().id;
-        }
+        THREAD_ID = CURRENT_THREAD.lock().id;
 
         if !OLD_THREAD.as_ref().unwrap().is_dead() {
             // If the thread isn't dead, set it's state to ready.
-            unsafe {
-                OLD_THREAD.as_mut().as_mut().unwrap().set_ready();
-            }
+            OLD_THREAD.as_mut().as_mut().unwrap().set_ready();
         }
         CURRENT_THREAD.lock().set_running();
 
         // This is where the actual switch happens.
-        unsafe {
-            switch_context(&mut OLD_THREAD.as_mut().as_mut().unwrap().context, &CURRENT_THREAD.without_locking().context);
-        }
+        switch_context(&mut OLD_THREAD.as_mut().as_mut().unwrap().context, &CURRENT_THREAD.without_locking().context);
 
         after_context_switch();
     } else {
@@ -73,9 +66,7 @@ pub fn schedule() {
         drop(ready_list);
     }
 
-    unsafe {
-        restore_preemption_state(&preemption_state);
-    }
+    restore_preemption_state(&preemption_state);
 }
 
 /// This function should get called after calling `context_switch` to perform clean up.
@@ -103,8 +94,8 @@ pub fn idle() -> ! {
     // TODO: Peform initial cleanup here.
     unsafe {
         enable_preemption();
+        schedule_next_thread();
     }
-    schedule();
     loop {
         // TODO: Perform periodic cleanup here.
         unsafe {
