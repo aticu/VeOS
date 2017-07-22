@@ -19,6 +19,7 @@ A lot of this work is based on work from the following people/organizations or a
 - Eric Kidd's [blog][3].
 - The [OSDev wiki][4].
 - The [Redox][6] project.
+- Mike Rieker's excellent [APIC tutorial][7].
 
 [1]: http://os.phil-opp.com/ "Writing an OS in Rust"
 [2]: https://crates.io/crates/spin "The spin crate on crates.io"
@@ -26,3 +27,4 @@ A lot of this work is based on work from the following people/organizations or a
 [4]: http://wiki.osdev.org/Main_Page "OSDev wiki Main Page"
 [5]: https://www.rust-lang.org/
 [6]: https://www.redox-os.org
+[7]: https://web.archive.org/web/20140308064246/http://www.osdever.net/tutorials/pdf/apic.pdf

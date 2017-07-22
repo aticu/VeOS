@@ -35,10 +35,7 @@ pub struct Stack {
     bottom_address: VirtualAddress,
     /// Represents the maximum stack size.
     max_size: usize,
-    /// Represents the current stack pointer.
-    ///
-    /// # Note
-    /// This is only valid when the stack is not currently in use.
+    /// Represents the first address of the stack.
     pub base_stack_pointer: VirtualAddress,
     /// The access type for this stack.
     access_type: AccessType

@@ -43,11 +43,13 @@ mod sync;
 mod memory;
 mod multitasking;
 mod syscalls;
+mod interrupts;
 
 /// The name of the operating system.
 static OS_NAME: &str = "VeOS";
 
 use memory::allocator::Allocator;
+/// The global kernel allocator.
 #[global_allocator]
 static ALLOCATOR: Allocator = Allocator;
 

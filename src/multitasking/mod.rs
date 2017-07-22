@@ -6,7 +6,7 @@ pub mod scheduler;
 mod cpu_local;
 
 pub use self::cpu_local::{CPULocal, CPULocalMut};
-pub use self::scheduler::{CURRENT_THREAD, THREAD_ID};
+pub use self::scheduler::CURRENT_THREAD;
 pub use self::stack::{Stack, StackType};
 pub use self::tcb::{TCB, ThreadState};
 use alloc::binary_heap::BinaryHeap;
@@ -26,8 +26,8 @@ pub fn thread(amount: u64, character: char) {
     let mut curr_amount = 0;
     while curr_amount < amount {
         unsafe {
-            asm!("mov rdi, 0
-                  mov esi, $0
+            asm!("mov rax, 0
+                  mov edi, $0
                   syscall"
                   : : "r"(character) : "rax", "rcx", "r11", "r10" : "intel", "volatile");
         }
@@ -39,7 +39,7 @@ pub fn thread(amount: u64, character: char) {
         }
     }
     unsafe {
-        asm!("mov rdi, 1
+        asm!("mov rax, 1
               syscall"
               : : : : "intel", "volatile");
     }

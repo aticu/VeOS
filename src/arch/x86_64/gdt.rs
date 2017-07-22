@@ -39,6 +39,7 @@ pub struct Gdt {
 }
 
 cpu_local! {
+    /// The task state segment of the CPU.
     pub static mut ref TSS: TaskStateSegment = {
         let mut tss = TaskStateSegment::new();
         tss.privilege_stack_table[0] = VirtualAddress(FINAL_STACK_TOP);
@@ -47,7 +48,7 @@ cpu_local! {
 }
 
 cpu_local! {
-    /// The global descriptor table of the system.
+    /// The global descriptor table of the CPU.
     pub static ref GDT: Gdt = {
         let mut gdt = Gdt::new();
         gdt.add_entry(Descriptor::code(DPL0));

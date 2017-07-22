@@ -1,11 +1,11 @@
 An x86_64 syscall receives his arguments in the following registers:
-Syscall number - rdi
-Argument 1 - rsi
-Argument 2 - rdx
-Argument 3 - r8
-Argument 4 - r9
-Argument 5 - r12
-Argument 6 - r13
+Syscall number - rax
+Argument 1 - rdi
+Argument 2 - rsi
+Argument 3 - rdx
+Argument 4 - r8
+Argument 5 - r9
+Argument 6 - r12
 
 The result is returned in rax.
 Clobber registers are r10, r11, rcx.

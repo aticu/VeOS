@@ -1,6 +1,6 @@
 //! Handles interrupts on the x86_64 architecture.
 
-mod lapic;
+pub mod lapic;
 mod ioapic;
 
 pub use self::lapic::issue_self_interrupt;
@@ -9,6 +9,7 @@ use x86_64::registers::control_regs;
 use x86_64::structures::idt::{Idt, ExceptionStackFrame, PageFaultErrorCode};
 use x86_64::instructions::interrupts;
 
+/// The interrupt number for the scheduling interrupt.
 pub const SCHEDULE_INTERRUPT_NUM: u8 = 0x22;
 
 lazy_static! {
@@ -21,7 +22,7 @@ lazy_static! {
         idt.page_fault.set_handler_fn(page_fault_handler);
         idt.interrupts[0].set_handler_fn(timer_handler);
         idt.interrupts[1].set_handler_fn(irq1_handler);
-        idt.interrupts[2].set_handler_fn(schedule_interrupt);
+        idt.interrupts[2].set_handler_fn(schedule_interrupt).disable_interrupts(false);
         // Spurious interrupt handler.
         idt.interrupts[0xf].set_handler_fn(empty_handler);
 
@@ -42,7 +43,8 @@ pub fn init() {
 }
 
 macro_rules! irq_interrupt {
-    ($name: ident $content: tt) => {
+    ($(#[$attr: meta])* fn $name: ident $content: tt) => {
+        $(#[$attr])*
         extern "x86-interrupt" fn $name(_: &mut ExceptionStackFrame) {
             let old_priority = lapic::get_priority();
             lapic::set_priority(0x20);
@@ -87,32 +89,30 @@ extern "x86-interrupt" fn page_fault_handler(stack_frame: &mut ExceptionStackFra
     loop {}
 }
 
+/// The software interrupt handler that invokes schedule operations.
 extern "x86-interrupt" fn schedule_interrupt(_: &mut ExceptionStackFrame) {
-
+    lapic::set_priority(0x20);
     lapic::signal_eoi();
     unsafe {
         schedule_next_thread();
+        interrupts::disable();
     }
+    lapic::set_priority(0x0);
 }
 
+/// An interrupt handler that does nothing.
 extern "x86-interrupt" fn empty_handler(_: &mut ExceptionStackFrame) {}
 
-irq_interrupt!(timer_handler {
-    use arch::schedule;
-
-    print!("!");
-    schedule();
+irq_interrupt!(
+/// The handler for the lapic timer interrupt.
+fn timer_handler {
+    ::interrupts::timer_interrupt();
 });
 
-static mut TID: u16 = 5;
-
-irq_interrupt!(irq1_handler {
+irq_interrupt!(
+/// The handler for IRQ1.
+fn irq1_handler {
     let scancode = unsafe { ::x86_64::instructions::port::inb(0x60) };
-    let character = (scancode % 10) + '0' as u8;
-    ::multitasking::READY_LIST.lock().push(::multitasking::TCB::test(unsafe { TID }, ::multitasking::thread as u64, 10, character as u64, 0, 0, 0, 0));
-    unsafe { TID += 1 };
 
-    ::arch::schedule();
-
-    lapic::signal_eoi();
+    ::interrupts::keyboard_interrupt(scancode);
 });

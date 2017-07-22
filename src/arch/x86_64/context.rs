@@ -3,6 +3,7 @@
 use core::mem::size_of;
 use memory::VirtualAddress;
 use multitasking::scheduler::{idle, after_context_switch};
+use super::interrupts::lapic;
 use super::gdt::{USER_CODE_SEGMENT, USER_DATA_SEGMENT};
 use x86_64::structures::idt::ExceptionStackFrame;
 
@@ -88,9 +89,11 @@ impl Context {
     }
 }
 
+/// This is the first thing that's called by every new process.
 #[naked]
 unsafe fn enter_thread() -> ! {
     after_context_switch();
+    lapic::set_priority(0x0);
     asm!("pop r15
           pop r14
           pop r13
@@ -110,6 +113,7 @@ unsafe fn enter_thread() -> ! {
     unreachable!();
 }
 
+/// Sets the initial idle thread stack.
 unsafe fn set_idle_stack(stack_pointer: u64) -> u64 {
     let mut stack_pointer = stack_pointer;
     stack_pointer -= 8;
@@ -117,6 +121,7 @@ unsafe fn set_idle_stack(stack_pointer: u64) -> u64 {
     stack_pointer
 }
 
+/// Sets the initial kernel stack of a thread, so that it can properly start.
 unsafe fn set_initial_stack(stack_pointer: usize, stack_frame: ExceptionStackFrame, saved_registers: SavedRegisters) -> usize {
     let mut stack_pointer = stack_pointer;
     stack_pointer -= size_of::<ExceptionStackFrame>();
@@ -141,7 +146,7 @@ pub unsafe fn switch_context(old_context: &mut Context, new_context: &Context) {
     let old_bp;
     let new_sp = new_context.kernel_stack_pointer;
     let new_bp = new_context.base_pointer;
-    let base_sp = ::multitasking::CURRENT_THREAD.lock().syscall_stack.base_stack_pointer;
+    let base_sp = ::multitasking::CURRENT_THREAD.lock().kernel_stack.base_stack_pointer;
     super::gdt::TSS.as_mut().privilege_stack_table[0] = ::x86_64::VirtualAddress(base_sp);
 
     asm!("" : "={rsp}"(old_sp), "={rbp}"(old_bp));

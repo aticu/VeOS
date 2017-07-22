@@ -19,11 +19,17 @@ pub enum ThreadState {
 
 /// A structure representing a thread control block.
 pub struct TCB {
+    /// The thread ID within the process.
     pub id: u16,
-    pub syscall_stack: Stack,
+    /// The stack used during kernel operations.
+    pub kernel_stack: Stack,
+    /// The usermode stack.
     pub user_stack: Stack,
+    /// The state of the thread.
     pub state: ThreadState,
+    /// The priority of the thread.
     pub priority: i32,
+    /// The architecture specific context of this thread.
     pub context: Context
 }
 
@@ -86,7 +92,7 @@ impl TCB {
 
         TCB {
             id,
-            syscall_stack,
+            kernel_stack: syscall_stack,
             user_stack,
             state: ThreadState::Ready,
             priority: 1,
@@ -109,7 +115,7 @@ impl TCB {
 
         TCB {
             id: 0,
-            syscall_stack: Stack::new(0, 0, 0, AccessType::KernelOnly),
+            kernel_stack: Stack::new(0, 0, 0, AccessType::KernelOnly),
             user_stack,
             state: ThreadState::Ready,
             priority: i32::min_value(),

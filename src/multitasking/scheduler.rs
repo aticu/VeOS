@@ -8,13 +8,13 @@ use sync::{disable_preemption, restore_preemption_state, enable_preemption};
 use x86_64::instructions::halt;
 
 lazy_static! {
+    /// Holds the TCB of the currently running thread.
     pub static ref CURRENT_THREAD: Mutex<TCB> = Mutex::new(TCB::idle_tcb());
 }
 cpu_local! {
+    /// Holds the TCB of the previously running thread during context switches.
     static mut ref OLD_THREAD: Option<TCB> = None;
 }
-
-pub static mut THREAD_ID: u16 = 0;
 
 /// Schedules the next thread to run and dispatches it.
 ///
@@ -48,8 +48,6 @@ pub unsafe fn schedule_next_thread() {
 
         // OLD_THREAD holds the thread that was previously running.
         // CURRENT_THREAD now holds the thread that is to run now.
-
-        THREAD_ID = CURRENT_THREAD.lock().id;
 
         if !OLD_THREAD.as_ref().unwrap().is_dead() {
             // If the thread isn't dead, set it's state to ready.
