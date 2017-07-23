@@ -81,7 +81,7 @@ impl TCB {
 
         let syscall_stack = Stack::new(0x5000,
                                        STACK_MAX_SIZE,
-                                       SYSCALL_STACK_AREA_BASE + STACK_OFFSET * (id as usize + 1),
+                                       KERNEL_STACK_AREA_BASE + STACK_OFFSET * (id as usize + 1),
                                        AccessType::KernelOnly);
         let user_stack = Stack::new(0x1000,
                                     0x1000,

@@ -8,6 +8,7 @@ pub fn syscall_handler(num: u64, arg1: u64, _: u64, _: u64, _: u64, _: u64, _: u
     match num {
         0 => print_char(arg1 as u8 as char),
         1 => kill_thread(),
+        2 => 'a' as u64 + CURRENT_THREAD.lock().id as u64,
         _ => unknown_syscall(num),
     }
 }

@@ -1,7 +1,6 @@
 //! Serves to accept syscalls.
 
 use super::gdt::{KERNEL_CODE_SEGMENT, USER_32BIT_CODE_SEGMENT, TSS};
-use arch::memory::{STACK_OFFSET, SYSCALL_STACK_AREA_BASE};
 use syscalls::syscall_handler;
 use x86_64::registers::flags::Flags;
 use x86_64::registers::msr::{IA32_FMASK, IA32_LSTAR, IA32_STAR, IA32_KERNEL_GS_BASE, wrmsr};

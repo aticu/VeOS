@@ -1,11 +1,13 @@
 //! Deals with configuring the I/O APIC.
 
 use memory::{NO_CACHE, PhysicalAddress, READABLE, VirtualAddress, WRITABLE, map_page_at};
+use super::IRQ_INTERRUPT_NUMS;
 use x86_64::instructions::port::outb;
 
 /// The physical base address of the memory mapped I/O APIC.
 const IO_APIC_BASE: PhysicalAddress = 0xfec00000;
 
+/// Initializes the I/O APIC.
 pub fn init() {
     assert_has_not_been_called!("The I/O APIC should only be initialized once.");
 
@@ -19,10 +21,21 @@ pub fn init() {
         outb(0xa1, 0xff);
     }
 
-    let mut irq1 = IORedirectionEntry::new();
-    irq1.set_vector(0x21);
+    for i in 0..16 {
+        let mut irq = IORedirectionEntry::new();
+        irq.set_vector(IRQ_INTERRUPT_NUMS[i]);
+        set_irq(i as u8, irq);
+    }
 
-    set_irq(1, irq1);
+    let mut irq2 = IORedirectionEntry::new();
+    irq2.set_inactive();
+    set_irq(2, irq2);
+
+    // Reroute interrupts to the IOAPIC.
+    unsafe {
+        outb(0x22, 0x70);
+        outb(0x23, 0x01);
+    }
 }
 
 /// Writes an I/O APIC register.

@@ -13,11 +13,8 @@ const VIRTUAL_HIGH_MIN_ADDRESS: VirtualAddress = 0xffff800000000000;
 /// The top of the stack after the kernel has been remapped.
 pub const FINAL_STACK_TOP: VirtualAddress = 0xfffffe8000000000;
 
-/// The base address of the syscall stack area.
-pub const SYSCALL_STACK_AREA_BASE: VirtualAddress = 0xfffffe0000000000;
-
-/// The base address of the interrupt stack area.
-pub const INTERRUPT_STACK_AREA_BASE: VirtualAddress = 0xfffffe4000000000;
+/// The base address of the kernel stack area.
+pub const KERNEL_STACK_AREA_BASE: VirtualAddress = 0xfffffe0000000000;
 
 /// The offset of the start addresses of thread kernel stacks.
 pub const STACK_OFFSET: usize = 0x400000;

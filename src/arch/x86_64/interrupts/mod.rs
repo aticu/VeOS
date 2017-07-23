@@ -9,8 +9,17 @@ use x86_64::registers::control_regs;
 use x86_64::structures::idt::{Idt, ExceptionStackFrame, PageFaultErrorCode};
 use x86_64::instructions::interrupts;
 
-/// The interrupt number for the scheduling interrupt.
-pub const SCHEDULE_INTERRUPT_NUM: u8 = 0x22;
+/// The vector for the scheduling interrupt.
+pub const SCHEDULE_INTERRUPT_NUM: u8 = 0x20;
+
+/// The vectors for the IRQs.
+const IRQ_INTERRUPT_NUMS: [u8; 16] = [0xEC, 0xE4, 0xFF, 0x94, 0x8C, 0x84, 0x7C, 0x74, 0xD4, 0xCC, 0xC4, 0xBC, 0xB4, 0xAC, 0xA4, 0x9C];
+
+/// The vector for the LAPIC timer interrupt.
+const TIMER_INTERRUPT_HANDLER_NUM: u8 = 0x30;
+
+/// The handler number for the spurious interrupt.
+const SPURIOUS_INTERRUPT_HANDLER_NUM: u8 = 0x2f;
 
 lazy_static! {
     /// The interrupt descriptor table used by the kernel.
@@ -20,11 +29,10 @@ lazy_static! {
         idt.divide_by_zero.set_handler_fn(divide_by_zero_handler);
         idt.breakpoint.set_handler_fn(breakpoint_handler);
         idt.page_fault.set_handler_fn(page_fault_handler);
-        idt.interrupts[0].set_handler_fn(timer_handler);
-        idt.interrupts[1].set_handler_fn(irq1_handler);
-        idt.interrupts[2].set_handler_fn(schedule_interrupt).disable_interrupts(false);
-        // Spurious interrupt handler.
-        idt.interrupts[0xf].set_handler_fn(empty_handler);
+        idt[TIMER_INTERRUPT_HANDLER_NUM as usize].set_handler_fn(timer_handler);
+        idt[IRQ_INTERRUPT_NUMS[1] as usize].set_handler_fn(irq1_handler);
+        idt[SCHEDULE_INTERRUPT_NUM as usize].set_handler_fn(schedule_interrupt).disable_interrupts(false);
+        idt[SPURIOUS_INTERRUPT_HANDLER_NUM as usize].set_handler_fn(empty_handler);
 
         idt
     };
@@ -65,28 +73,28 @@ macro_rules! irq_interrupt {
 
 /// The divide by zero exception handler of the kernel.
 extern "x86-interrupt" fn divide_by_zero_handler(stack_frame: &mut ExceptionStackFrame) {
-    println!("DIVIDE BY ZERO!");
+    println!("Divide by zero exception.");
     println!("{:?}", stack_frame);
     loop {}
 }
 
 /// The breakpoint exception handler of the kernel.
 extern "x86-interrupt" fn breakpoint_handler(stack_frame: &mut ExceptionStackFrame) {
-    println!("BREAKPOINT");
+    println!("Breakpoint exception.");
     println!("{:?}", stack_frame);
     loop {}
 }
 
 /// The page fault handler of the kernel.
-extern "x86-interrupt" fn page_fault_handler(stack_frame: &mut ExceptionStackFrame, error_code: PageFaultErrorCode) {
-    println!("PAGE FAULT!");
-    println!("Address: {:x}", control_regs::cr2());
-    println!("Error code: {:?}",
-             error_code);
-    println!("Page flags: {:?}",
-             super::memory::get_page_flags(control_regs::cr2().0));
-    println!("{:?}", stack_frame);
-    loop {}
+extern "x86-interrupt" fn page_fault_handler(_: &mut ExceptionStackFrame, _: PageFaultErrorCode) {
+    //println!("PAGE FAULT!");
+    //println!("Address: {:x}", control_regs::cr2());
+    //println!("Error code: {:?}",
+             //error_code);
+    //println!("Page flags: {:?}",
+             //super::memory::get_page_flags(control_regs::cr2().0));
+    //println!("{:?}", stack_frame);
+    ::interrupts::page_fault_handler(control_regs::cr2().0);
 }
 
 /// The software interrupt handler that invokes schedule operations.

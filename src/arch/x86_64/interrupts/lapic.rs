@@ -3,6 +3,7 @@
 
 use memory::{NO_CACHE, PhysicalAddress, READABLE, VirtualAddress, WRITABLE, map_page_at};
 use raw_cpuid::CpuId;
+use super::{TIMER_INTERRUPT_HANDLER_NUM, SPURIOUS_INTERRUPT_HANDLER_NUM};
 use sync::{disable_preemption, restore_preemption_state};
 
 /// The physical base address of the memory mapped LAPIC.
@@ -77,7 +78,7 @@ pub fn init() {
 
     let mut timer_register = LVTRegister::new();
     timer_register.set_timer_mode(PERIODIC_TIMER_MODE);
-    timer_register.set_vector(0x20);
+    timer_register.set_vector(TIMER_INTERRUPT_HANDLER_NUM);
 
     unsafe {
         // Deactivate currently unused interrupts.
@@ -95,7 +96,7 @@ pub fn init() {
         set_register(TIMER_INITIAL_COUNT, 0);
 
         // Enable the LAPIC.
-        set_register(SPURIOUS_INTERRUPT, 0x12f);
+        set_register(SPURIOUS_INTERRUPT, 0x100 + SPURIOUS_INTERRUPT_HANDLER_NUM as u32);
 
         // Set the local interrupt registers again, to make sure they have the right value.
         set_lvt_register(LINT0_INTERRUPT, lint0_register);

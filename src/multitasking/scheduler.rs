@@ -2,6 +2,7 @@
 
 use super::{READY_LIST, TCB};
 use arch::context::switch_context;
+use arch::schedule;
 use core::mem::swap;
 use sync::Mutex;
 use sync::{disable_preemption, restore_preemption_state, enable_preemption};
@@ -30,9 +31,12 @@ pub unsafe fn schedule_next_thread() {
 
     // TODO: Start the timer again here to ensure fairness.
 
-    // TODO: Rework this part.
+    // Scheduling is needed if:
+    // There is another thread to schedule.
     let schedule_needed = ready_list.peek().is_some();
+    // And it has at least the same priority.
     let schedule_needed = schedule_needed && ready_list.peek().unwrap() >= &CURRENT_THREAD.lock();
+    // Or the current thread can't run anymore.
     let schedule_needed = schedule_needed || CURRENT_THREAD.lock().is_dead();
 
     // Only switch if actually needed.
@@ -92,7 +96,7 @@ pub fn idle() -> ! {
     // TODO: Peform initial cleanup here.
     unsafe {
         enable_preemption();
-        schedule_next_thread();
+        schedule();
     }
     loop {
         // TODO: Perform periodic cleanup here.

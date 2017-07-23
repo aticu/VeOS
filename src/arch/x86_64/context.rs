@@ -14,24 +14,6 @@ pub struct Context {
     base_pointer: VirtualAddress
 }
 
-struct SavedRegisters {
-    r15: u64,
-    r14: u64,
-    r13: u64,
-    r12: u64,
-    r11: u64,
-    r10: u64,
-    r9: u64,
-    r8: u64,
-    rbp: u64,
-    rdi: u64,
-    rsi: u64,
-    rdx: u64,
-    rcx: u64,
-    rbx: u64,
-    rax: u64
-}
-
 impl Context {
     // TODO: Remove me, I'm only for testing.
     pub fn test(function: u64,
@@ -44,23 +26,6 @@ impl Context {
                 stack_pointer: u64,
                 kernel_stack_pointer: usize)
                 -> Context {
-        let regs = SavedRegisters {
-            r15: 0,
-            r14: 0,
-            r13: 0,
-            r12: 0,
-            r11: 0,
-            r10: 0,
-            r9: arg6,
-            r8: arg5,
-            rbp: 0,
-            rdi: arg1,
-            rsi: arg2,
-            rdx: arg3,
-            rcx: arg4,
-            rbx: 0,
-            rax: 0
-        };
         use x86_64::registers::flags::Flags;
 
         let stack_frame = ExceptionStackFrame {
@@ -71,7 +36,7 @@ impl Context {
             stack_segment: USER_DATA_SEGMENT.0 as u64
         };
 
-        let kernel_stack_pointer = unsafe { set_initial_stack(kernel_stack_pointer, stack_frame, regs) };
+        let kernel_stack_pointer = unsafe { set_initial_stack(kernel_stack_pointer, stack_frame, arg1, arg2, arg3, arg4, arg5, arg6) };
 
         Context {
             kernel_stack_pointer,
@@ -94,21 +59,27 @@ impl Context {
 unsafe fn enter_thread() -> ! {
     after_context_switch();
     lapic::set_priority(0x0);
-    asm!("pop r15
-          pop r14
-          pop r13
-          pop r12
-          pop r11
-          pop r10
+    asm!("xor r15, r15
+          xor r14, r14
+          xor r13, r13
+          xor r12, r12
+          xor r11, r11
+          xor r10, r10
+          xor r9, r9
+          xor r8, r8
+          xor rbp, rbp
+          xor rdi, rdi
+          xor rsi, rsi
+          xor rdx, rdx
+          xor rcx, rcx
+          xor rbx, rbx
+          xor rax, rax
           pop r9
           pop r8
-          pop rbp
-          pop rdi
-          pop rsi
-          pop rdx
           pop rcx
-          pop rbx
-          pop rax
+          pop rdx
+          pop rsi
+          pop rdi
           iretq" : : : : "intel", "volatile");
     unreachable!();
 }
@@ -122,12 +93,22 @@ unsafe fn set_idle_stack(stack_pointer: u64) -> u64 {
 }
 
 /// Sets the initial kernel stack of a thread, so that it can properly start.
-unsafe fn set_initial_stack(stack_pointer: usize, stack_frame: ExceptionStackFrame, saved_registers: SavedRegisters) -> usize {
+unsafe fn set_initial_stack(stack_pointer: usize, stack_frame: ExceptionStackFrame, arg1: u64, arg2: u64, arg3: u64, arg4: u64, arg5: u64, arg6: u64) -> usize {
     let mut stack_pointer = stack_pointer;
     stack_pointer -= size_of::<ExceptionStackFrame>();
     *(stack_pointer as *mut ExceptionStackFrame) = stack_frame;
-    stack_pointer -= size_of::<SavedRegisters>();
-    *(stack_pointer as *mut SavedRegisters) = saved_registers;
+    stack_pointer -= 8;
+    *(stack_pointer as *mut u64) = arg1;
+    stack_pointer -= 8;
+    *(stack_pointer as *mut u64) = arg2;
+    stack_pointer -= 8;
+    *(stack_pointer as *mut u64) = arg3;
+    stack_pointer -= 8;
+    *(stack_pointer as *mut u64) = arg4;
+    stack_pointer -= 8;
+    *(stack_pointer as *mut u64) = arg5;
+    stack_pointer -= 8;
+    *(stack_pointer as *mut u64) = arg6;
     stack_pointer -= 8;
     *(stack_pointer as *mut u64) = enter_thread as u64;
     stack_pointer

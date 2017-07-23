@@ -15,9 +15,6 @@ const GDT_ENTRY_NUM: usize = 8;
 /// The kernel code segment.
 pub const KERNEL_CODE_SEGMENT: SegmentSelector = SegmentSelector::new(1, PrivilegeLevel::Ring0);
 
-/// The kernel data segment.
-pub const KERNEL_DATA_SEGMENT: SegmentSelector = SegmentSelector::new(2, PrivilegeLevel::Ring0);
-
 /// The (unused) kernel 32-bit code selector.
 pub const USER_32BIT_CODE_SEGMENT: SegmentSelector = SegmentSelector::new(3, PrivilegeLevel::Ring3);
 
