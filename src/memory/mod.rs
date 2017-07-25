@@ -2,7 +2,17 @@
 
 pub mod allocator;
 
-pub use arch::memory::*;
+pub use arch::get_page_flags;
+pub use arch::map_page_at;
+pub use arch::map_page;
+pub use arch::unmap_page;
+pub use arch::PAGE_SIZE;
+pub use arch::get_kernel_end_address;
+pub use arch::get_kernel_start_address;
+pub use arch::STACK_MAX_SIZE;
+pub use arch::KERNEL_STACK_AREA_BASE;
+pub use arch::STACK_OFFSET;
+
 use core::fmt;
 
 /// Represents a physical address.
@@ -80,7 +90,7 @@ impl fmt::Debug for FreeMemoryArea {
 pub fn init() {
     assert_has_not_been_called!("Memory state should only be initialized once.");
 
-    ::arch::memory::init();
+    ::arch::memory_init();
 }
 
 /// This function gets called when the system is out of memory.

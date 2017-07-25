@@ -1,7 +1,7 @@
 //! This module implements a scheduler.
 
 use super::{READY_LIST, TCB};
-use arch::context::switch_context;
+use arch::switch_context;
 use arch::schedule;
 use core::mem::swap;
 use sync::{disable_preemption, enable_preemption, restore_preemption_state};

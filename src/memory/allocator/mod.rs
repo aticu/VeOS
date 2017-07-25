@@ -4,7 +4,7 @@ mod linked_list_allocator;
 
 use self::linked_list_allocator::LinkedListAllocator;
 use alloc::allocator::{Alloc, AllocErr, Layout};
-use arch::memory::{HEAP_MAX_SIZE, HEAP_START};
+use arch::{HEAP_MAX_SIZE, HEAP_START};
 use memory::VirtualAddress;
 use sync::mutex::Mutex;
 

@@ -84,7 +84,7 @@ pub extern "C" fn main(magic_number: u32, information_structure_address: usize) 
     println!("The processor is a {}",
              unwrapped_info.processor_brand_string().unwrap());
 
-    loop {}
+    //loop {}
     unsafe {
         arch::enter_first_thread();
     }

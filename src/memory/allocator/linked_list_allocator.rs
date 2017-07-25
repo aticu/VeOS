@@ -1,7 +1,7 @@
 //! Provides an interface for a linked list allocator.
 
 use super::align;
-use arch::memory::PAGE_SIZE;
+use arch::PAGE_SIZE;
 use core::fmt;
 use core::mem::{align_of, size_of};
 use memory::{READABLE, VirtualAddress, WRITABLE, map_page, unmap_page};
