@@ -4,8 +4,8 @@ use super::{READY_LIST, TCB};
 use arch::context::switch_context;
 use arch::schedule;
 use core::mem::swap;
+use sync::{disable_preemption, enable_preemption, restore_preemption_state};
 use sync::Mutex;
-use sync::{disable_preemption, restore_preemption_state, enable_preemption};
 use x86_64::instructions::halt;
 
 lazy_static! {
@@ -48,7 +48,8 @@ pub unsafe fn schedule_next_thread() {
         drop(ready_list);
 
         // Now swap the references.
-        swap(&mut *CURRENT_THREAD.lock(), OLD_THREAD.as_mut().as_mut().unwrap());
+        swap(&mut *CURRENT_THREAD.lock(),
+             OLD_THREAD.as_mut().as_mut().unwrap());
 
         // OLD_THREAD holds the thread that was previously running.
         // CURRENT_THREAD now holds the thread that is to run now.
@@ -60,7 +61,8 @@ pub unsafe fn schedule_next_thread() {
         CURRENT_THREAD.lock().set_running();
 
         // This is where the actual switch happens.
-        switch_context(&mut OLD_THREAD.as_mut().as_mut().unwrap().context, &CURRENT_THREAD.without_locking().context);
+        switch_context(&mut OLD_THREAD.as_mut().as_mut().unwrap().context,
+                       &CURRENT_THREAD.without_locking().context);
 
         after_context_switch();
     } else {
@@ -71,17 +73,19 @@ pub unsafe fn schedule_next_thread() {
     restore_preemption_state(&preemption_state);
 }
 
-/// This function should get called after calling `context_switch` to perform clean up.
+/// This function should get called after calling `context_switch` to perform
+/// clean up.
 pub fn after_context_switch() {
     if OLD_THREAD.is_some() {
         if OLD_THREAD.as_ref().unwrap().is_dead() {
             unsafe {
                 OLD_THREAD.as_mut().take();
             }
-        }
-        else {
+        } else {
             unsafe {
-                READY_LIST.lock().push(OLD_THREAD.as_mut().take().unwrap());
+                READY_LIST
+                    .lock()
+                    .push(OLD_THREAD.as_mut().take().unwrap());
             }
         }
     }

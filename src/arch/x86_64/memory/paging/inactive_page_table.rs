@@ -88,7 +88,7 @@ impl InactivePageTable {
 
     /// Returns the page frame of this page table.
     pub fn get_frame(&self) -> PageFrame {
-        self.l4_frame.copy()
+        unsafe { self.l4_frame.copy() }
     }
 
     /// Unmaps the currently loaded inactive page table.

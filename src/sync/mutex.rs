@@ -117,7 +117,8 @@ impl<T: ?Sized> Mutex<T> {
 
     /// Returns a reference to the contained data, without locking the mutex.
     ///
-    /// This intended for use in the scheduler, where no locks should be held while switching
+    /// This intended for use in the scheduler, where no locks should be held
+    /// while switching
     /// contexts.
     ///
     /// # Safety

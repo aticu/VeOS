@@ -1,10 +1,10 @@
 //! Provides saving and restoring of architecture specific execution context.
 
+use super::gdt::{USER_CODE_SEGMENT, USER_DATA_SEGMENT};
+use super::interrupts::lapic;
 use core::mem::size_of;
 use memory::VirtualAddress;
-use multitasking::scheduler::{idle, after_context_switch};
-use super::interrupts::lapic;
-use super::gdt::{USER_CODE_SEGMENT, USER_DATA_SEGMENT};
+use multitasking::scheduler::{after_context_switch, idle};
 use x86_64::structures::idt::ExceptionStackFrame;
 
 // TODO: Floating point state is not saved yet.
@@ -36,7 +36,16 @@ impl Context {
             stack_segment: USER_DATA_SEGMENT.0 as u64
         };
 
-        let kernel_stack_pointer = unsafe { set_initial_stack(kernel_stack_pointer, stack_frame, arg1, arg2, arg3, arg4, arg5, arg6) };
+        let kernel_stack_pointer = unsafe {
+            set_initial_stack(kernel_stack_pointer,
+                              stack_frame,
+                              arg1,
+                              arg2,
+                              arg3,
+                              arg4,
+                              arg5,
+                              arg6)
+        };
 
         Context {
             kernel_stack_pointer,
@@ -93,7 +102,15 @@ unsafe fn set_idle_stack(stack_pointer: u64) -> u64 {
 }
 
 /// Sets the initial kernel stack of a thread, so that it can properly start.
-unsafe fn set_initial_stack(stack_pointer: usize, stack_frame: ExceptionStackFrame, arg1: u64, arg2: u64, arg3: u64, arg4: u64, arg5: u64, arg6: u64) -> usize {
+unsafe fn set_initial_stack(stack_pointer: usize,
+                            stack_frame: ExceptionStackFrame,
+                            arg1: u64,
+                            arg2: u64,
+                            arg3: u64,
+                            arg4: u64,
+                            arg5: u64,
+                            arg6: u64)
+                            -> usize {
     let mut stack_pointer = stack_pointer;
     stack_pointer -= size_of::<ExceptionStackFrame>();
     *(stack_pointer as *mut ExceptionStackFrame) = stack_frame;
@@ -117,7 +134,8 @@ unsafe fn set_initial_stack(stack_pointer: usize, stack_frame: ExceptionStackFra
 /// Switches the context from the old thread to the current thread.
 ///
 /// # Safety
-/// - To make sure that everything is properly cleaned up after switching the context this should
+/// - To make sure that everything is properly cleaned up after switching the
+/// context this should
 /// only be called by the scheduler.
 #[naked]
 pub unsafe fn switch_context(old_context: &mut Context, new_context: &Context) {
@@ -127,7 +145,10 @@ pub unsafe fn switch_context(old_context: &mut Context, new_context: &Context) {
     let old_bp;
     let new_sp = new_context.kernel_stack_pointer;
     let new_bp = new_context.base_pointer;
-    let base_sp = ::multitasking::CURRENT_THREAD.lock().kernel_stack.base_stack_pointer;
+    let base_sp = ::multitasking::CURRENT_THREAD
+        .lock()
+        .kernel_stack
+        .base_stack_pointer;
     super::gdt::TSS.as_mut().privilege_stack_table[0] = ::x86_64::VirtualAddress(base_sp);
 
     asm!("" : "={rsp}"(old_sp), "={rbp}"(old_bp));

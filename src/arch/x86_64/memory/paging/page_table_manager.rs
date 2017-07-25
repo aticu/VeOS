@@ -196,7 +196,8 @@ pub trait PageTableManager {
     /// - Make sure the page isn't referenced anywhere anymore.
     unsafe fn unmap_page(&mut self, page: Page) {
         // TODO: Consider multiple CPUs.
-        // TODO: Consider that the page may still be in use elsewhere (don't free the frame then).
+        // TODO: Consider that the page may still be in use elsewhere (don't free the
+        // frame then).
         let entry = self.get_entry(page.get_address());
 
         entry

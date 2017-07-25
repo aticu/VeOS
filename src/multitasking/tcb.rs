@@ -1,10 +1,10 @@
 //! Provides and manages thread control blocks.
 
+use super::Stack;
+use super::stack::AccessType;
 use arch::Context;
 use core::cmp::Ordering;
 use core::fmt;
-use super::Stack;
-use super::stack::AccessType;
 
 /// Represents the possible states a thread can have.
 #[derive(PartialEq)]

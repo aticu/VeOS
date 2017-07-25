@@ -1,9 +1,9 @@
 //! Serves to accept syscalls.
 
-use super::gdt::{KERNEL_CODE_SEGMENT, USER_32BIT_CODE_SEGMENT, TSS};
+use super::gdt::{KERNEL_CODE_SEGMENT, TSS, USER_32BIT_CODE_SEGMENT};
 use syscalls::syscall_handler;
 use x86_64::registers::flags::Flags;
-use x86_64::registers::msr::{IA32_FMASK, IA32_LSTAR, IA32_STAR, IA32_KERNEL_GS_BASE, wrmsr};
+use x86_64::registers::msr::{IA32_FMASK, IA32_KERNEL_GS_BASE, IA32_LSTAR, IA32_STAR, wrmsr};
 
 /// Initializes the system to be able to accept syscalls.
 pub fn init() {

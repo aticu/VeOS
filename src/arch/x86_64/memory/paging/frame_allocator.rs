@@ -66,7 +66,7 @@ impl FrameAllocator {
     /// Deallocates the page frame.
     ///
     /// # Safety
-    /// - Must not be called on used page frames.
+    /// - Must not be called on page frames still in use.
     pub unsafe fn deallocate(&self, frame: PageFrame) {
         // NOTE: The lock on the list also locks the allocator, should the inner
         // workings of the allocator be changed, then there will also need to be a

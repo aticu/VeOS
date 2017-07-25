@@ -12,11 +12,15 @@ macro_rules! from_c_str {
         unsafe {
             assert_eq!(*(($address + $length) as *const u8), 0);
         }
-        let bytes: &[u8] = unsafe {
-                                   slice::from_raw_parts($address
-                                       as *const u8, $length as usize - 1)
-                           };
-        str::from_utf8(bytes)
+        if $length > 0 {
+            let bytes: &[u8] = unsafe {
+                                       slice::from_raw_parts($address
+                                           as *const u8, $length as usize)
+                               };
+            str::from_utf8(bytes)
+        } else {
+            Ok("")
+        }
     }};
     ($address: expr) => {{
         let mut address: usize = $address;
@@ -26,6 +30,24 @@ macro_rules! from_c_str {
             }
         }
         from_c_str!($address, (address - $address))
+    }};
+}
+
+/// Creates a `&'static str` from a pointer to a raw string and it's length.
+#[macro_export]
+macro_rules! from_raw_str {
+    ($address: expr, $length: expr) => {{
+        use core::str;
+        use core::slice;
+        if $length > 0 {
+            let bytes: &[u8] = unsafe {
+                                       slice::from_raw_parts($address
+                                           as *const u8, $length as usize)
+                               };
+            str::from_utf8(bytes)
+        } else {
+            Ok("")
+        }
     }};
 }
 

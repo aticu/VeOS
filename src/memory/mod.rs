@@ -12,6 +12,7 @@ pub type PhysicalAddress = usize;
 pub type VirtualAddress = usize;
 
 /// Represents an unused chunk of memory in the physical address space.
+#[derive(Clone, Copy)]
 pub struct FreeMemoryArea {
     /// The address at which the chunk starts.
     pub start_address: PhysicalAddress,
@@ -44,6 +45,11 @@ impl FreeMemoryArea {
             start_address,
             length
         }
+    }
+
+    /// Returns the start address of this free memory area.
+    pub fn start_address(&self) -> PhysicalAddress {
+        self.start_address
     }
 
     /// Returns the end address of this free memory area.

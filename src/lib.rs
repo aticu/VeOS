@@ -44,6 +44,7 @@ mod memory;
 mod multitasking;
 mod syscalls;
 mod interrupts;
+mod initramfs;
 
 /// The name of the operating system.
 static OS_NAME: &str = "VeOS";
@@ -77,11 +78,13 @@ pub extern "C" fn main(magic_number: u32, information_structure_address: usize) 
     memory::init();
     arch::init();
 
+
     let extended_info = raw_cpuid::CpuId::new().get_extended_function_info();
     let unwrapped_info = extended_info.unwrap();
     println!("The processor is a {}",
              unwrapped_info.processor_brand_string().unwrap());
 
+    loop {}
     unsafe {
         arch::enter_first_thread();
     }

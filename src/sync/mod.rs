@@ -65,8 +65,9 @@ pub unsafe fn disable_preemption() -> PreemptionState {
 
 /// Unconditionally enables preemption.
 ///
-/// # Safety 
-/// This should only be done during initialization. Otherwise the preemption state that
+/// # Safety
+/// This should only be done during initialization. Otherwise the preemption
+/// state that
 /// was returned by the disable function should be restored.
 pub unsafe fn enable_preemption() {
     arch::sync::enable_interrupts();

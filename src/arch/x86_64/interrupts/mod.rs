@@ -5,15 +5,16 @@ mod ioapic;
 
 pub use self::lapic::issue_self_interrupt;
 use multitasking::scheduler::schedule_next_thread;
-use x86_64::registers::control_regs;
-use x86_64::structures::idt::{Idt, ExceptionStackFrame, PageFaultErrorCode};
 use x86_64::instructions::interrupts;
+use x86_64::registers::control_regs;
+use x86_64::structures::idt::{ExceptionStackFrame, Idt, PageFaultErrorCode};
 
 /// The vector for the scheduling interrupt.
 pub const SCHEDULE_INTERRUPT_NUM: u8 = 0x20;
 
 /// The vectors for the IRQs.
-const IRQ_INTERRUPT_NUMS: [u8; 16] = [0xEC, 0xE4, 0xFF, 0x94, 0x8C, 0x84, 0x7C, 0x74, 0xD4, 0xCC, 0xC4, 0xBC, 0xB4, 0xAC, 0xA4, 0x9C];
+const IRQ_INTERRUPT_NUMS: [u8; 16] = [0xEC, 0xE4, 0xFF, 0x94, 0x8C, 0x84, 0x7C, 0x74, 0xD4, 0xCC,
+                                      0xC4, 0xBC, 0xB4, 0xAC, 0xA4, 0x9C];
 
 /// The vector for the LAPIC timer interrupt.
 const TIMER_INTERRUPT_HANDLER_NUM: u8 = 0x30;
@@ -31,7 +32,8 @@ lazy_static! {
         idt.page_fault.set_handler_fn(page_fault_handler);
         idt[TIMER_INTERRUPT_HANDLER_NUM as usize].set_handler_fn(timer_handler);
         idt[IRQ_INTERRUPT_NUMS[1] as usize].set_handler_fn(irq1_handler);
-        idt[SCHEDULE_INTERRUPT_NUM as usize].set_handler_fn(schedule_interrupt).disable_interrupts(false);
+        idt[SCHEDULE_INTERRUPT_NUM as usize].set_handler_fn(schedule_interrupt)
+            .disable_interrupts(false);
         idt[SPURIOUS_INTERRUPT_HANDLER_NUM as usize].set_handler_fn(empty_handler);
 
         idt
@@ -87,13 +89,13 @@ extern "x86-interrupt" fn breakpoint_handler(stack_frame: &mut ExceptionStackFra
 
 /// The page fault handler of the kernel.
 extern "x86-interrupt" fn page_fault_handler(_: &mut ExceptionStackFrame, _: PageFaultErrorCode) {
-    //println!("PAGE FAULT!");
-    //println!("Address: {:x}", control_regs::cr2());
-    //println!("Error code: {:?}",
-             //error_code);
-    //println!("Page flags: {:?}",
-             //super::memory::get_page_flags(control_regs::cr2().0));
-    //println!("{:?}", stack_frame);
+    // println!("PAGE FAULT!");
+    // println!("Address: {:x}", control_regs::cr2());
+    // println!("Error code: {:?}",
+    // error_code);
+    // println!("Page flags: {:?}",
+    // super::memory::get_page_flags(control_regs::cr2().0));
+    // println!("{:?}", stack_frame);
     ::interrupts::page_fault_handler(control_regs::cr2().0);
 }
 

@@ -17,12 +17,14 @@ use memory;
 use memory::{PageFlags, PhysicalAddress, VirtualAddress};
 
 /// Initializes the paging.
-pub fn init() {
+pub fn init(initramfs_start: PhysicalAddress, initramfs_length: usize) {
     assert_has_not_been_called!("The x86_64 paging module should only be initialized once.");
 
     free_list::init();
 
     unsafe { remap_kernel() };
+
+    unsafe { map_initramfs(initramfs_start, initramfs_length) };
 }
 
 /// Converts the general `PageFlags` to x86_64-specific flags.
@@ -104,6 +106,23 @@ pub unsafe fn unmap_page(start_address: VirtualAddress) {
     CURRENT_PAGE_TABLE
         .lock()
         .unmap_page(Page::from_address(start_address));
+}
+
+/// Maps the initramfs into the kernel.
+///
+/// # Safety
+/// - This should only be called once.
+unsafe fn map_initramfs(initramfs_start: PhysicalAddress, initramfs_length: usize) {
+    assert_has_not_been_called!("Trying to map the initramfs twice");
+
+    let initramfs_page_amount = (initramfs_length - 1) / PAGE_SIZE + 1;
+
+    // Map the initramfs.
+    for i in 0..initramfs_page_amount {
+        let physical_address = initramfs_start + i * PAGE_SIZE;
+        let virtual_address = INITRAMFS_MAP_AREA_START + i * PAGE_SIZE;
+        map_page_at(virtual_address, physical_address, memory::READABLE);
+    }
 }
 
 /// Maps the kernel properly for the first time.
@@ -203,7 +222,11 @@ impl PageFrame {
         self.0
     }
 
-    pub fn copy(&self) -> PageFrame {
+    /// Creates a copy of the page frame.
+    ///
+    /// # Safety
+    /// - Make sure that each frame is still only managed once.
+    pub unsafe fn copy(&self) -> PageFrame {
         PageFrame(self.0)
     }
 }

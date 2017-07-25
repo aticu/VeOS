@@ -1,9 +1,9 @@
 //! Handles configuration of the Local Advanced Programmable Interrupt
 //! Controller (LAPIC).
 
+use super::{SPURIOUS_INTERRUPT_HANDLER_NUM, TIMER_INTERRUPT_HANDLER_NUM};
 use memory::{NO_CACHE, PhysicalAddress, READABLE, VirtualAddress, WRITABLE, map_page_at};
 use raw_cpuid::CpuId;
-use super::{TIMER_INTERRUPT_HANDLER_NUM, SPURIOUS_INTERRUPT_HANDLER_NUM};
 use sync::{disable_preemption, restore_preemption_state};
 
 /// The physical base address of the memory mapped LAPIC.
@@ -62,7 +62,10 @@ pub fn init() {
                 LAPIC_BASE,
                 READABLE | WRITABLE | NO_CACHE);
 
-    let cpu_id = CpuId::new().get_feature_info().unwrap().initial_local_apic_id();
+    let cpu_id = CpuId::new()
+        .get_feature_info()
+        .unwrap()
+        .initial_local_apic_id();
     let logical_id = cpu_id % 8;
 
     let mut inactive_register = LVTRegister::new();
@@ -96,9 +99,11 @@ pub fn init() {
         set_register(TIMER_INITIAL_COUNT, 0);
 
         // Enable the LAPIC.
-        set_register(SPURIOUS_INTERRUPT, 0x100 + SPURIOUS_INTERRUPT_HANDLER_NUM as u32);
+        set_register(SPURIOUS_INTERRUPT,
+                     0x100 + SPURIOUS_INTERRUPT_HANDLER_NUM as u32);
 
-        // Set the local interrupt registers again, to make sure they have the right value.
+        // Set the local interrupt registers again, to make sure they have the right
+        // value.
         set_lvt_register(LINT0_INTERRUPT, lint0_register);
         set_lvt_register(LINT1_INTERRUPT, lint1_register);
 
@@ -134,9 +139,7 @@ pub fn set_priority(value: u8) {
 
 /// Gets the current task priority for the local APIC.
 pub fn get_priority() -> u8 {
-    unsafe {
-        get_register(TASK_PRIORITY_REGISTER) as u8
-    }
+    unsafe { get_register(TASK_PRIORITY_REGISTER) as u8 }
 }
 
 /// Sets the ICR to the specified value.
@@ -160,7 +163,7 @@ fn get_lapic_base() -> VirtualAddress {
 }
 
 /// Sets a LAPIC register.
-/// 
+///
 /// # Safety
 /// - Ensure the LAPIC is mapped.
 /// - Setting registers incorrectly can cause interrupts to behave unexpected.
@@ -171,7 +174,7 @@ unsafe fn set_register(offset: usize, value: u32) {
 }
 
 /// Gets a LAPIC register.
-/// 
+///
 /// # Safety
 /// - Ensure the LAPIC is mapped.
 unsafe fn get_register(offset: usize) -> u32 {
@@ -181,7 +184,7 @@ unsafe fn get_register(offset: usize) -> u32 {
 }
 
 /// Sets an LVT register.
-/// 
+///
 /// # Safety
 /// - Ensure the LAPIC is mapped.
 /// - Setting registers incorrectly can cause interrupts to behave unexpected.

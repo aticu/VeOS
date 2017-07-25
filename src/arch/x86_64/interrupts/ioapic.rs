@@ -1,7 +1,7 @@
 //! Deals with configuring the I/O APIC.
 
-use memory::{NO_CACHE, PhysicalAddress, READABLE, VirtualAddress, WRITABLE, map_page_at};
 use super::IRQ_INTERRUPT_NUMS;
+use memory::{NO_CACHE, PhysicalAddress, READABLE, VirtualAddress, WRITABLE, map_page_at};
 use x86_64::instructions::port::outb;
 
 /// The physical base address of the memory mapped I/O APIC.

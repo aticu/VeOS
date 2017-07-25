@@ -34,9 +34,7 @@ impl<T> Deref for CPULocalMut<T> {
     type Target = T;
 
     fn deref(&self) -> &T {
-        unsafe {
-            &(*self.0.get())[get_cpu_id()]
-        }
+        unsafe { &(*self.0.get())[get_cpu_id()] }
     }
 }
 

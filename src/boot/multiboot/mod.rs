@@ -1,7 +1,7 @@
 //! Handles the multiboot information structure.
 
-use core::mem;
-use memory::{FreeMemoryArea, get_kernel_end_address, get_kernel_start_address};
+use core::mem::size_of;
+use memory::{FreeMemoryArea, PhysicalAddress};
 
 /// Represents the multiboot information structure.
 #[repr(C)]
@@ -66,10 +66,29 @@ bitflags! {
 #[derive(Debug)]
 #[repr(C, packed)]
 struct MmapEntry {
+    /// The size of the entry.
     size: u32,
+    /// The base address of the memory area.
     base_addr: usize,
+    /// The length of the memory area.
     length: usize,
+    /// The type of memory contained in the area.
+    ///
+    /// 1 means usable memory.
     mem_type: u32
+}
+
+/// Represents a module loaded by the boot loader.
+#[repr(C, packed)]
+struct ModuleEntry {
+    /// The start address of the module.
+    mod_start: u32,
+    /// The end address of the module.
+    mod_end: u32,
+    /// The string associated with the module.
+    string: u32,
+    /// Reserved, don't use.
+    reserved: u32
 }
 
 /// The base address for the information strucuture.
@@ -84,7 +103,38 @@ pub fn init(information_structure_address: usize) {
         STRUCT_BASE_ADDRESS = to_virtual!(information_structure_address) as
                               *const MultibootInformation
     };
+
     assert!(!get_flags().contains(A_OUT | ELF));
+}
+
+/// Returns the start address of the initramfs.
+pub fn get_initramfs_start() -> PhysicalAddress {
+    get_initramfs_module_entry().mod_start as usize
+}
+
+/// Returns the length of the initramfs.
+pub fn get_initramfs_length() -> usize {
+    let entry = get_initramfs_module_entry();
+
+    entry.mod_end as usize - entry.mod_start as usize
+}
+
+/// Returns the module entry for the initramfs.
+fn get_initramfs_module_entry() -> &'static ModuleEntry {
+    let info = get_info();
+    let mod_count = info.mods_count as usize;
+    let mod_addr = to_virtual!(info.mods_addr) as usize;
+
+    for i in 0..mod_count {
+        let mod_entry =
+            unsafe { &*((mod_addr + i * size_of::<ModuleEntry>()) as *const ModuleEntry) };
+        let mod_string = from_c_str!(to_virtual!(mod_entry.string as usize)).unwrap();
+        if mod_string == "initramfs" {
+            return mod_entry;
+        }
+    }
+
+    panic!("No initramfs found.");
 }
 
 /// Returns the name of the boot loader.
@@ -112,9 +162,7 @@ pub struct MemoryMapIterator {
     /// The address of the current entry in the memory map.
     address: usize,
     /// The address after the last entry in the memory map.
-    max_address: usize,
-    /// The length of the segment withing the current entry after the kernel.
-    next_length: usize
+    max_address: usize
 }
 
 impl MemoryMapIterator {
@@ -123,14 +171,12 @@ impl MemoryMapIterator {
         if get_flags().contains(MMAP) {
             MemoryMapIterator {
                 address: to_virtual!(get_info().mmap_addr),
-                max_address: to_virtual!(get_info().mmap_addr + get_info().mmap_length),
-                next_length: 0
+                max_address: to_virtual!(get_info().mmap_addr + get_info().mmap_length)
             }
         } else {
             MemoryMapIterator {
                 address: 0,
-                max_address: 0,
-                next_length: 0
+                max_address: 0
             }
         }
     }
@@ -143,32 +189,11 @@ impl Iterator for MemoryMapIterator {
         while self.address < self.max_address {
             let current_entry = unsafe { &*(self.address as *const MmapEntry) };
 
-            if self.next_length > 0 {
-                let next_length = self.next_length;
-                self.next_length = 0;
-                return Some(FreeMemoryArea::new(get_kernel_end_address(), next_length));
-            }
+            self.address += size_of::<u32>() + current_entry.size as usize;
 
-            self.address += mem::size_of::<u32>() + current_entry.size as usize;
-
-            // Only a type of 1 is usable memory.
             if current_entry.mem_type == 1 {
-                if get_kernel_end_address() < current_entry.base_addr ||
-                   get_kernel_start_address() > current_entry.base_addr + current_entry.length {
-                    // If the kernel is before or after this segment.
-                    return Some(FreeMemoryArea::new(current_entry.base_addr, current_entry.length));
-                } else if current_entry.base_addr <= get_kernel_start_address() {
-                    // This should handle all other cases.
-                    self.next_length = current_entry.base_addr + current_entry.length -
-                                       get_kernel_end_address();
-                    if current_entry.base_addr != get_kernel_start_address() {
-                        return Some(FreeMemoryArea::new(current_entry.base_addr,
-                                                        get_kernel_start_address() -
-                                                        current_entry.base_addr));
-                    }
-                } else {
-                    panic!("There's a bug in the multiboot code.");
-                }
+                // only a type of 1 is usable memory
+                return Some(FreeMemoryArea::new(current_entry.base_addr, current_entry.length));
             }
         }
         None

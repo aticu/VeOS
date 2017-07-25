@@ -79,7 +79,7 @@ objdump: $(kernel)
 
 .PHONY: hexdump
 hexdump: $(kernel)
-	hexdump $(kernel) | less
+	hexdump -C -v $(kernel) | less
 
 $(iso): $(kernel) $(grub_cfg)
 	@mkdir -p $(build_dir)/isofiles/boot/grub
