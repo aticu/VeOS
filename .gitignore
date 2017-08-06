@@ -2,3 +2,4 @@ build
 target
 .vimrc
 Cargo.lock
+image.iso

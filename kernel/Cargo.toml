@@ -1,0 +1,32 @@
+[package]
+name = "veos"
+version = "0.1.0"
+authors = ["aticu <15schnic@gmail.com>"]
+description = "An operating system kernel."
+readme = "README.md"
+keywords = ["OS", "operating", "system", "VeOS"]
+license = "MIT"
+
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
+rlibc = "1.0"
+volatile = "0.1"
+spin = "0.4"
+bitflags = "0.8"
+once = "0.3"
+raw-cpuid = "3"
+
+[dependencies.lazy_static]
+version = "0.2"
+features = ["spin_no_std"]
+
+[target.'cfg(target_arch = "x86_64")'.dependencies]
+x86_64 = "0.1"
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
