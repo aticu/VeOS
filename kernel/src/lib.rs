@@ -30,7 +30,6 @@ extern crate lazy_static;
 extern crate once;
 extern crate raw_cpuid;
 #[cfg(not(test))]
-#[macro_use]
 extern crate alloc;
 
 #[macro_use]
@@ -85,7 +84,7 @@ pub extern "C" fn main(magic_number: u32, information_structure_address: usize) 
     println!("The processor is a {}",
              unwrapped_info.processor_brand_string().unwrap());
 
-    elf::debug();
+    elf::process_from_initramfs_file("/bin/init").expect("Initprocess could not be loaded");
 
     unsafe {
         arch::enter_first_thread();

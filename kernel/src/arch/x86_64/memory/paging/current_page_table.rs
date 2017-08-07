@@ -27,11 +27,14 @@ const TEMPORARY_ADDRESS_BASE: usize = 0xffffffffffc00000;
 pub static CURRENT_PAGE_TABLE: CurrentPageTableLock =
     unsafe { CurrentPageTableLock::new(CurrentPageTable::new()) };
 
+// TODO: Revisit page table locking.
 /// Protects the current page table from being accessed directly.
 ///
 /// This serves to stop the page table from being switched while being accessed.
 pub struct CurrentPageTableLock {
+    /// The page table being locked.
     current_page_table: UnsafeCell<CurrentPageTable>,
+    /// The reference count to the table.
     reference_count: Mutex<usize>
 }
 

@@ -4,8 +4,7 @@ use arch::STACK_TYPE;
 use core::cmp::{max, min};
 use core::fmt;
 use core::mem::size_of;
-use memory::{PAGE_SIZE, PageFlags, READABLE, USER_ACCESSIBLE, VirtualAddress, WRITABLE, map_page,
-             unmap_page};
+use memory::{PAGE_SIZE, READABLE, USER_ACCESSIBLE, VirtualAddress, WRITABLE, map_page, unmap_page};
 use memory::address_space::{AddressSpace, Segment};
 
 // NOTE: For now only full descending stacks are supported.
@@ -72,7 +71,6 @@ impl Stack {
                 *stack_pointer -= size_of::<T>();
                 unsafe {
                     address_space.write_val(value, *stack_pointer);
-                    //*(*stack_pointer as *mut T) = value;
                 }
             },
         }
@@ -88,17 +86,13 @@ impl Stack {
         let mut stack = match STACK_TYPE {
             StackType::FullDescending => {
                 Stack {
-                    top_address: start_address,
-                    bottom_address: start_address,
+                    top_address: start_address + max_size,
+                    bottom_address: start_address + max_size,
                     max_size,
-                    base_stack_pointer: start_address,
+                    base_stack_pointer: start_address + max_size,
                     access_type
                 }
             },
-        };
-
-        let start_address = match STACK_TYPE {
-            StackType::FullDescending => start_address - max_size,
         };
 
         if let Some(ref mut address_space) = address_space {
@@ -134,6 +128,7 @@ impl Stack {
                 // This should be one less, but the range is exclusive.
                 let last_page_to_map = self.bottom_address / PAGE_SIZE;
 
+                // TODO: flags shouldn't be passed, it should be segment checked instead.
                 let mut map_fn = |page_address, flags| match address_space {
                     Some(ref mut address_space) => address_space.map_page(page_address, flags),
                     None => map_page(page_address, flags),
@@ -159,6 +154,7 @@ impl Stack {
                 // This should be one less, but the range is exclusive.
                 let last_page_to_unmap = new_bottom / PAGE_SIZE;
 
+                // TODO: flags shouldn't be passed, it should be segment checked instead.
                 let mut unmap_fn = |page_address| unsafe {
                     match address_space {
                         Some(ref mut address_space) => address_space.unmap_page(page_address),

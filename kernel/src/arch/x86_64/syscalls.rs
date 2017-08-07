@@ -41,9 +41,9 @@ extern "C" fn syscall_entry() {
                  "={rdi}"(arg1),
                  "={rsi}"(arg2),
                  "={rdx}"(arg3),
-                 "={r8}"(arg4),
-                 "={r9}"(arg5),
-                 "={r12}"(arg6)
+                 "={r10}"(arg4),
+                 "={r8}"(arg5),
+                 "={r9}"(arg6)
                  : : : "intel", "volatile");
         }
 
@@ -55,7 +55,7 @@ extern "C" fn syscall_entry() {
               swapgs
 
               // Save the old stack pointer.
-              mov r10, rsp
+              mov r12, rsp
               // Load the new stack pointer.
               mov rsp, gs:[0]
 
@@ -66,7 +66,7 @@ extern "C" fn syscall_entry() {
               sti
 
               // Save some context.
-              push r10 //The old stack pointer
+              push r12 //The old stack pointer
               push r11 //The flags register
               push rcx //The program counter
 
@@ -76,11 +76,11 @@ extern "C" fn syscall_entry() {
               // Restore the context.
               pop rcx
               pop r11
-              pop r10
+              pop r12
 
               // Restore the old stack pointer.
               cli
-              mov rsp, r10
+              mov rsp, r12
               sysret"
               : : "i"(syscall_inner as extern "C" fn() -> u64) : : "intel", "volatile");
     }

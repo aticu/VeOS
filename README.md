@@ -9,8 +9,10 @@ In order to compile VeOS you'll need the following:
 - ld
 - grub (in order to make it bootable)
 
-Run `make iso` to create a bootable cd image of the kernel at `target/*architecture*-unknonwn-none-gnu/build/os-*architecture*.iso`.
-Or just run `make` to create the kernel binary at `target/*architecture*-unknonwn-none-gnu/build/kernel-*architecture*.bin`.
+Then you can
+- run `make` to create the folder structure of the OS at `target/`.
+- run `make iso` to create a bootable image at `image.iso`.
+- run `make run` to run the OS in qemu (if you have it installed).
 
 ## Acknowledgements
 A lot of this work is based on work from the following people/organizations or at least highly influenced by it:

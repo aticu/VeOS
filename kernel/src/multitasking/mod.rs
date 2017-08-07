@@ -4,43 +4,56 @@ mod tcb;
 mod stack;
 pub mod scheduler;
 mod cpu_local;
+mod pcb;
 
 pub use self::cpu_local::{CPULocal, CPULocalMut};
+pub use self::pcb::PCB;
 pub use self::scheduler::CURRENT_THREAD;
 pub use self::stack::{Stack, StackType};
 pub use self::tcb::{TCB, ThreadState};
-use alloc::binary_heap::BinaryHeap;
+use alloc::btree_map::BTreeMap;
 pub use arch::{get_cpu_id, get_cpu_num};
+use memory::VirtualAddress;
+use memory::address_space::AddressSpace;
 use sync::Mutex;
+use sync::mutex::MutexGuard;
+
+/// The type of a process ID.
+type ProcessID = usize;
+
+/// The type of a thread ID.
+type ThreadID = u16;
 
 lazy_static! {
-    pub static ref READY_LIST: Mutex<BinaryHeap<TCB>> = Mutex::new(BinaryHeap::from(vec![
-                                         //TCB::test(1, thread as u64, 10, '1' as u64, 0, 0, 0, 0),
-                                         //TCB::test(2, thread as u64, 20, '2' as u64, 0, 0, 0, 0),
-                                         //TCB::test(3, thread as u64, 30, '3' as u64, 0, 0, 0, 0),
-                                         //TCB::test(4, thread as u64, 40, '4' as u64, 0, 0, 0, 0)
-]));
+    /// The list of all the currently running processes.
+    pub static ref PROCESS_LIST: Mutex<BTreeMap<ProcessID, PCB>> = Mutex::new({
+        let mut map = BTreeMap::new();
+        map.insert(0, PCB::idle_pcb());
+
+        map
+    });
 }
 
-pub fn thread(amount: u64, character: char) {
-    let mut curr_amount = 0;
-    while curr_amount < amount {
-        unsafe {
-            asm!("mov rax, 0
-                  mov edi, $0
-                  syscall"
-                  : : "r"(character) : "rax", "rcx", "r11", "r10" : "intel", "volatile");
-        }
-        curr_amount += 1;
-        let mut curr_val = 0;
-        while curr_val < 3000000 {
-            let _ = 13434;
-            curr_val += 1;
-        }
+/// Finds an unused process ID.
+fn find_pid(list: &MutexGuard<BTreeMap<ProcessID, PCB>>) -> ProcessID {
+    let mut pid = 1;
+    while list.contains_key(&pid) {
+        pid += 1;
     }
-    unsafe {
-        asm!("mov rax, 1
-              syscall"
-              : : : : "intel", "volatile");
-    }
+    pid
+}
+
+/// Creates a new process.
+pub fn create_process(address_space: AddressSpace, entry_address: VirtualAddress) {
+    let mut pcb = PCB::new(address_space);
+
+    let mut process_list = PROCESS_LIST.lock();
+    let id = find_pid(&process_list);
+
+    let first_tcb = TCB::in_process(id, 0, entry_address, &mut pcb);
+
+    scheduler::READY_LIST.lock().push(first_tcb);
+
+    assert!(process_list.insert(id, pcb).is_none(),
+            "Overwrote an existing process.");
 }

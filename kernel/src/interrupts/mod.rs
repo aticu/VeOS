@@ -20,11 +20,14 @@ pub fn keyboard_interrupt(scancode: u8) {
 }
 
 /// The page fault handler.
-pub fn page_fault_handler(address: VirtualAddress) {
-    println!("Page fault in thread {} at address {:x}",
-             CURRENT_THREAD.lock().id,
-             address);
-    println!("Page flags: {:?}", ::memory::get_page_flags(address));
+pub fn page_fault_handler(address: VirtualAddress, program_counter: VirtualAddress) {
     unsafe { ::sync::disable_preemption() };
+    let current_thread = CURRENT_THREAD.lock();
+    println!("Page fault in process {} (thread {}) at address {:x} (PC: {:x})",
+             current_thread.pid,
+             current_thread.id,
+             address,
+             program_counter);
+    println!("Page flags: {:?}", ::memory::get_page_flags(address));
     loop {}
 }

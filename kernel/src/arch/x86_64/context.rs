@@ -2,7 +2,6 @@
 
 use super::gdt::{USER_CODE_SEGMENT, USER_DATA_SEGMENT};
 use super::interrupts::lapic;
-use core::mem::size_of;
 use memory::{PhysicalAddress, VirtualAddress};
 use memory::address_space::AddressSpace;
 use multitasking::Stack;
@@ -116,32 +115,14 @@ fn set_initial_stack(stack_pointer: &mut VirtualAddress,
                      arg5: u64,
                      arg6: u64,
                      address_space: &mut AddressSpace) {
-    // let mut stack_pointer = stack_pointer;
     Stack::push_in(address_space, stack_pointer, stack_frame);
-    // stack_pointer -= size_of::<ExceptionStackFrame>();
-    // (stack_pointer as *mut ExceptionStackFrame) = stack_frame;
     Stack::push_in(address_space, stack_pointer, arg1);
-    // stack_pointer -= 8;
-    // (stack_pointer as *mut u64) = arg1;
     Stack::push_in(address_space, stack_pointer, arg2);
-    // stack_pointer -= 8;
-    // (stack_pointer as *mut u64) = arg2;
     Stack::push_in(address_space, stack_pointer, arg3);
-    // stack_pointer -= 8;
-    // (stack_pointer as *mut u64) = arg3;
     Stack::push_in(address_space, stack_pointer, arg4);
-    // stack_pointer -= 8;
-    // (stack_pointer as *mut u64) = arg4;
     Stack::push_in(address_space, stack_pointer, arg5);
-    // stack_pointer -= 8;
-    // (stack_pointer as *mut u64) = arg5;
     Stack::push_in(address_space, stack_pointer, arg6);
-    // stack_pointer -= 8;
-    // (stack_pointer as *mut u64) = arg6;
     Stack::push_in(address_space, stack_pointer, enter_thread as u64);
-    // stack_pointer -= 8;
-    // (stack_pointer as *mut u64) = enter_thread as u64;
-    // stack_pointer
 }
 
 /// Switches the context from the old thread to the current thread.
@@ -168,7 +149,6 @@ pub unsafe fn switch_context(old_context: &mut Context, new_context: &Context) {
            new_sp,
            new_bp,
            new_context.page_table_address);
-
 }
 
 /// This is the function actually performing the switch.
@@ -176,6 +156,7 @@ pub unsafe fn switch_context(old_context: &mut Context, new_context: &Context) {
 /// # Safety
 /// - Should only be called by switch_context.
 #[naked]
+#[inline(never)]
 unsafe extern "C" fn switch(old_sp: &mut usize,
                             old_bp: &mut usize,
                             new_sp: usize,

@@ -8,16 +8,21 @@ use super::paging::page_table_manager::PageTableManager;
 use alloc::boxed::Box;
 use core::ptr;
 use memory::{PageFlags, PhysicalAddress, VirtualAddress};
+use memory::address_space;
 
 struct AddressSpaceManager {
     table: InactivePageTable
 }
 
-pub fn new_address_space_manager() -> Box<::memory::address_space::AddressSpaceManager> {
+pub fn new_address_space_manager() -> Box<address_space::AddressSpaceManager> {
     Box::new(AddressSpaceManager { table: InactivePageTable::copy_from_current() })
 }
 
-impl ::memory::address_space::AddressSpaceManager for AddressSpaceManager {
+pub fn idle_address_space_manager() -> Box<address_space::AddressSpaceManager> {
+    Box::new(AddressSpaceManager { table: InactivePageTable::from_current_table() })
+}
+
+impl address_space::AddressSpaceManager for AddressSpaceManager {
     fn write_to(&mut self, buffer: &[u8], address: VirtualAddress, flags: PageFlags) {
         let flags = convert_flags(flags);
 
@@ -85,9 +90,13 @@ impl ::memory::address_space::AddressSpaceManager for AddressSpaceManager {
 
         self.table
             .map_page(Page::from_address(page_address), flags);
+
+        self.table.unmap();
     }
 
     unsafe fn unmap_page(&mut self, start_address: VirtualAddress) {
         self.table.unmap_page(Page::from_address(start_address));
+
+        self.table.unmap();
     }
 }

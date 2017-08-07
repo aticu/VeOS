@@ -3,6 +3,7 @@
 use super::{PageFlags, PhysicalAddress, VirtualAddress};
 use alloc::Vec;
 use alloc::boxed::Box;
+use arch::idle_address_space_manager;
 use arch::new_address_space_manager;
 use core::mem::size_of_val;
 use core::slice;
@@ -21,6 +22,14 @@ impl AddressSpace {
         AddressSpace {
             segments: Vec::new(),
             manager: new_address_space_manager()
+        }
+    }
+
+    /// Creates a new address space for the idle threads.
+    pub fn idle_address_space() -> AddressSpace {
+        AddressSpace {
+            segments: Vec::new(),
+            manager: idle_address_space_manager()
         }
     }
 
@@ -113,7 +122,7 @@ impl Segment {
 
 /// This trait should be implemented by any architecture specific address space
 /// manager.
-pub trait AddressSpaceManager {
+pub trait AddressSpaceManager: Send {
     /// Writes the data in `buffer` to the `address` in the target address
     /// space setting the given flags.
     fn write_to(&mut self, buffer: &[u8], address: VirtualAddress, flags: PageFlags);

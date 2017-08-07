@@ -198,7 +198,7 @@ pub trait PageTableManager {
     /// Changes the permissions of the page or map it, if it wasn't mapped.
     fn change_permissions_or_map(&mut self, page: Page, flags: PageTableEntryFlags) {
         let is_mapped = {
-            if let Some(mut entry) = self.get_entry(page.get_address()) {
+            if let Some(entry) = self.get_entry(page.get_address()) {
                 entry.flags().contains(PRESENT)
             } else {
                 false

@@ -55,7 +55,7 @@ pub fn init() {
 macro_rules! irq_interrupt {
     ($(#[$attr: meta])* fn $name: ident $content: tt) => {
         $(#[$attr])*
-        extern "C" fn $name(_: &mut ExceptionStackFrame) {
+        extern "x86-interrupt" fn $name(_: &mut ExceptionStackFrame) {
             let old_priority = lapic::get_priority();
             lapic::set_priority(0x20);
             unsafe {
@@ -74,21 +74,21 @@ macro_rules! irq_interrupt {
 }
 
 /// The divide by zero exception handler of the kernel.
-extern "C" fn divide_by_zero_handler(stack_frame: &mut ExceptionStackFrame) {
+extern "x86-interrupt" fn divide_by_zero_handler(stack_frame: &mut ExceptionStackFrame) {
     println!("Divide by zero exception.");
     println!("{:?}", stack_frame);
     loop {}
 }
 
 /// The breakpoint exception handler of the kernel.
-extern "C" fn breakpoint_handler(stack_frame: &mut ExceptionStackFrame) {
+extern "x86-interrupt" fn breakpoint_handler(stack_frame: &mut ExceptionStackFrame) {
     println!("Breakpoint exception.");
     println!("{:?}", stack_frame);
     loop {}
 }
 
 /// The page fault handler of the kernel.
-extern "C" fn page_fault_handler(_: &mut ExceptionStackFrame, _: PageFaultErrorCode) {
+extern "x86-interrupt" fn page_fault_handler(stack_frame: &mut ExceptionStackFrame, _: PageFaultErrorCode) {
     // println!("PAGE FAULT!");
     // println!("Address: {:x}", control_regs::cr2());
     // println!("Error code: {:?}",
@@ -96,11 +96,11 @@ extern "C" fn page_fault_handler(_: &mut ExceptionStackFrame, _: PageFaultErrorC
     // println!("Page flags: {:?}",
     // super::memory::get_page_flags(control_regs::cr2().0));
     // println!("{:?}", stack_frame);
-    ::interrupts::page_fault_handler(control_regs::cr2().0);
+    ::interrupts::page_fault_handler(control_regs::cr2().0, stack_frame.instruction_pointer.0);
 }
 
 /// The software interrupt handler that invokes schedule operations.
-extern "C" fn schedule_interrupt(_: &mut ExceptionStackFrame) {
+extern "x86-interrupt" fn schedule_interrupt(_: &mut ExceptionStackFrame) {
     lapic::set_priority(0x20);
     lapic::signal_eoi();
     unsafe {
@@ -111,7 +111,7 @@ extern "C" fn schedule_interrupt(_: &mut ExceptionStackFrame) {
 }
 
 /// An interrupt handler that does nothing.
-extern "C" fn empty_handler(_: &mut ExceptionStackFrame) {}
+extern "x86-interrupt" fn empty_handler(_: &mut ExceptionStackFrame) {}
 
 irq_interrupt!(
 /// The handler for the lapic timer interrupt.

@@ -3,13 +3,13 @@
 use super::PageFrame;
 use super::current_page_table::CURRENT_PAGE_TABLE;
 use super::frame_allocator::FRAME_ALLOCATOR;
-use super::page_table;
 use super::page_table::{Level4, PageTable};
 use super::page_table_entry::*;
 use super::page_table_manager::PageTableManager;
 use super::super::TEMPORARY_MAP_TABLE;
 use core::ptr::Unique;
 use sync::PreemptionState;
+use x86_64::registers::control_regs::cr3;
 
 /// The reference to the place where the level 4 table will be mapped.
 const L4_TABLE: *mut PageTable<Level4> = 0xffffffffffffd000 as *mut PageTable<Level4>;
@@ -119,6 +119,15 @@ impl InactivePageTable {
                                            .expect("The old table was not mapped.")
                                            .copy()
                                    })
+        }
+    }
+
+    /// Creates an inactive page table that points to the current page table.
+    pub fn from_current_table() -> InactivePageTable {
+        InactivePageTable {
+            l4_table: unsafe { Unique::new_unchecked(L4_TABLE) },
+            l4_frame: PageFrame::from_address(cr3().0 as usize),
+            preemption_state: None
         }
     }
 

@@ -1,6 +1,7 @@
 //! This module implements a scheduler.
 
-use super::{READY_LIST, TCB};
+use super::TCB;
+use alloc::binary_heap::BinaryHeap;
 use arch::schedule;
 use arch::switch_context;
 use core::mem::swap;
@@ -8,10 +9,17 @@ use sync::{disable_preemption, enable_preemption, restore_preemption_state};
 use sync::Mutex;
 use x86_64::instructions::halt;
 
+cpu_local! {
+    pub static ref READY_LIST: Mutex<BinaryHeap<TCB>> = Mutex::new(BinaryHeap::new());
+}
+
+// TODO: Make this CPU local. This will initialize every current thread on the
+// current CPU though.
 lazy_static! {
     /// Holds the TCB of the currently running thread.
     pub static ref CURRENT_THREAD: Mutex<TCB> = Mutex::new(TCB::idle_tcb());
 }
+
 cpu_local! {
     /// Holds the TCB of the previously running thread during context switches.
     static mut ref OLD_THREAD: Option<TCB> = None;

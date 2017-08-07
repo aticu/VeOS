@@ -1,11 +1,12 @@
-//! Provides and manages thread control blocks.
+//! This module defines thread control blocks (TCBs).
 
-use super::Stack;
+use super::{PCB, PROCESS_LIST, ProcessID, Stack, ThreadID, get_cpu_id};
 use super::stack::AccessType;
 use arch::Context;
 use core::cmp::Ordering;
 use core::fmt;
-use memory::address_space::AddressSpace;
+use memory::{KERNEL_STACK_AREA_BASE, STACK_MAX_SIZE, STACK_OFFSET, VirtualAddress};
+use x86_64::registers::control_regs::cr3;
 
 /// Represents the possible states a thread can have.
 #[derive(PartialEq)]
@@ -18,10 +19,12 @@ pub enum ThreadState {
     Dead
 }
 
-/// A structure representing a thread control block.
+/// A structure representing a thread control block (TCB).
 pub struct TCB {
     /// The thread ID within the process.
-    pub id: u16,
+    pub id: ThreadID,
+    /// The ID of the process that the thread belongs to.
+    pub pid: ProcessID,
     /// The stack used during kernel operations.
     pub kernel_stack: Stack,
     /// The usermode stack.
@@ -61,30 +64,46 @@ impl PartialOrd for TCB {
     }
 }
 
+impl Drop for TCB {
+    fn drop(&mut self) {
+        let mut process_list = PROCESS_LIST.lock();
+
+        let pcb = process_list
+            .get_mut(&self.pid)
+            .expect("Process of the thread doesn't exist.");
+
+        self.kernel_stack.resize(0, Some(&mut pcb.address_space));
+        self.user_stack.resize(0, Some(&mut pcb.address_space));
+    }
+}
+
 impl TCB {
-    // TODO: Update me, I'm only in a test stage currently.
-    pub fn elf_test(id: u16, pc: u64, address_space: &mut AddressSpace) -> TCB {
-        use memory::*;
-        let kernel_stack = Stack::new(0x5000,
+    /// Creates a new thread in the given process at the given start address.
+    pub fn in_process(pid: ProcessID, id: ThreadID, pc: VirtualAddress, pcb: &mut PCB) -> TCB {
+        let kernel_stack = Stack::new(0x2000,
                                       STACK_MAX_SIZE,
-                                      KERNEL_STACK_AREA_BASE + STACK_OFFSET * (id as usize + 1),
+                                      KERNEL_STACK_AREA_BASE + STACK_OFFSET * (id as usize),
                                       AccessType::KernelOnly,
-                                      Some(address_space));
+                                      Some(&mut pcb.address_space));
+
         let user_stack = Stack::new(0x1000,
                                     0x1000,
-                                    0x1000 * (id as usize + 1),
+                                    0x1000 * (id as usize), /* TODO: find a more suitable
+                                                             * position. */
                                     AccessType::UserAccessible,
-                                    Some(address_space));
+                                    Some(&mut pcb.address_space));
+
         let stack_pointer = user_stack.base_stack_pointer as u64;
         let kernel_stack_pointer = kernel_stack.base_stack_pointer;
 
         TCB {
             id,
+            pid,
             kernel_stack,
             user_stack,
             state: ThreadState::Ready,
             priority: 1,
-            context: Context::test(pc,
+            context: Context::test(pc as u64,
                                    0,
                                    0,
                                    0,
@@ -93,23 +112,32 @@ impl TCB {
                                    0,
                                    stack_pointer,
                                    kernel_stack_pointer,
-                                   address_space)
+                                   &mut pcb.address_space)
         }
     }
 
+    /// Creates a new TCB for an idle thread.
     pub fn idle_tcb() -> TCB {
-        let user_stack = Stack::new(0x3000, 0x10000, 0x1000000, AccessType::KernelOnly, None);
+        let id = get_cpu_id() as ThreadID;
+
+
+        // NOTE: This assumes that the idle address space is currently active.
+        let user_stack = Stack::new(0x2000,
+                                    STACK_MAX_SIZE,
+                                    KERNEL_STACK_AREA_BASE + STACK_OFFSET * (id as usize),
+                                    AccessType::KernelOnly,
+                                    None);
+
         let stack_pointer = user_stack.base_stack_pointer as u64;
 
         TCB {
-            id: 0,
+            id,
+            pid: 0,
             kernel_stack: Stack::new(0, 0, 0, AccessType::KernelOnly, None),
             user_stack,
             state: ThreadState::Ready,
             priority: i32::min_value(),
-            context: Context::idle_context(stack_pointer, unsafe {
-                ::x86_64::registers::control_regs::cr3().0 as usize
-            })
+            context: Context::idle_context(stack_pointer, cr3().0 as usize)
         }
     }
 

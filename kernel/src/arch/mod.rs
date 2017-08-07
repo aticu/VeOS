@@ -37,6 +37,7 @@ macro_rules! export_arch {
         pub use self::$name::memory::STACK_MAX_SIZE;
 
         pub use self::$name::memory::new_address_space_manager;
+        pub use self::$name::memory::idle_address_space_manager;
 
         pub use self::$name::context::switch_context;
     };

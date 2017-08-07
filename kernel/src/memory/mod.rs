@@ -98,16 +98,3 @@ pub fn init() {
 pub fn oom() -> ! {
     panic!("Out of memory!");
 }
-
-/// This function maps all the pages in the range.
-pub fn map_range(start: VirtualAddress, length: VirtualAddress, flags: PageFlags) {
-    if length != 0 {
-        let mut page_num = 0;
-
-        while page_num * PAGE_SIZE < length {
-            map_page(start + page_num * PAGE_SIZE, flags);
-
-            page_num += 1;
-        }
-    }
-}

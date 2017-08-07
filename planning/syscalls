@@ -3,9 +3,9 @@ Syscall number - rax
 Argument 1 - rdi
 Argument 2 - rsi
 Argument 3 - rdx
-Argument 4 - r8
-Argument 5 - r9
-Argument 6 - r12
+Argument 4 - r10
+Argument 5 - r8
+Argument 6 - r9
 
 The result is returned in rax.
-Clobber registers are r10, r11, rcx.
+Clobber registers are r12, r11, rcx.
