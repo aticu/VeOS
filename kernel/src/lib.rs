@@ -17,6 +17,8 @@
 //! The VeOS operating system kernel.
 //!
 //! This crate contains all of the rust code for the VeOS kernel.
+//! 
+//! The kernel is aiming to be a microkernel.
 
 extern crate rlibc;
 extern crate volatile;
@@ -83,6 +85,7 @@ pub extern "C" fn main(magic_number: u32, information_structure_address: usize) 
     let unwrapped_info = extended_info.unwrap();
     println!("The processor is a {}",
              unwrapped_info.processor_brand_string().unwrap());
+    println!("The available amount of memory is {}MiB.", arch::get_free_memory_size() / 1024 / 1024);
 
     elf::process_from_initramfs_file("/bin/init").expect("Initprocess could not be loaded");
 

@@ -6,7 +6,11 @@ pub enum FileError {
     /// A seek before byte 0 was attempted.
     SeekBeforeStart,
     /// A seek after the last byte was attempted.
-    SeekPastEnd
+    SeekPastEnd,
+    /// The file was not found.
+    FileNotFound,
+    /// The filesystem is invalid.
+    InvalidFilesystem
 }
 
 /// A result of a file operation.

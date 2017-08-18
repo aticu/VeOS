@@ -1,9 +1,11 @@
 The current virtual memory layout is planned like this:
 
--Level 4 page table entries 0-255 can be freely used by processes (except for the page at address 0, which remains unmapped).
+-Level 4 page table entries 0-254 can be freely used by processes (except for the page at address 0, which remains unmapped).
+-Level 4 page table entry 255 is used for process stacks.
 -Level 4 page table entry 256 is used for the kernel code and data.
 -Level 4 page table entry 257 is used for the initramfs.
--Level 4 page table entries 257-506 are currently reserved.
+-Level 4 page table entries 257-505 are currently reserved.
+-Level 4 page table entry 506 is used for the double fault stacks.
 -Level 4 page table entry 507 is used for the kernel heap.
 -Level 4 page table entry 508 is used for the kernel stacks (different in every process).
 -Level 4 page table entry 509 is reserved for temporarily mapping an inactive page table for modification.

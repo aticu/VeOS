@@ -5,7 +5,7 @@ use core::cmp::{max, min};
 use core::fmt;
 use core::mem::size_of;
 use memory::{PAGE_SIZE, READABLE, USER_ACCESSIBLE, VirtualAddress, WRITABLE, map_page, unmap_page};
-use memory::address_space::{AddressSpace, Segment};
+use memory::address_space::{AddressSpace, Segment, SegmentType};
 
 // NOTE: For now only full descending stacks are supported.
 /// Represents the different types of stacks that exist.
@@ -102,7 +102,7 @@ impl Stack {
                 flags |= USER_ACCESSIBLE;
             }
 
-            address_space.add_segment(Segment::new(start_address, max_size, flags));
+            address_space.add_segment(Segment::new(start_address, max_size, flags, SegmentType::MemoryOnly));
         }
 
         stack.resize(initial_size, address_space);
@@ -130,7 +130,7 @@ impl Stack {
 
                 // TODO: flags shouldn't be passed, it should be segment checked instead.
                 let mut map_fn = |page_address, flags| match address_space {
-                    Some(ref mut address_space) => address_space.map_page(page_address, flags),
+                    Some(ref mut address_space) => address_space.map_page(page_address),
                     None => map_page(page_address, flags),
                 };
 

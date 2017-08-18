@@ -1,3 +1,5 @@
+//! This module holds some macros that should be usable everywhere within the kernel.
+
 /// Creates a `&'static str` from a c string.
 ///
 /// Converts the string at the given address from a c string to a rust
@@ -105,8 +107,8 @@ macro_rules! __cpu_local_internal {
                 let cpu_num = get_cpu_num();
                 let mut vec = Vec::with_capacity(cpu_num);
 
-                for _ in 0..cpu_num {
-                    vec.push($val);
+                for i in 0..cpu_num {
+                    vec.push($val(i));
                 }
 
                 unsafe {
@@ -125,8 +127,8 @@ macro_rules! __cpu_local_internal {
                 let cpu_num = get_cpu_num();
                 let mut vec = Vec::with_capacity(cpu_num);
 
-                for _ in 0..cpu_num {
-                    vec.push($val);
+                for i in 0..cpu_num {
+                    vec.push($val(i));
                 }
 
                 unsafe {

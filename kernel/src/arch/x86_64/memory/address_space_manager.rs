@@ -99,4 +99,10 @@ impl address_space::AddressSpaceManager for AddressSpaceManager {
 
         self.table.unmap();
     }
+
+    unsafe fn unmap_page_unchecked(&mut self, start_address: VirtualAddress) {
+        self.table.unmap_page_unchecked(Page::from_address(start_address));
+
+        self.table.unmap();
+    }
 }

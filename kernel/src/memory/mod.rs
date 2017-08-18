@@ -4,9 +4,12 @@ pub mod allocator;
 pub mod address_space;
 
 pub use arch::KERNEL_STACK_AREA_BASE;
+pub use arch::KERNEL_STACK_MAX_SIZE;
+pub use arch::KERNEL_STACK_OFFSET;
+pub use arch::USER_STACK_AREA_BASE;
+pub use arch::USER_STACK_OFFSET;
+pub use arch::USER_STACK_MAX_SIZE;
 pub use arch::PAGE_SIZE;
-pub use arch::STACK_MAX_SIZE;
-pub use arch::STACK_OFFSET;
 pub use arch::get_kernel_end_address;
 pub use arch::get_kernel_start_address;
 pub use arch::get_page_flags;

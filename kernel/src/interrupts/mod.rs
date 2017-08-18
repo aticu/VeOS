@@ -16,6 +16,10 @@ pub fn timer_interrupt() {
 
 /// The keyboard interrupt handler.
 pub fn keyboard_interrupt(scancode: u8) {
+    if scancode == 1 {
+        unsafe { ::sync::disable_preemption() };
+        loop {}
+    }
     println!("Key: <{}>", scancode);
 }
 
@@ -28,6 +32,7 @@ pub fn page_fault_handler(address: VirtualAddress, program_counter: VirtualAddre
              current_thread.id,
              address,
              program_counter);
+    //let current_process = PROCESS_LIST.lock().get(current_thread.pid).expect("Thread without process running.");
     println!("Page flags: {:?}", ::memory::get_page_flags(address));
     loop {}
 }

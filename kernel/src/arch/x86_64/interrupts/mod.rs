@@ -30,7 +30,12 @@ lazy_static! {
         idt.divide_by_zero.set_handler_fn(divide_by_zero_handler);
         idt.breakpoint.set_handler_fn(breakpoint_handler);
         idt.page_fault.set_handler_fn(page_fault_handler);
+        unsafe {
+            idt.double_fault.set_handler_fn(double_fault_handler)
+                .set_stack_index(0);
+        }
         idt[TIMER_INTERRUPT_HANDLER_NUM as usize].set_handler_fn(timer_handler);
+        idt[IRQ_INTERRUPT_NUMS[0] as usize].set_handler_fn(irq0_handler);
         idt[IRQ_INTERRUPT_NUMS[1] as usize].set_handler_fn(irq1_handler);
         idt[SCHEDULE_INTERRUPT_NUM as usize].set_handler_fn(schedule_interrupt)
             .disable_interrupts(false);
@@ -47,9 +52,10 @@ pub fn init() {
     IDT.load();
 
     lapic::init();
-    lapic::set_periodic_timer(150);
 
     ioapic::init();
+
+    lapic::set_periodic_timer(150);
 }
 
 macro_rules! irq_interrupt {
@@ -87,6 +93,13 @@ extern "x86-interrupt" fn breakpoint_handler(stack_frame: &mut ExceptionStackFra
     loop {}
 }
 
+extern "x86-interrupt" fn double_fault_handler(stack_frame: &mut ExceptionStackFrame, error_code: u64) {
+    println!("DOUBLE FAULT!");
+    println!("{:?}", stack_frame);
+    println!("Error code: 0x{:x}", error_code);
+    loop {}
+}
+
 /// The page fault handler of the kernel.
 extern "x86-interrupt" fn page_fault_handler(stack_frame: &mut ExceptionStackFrame, _: PageFaultErrorCode) {
     // println!("PAGE FAULT!");
@@ -117,6 +130,12 @@ irq_interrupt!(
 /// The handler for the lapic timer interrupt.
 fn timer_handler {
     ::interrupts::timer_interrupt();
+});
+
+irq_interrupt!(
+/// The handler for IRQ0.
+fn irq0_handler {
+    println!("IRQ0");
 });
 
 irq_interrupt!(

@@ -7,6 +7,7 @@ use arch::idle_address_space_manager;
 use arch::new_address_space_manager;
 use core::mem::size_of_val;
 use core::slice;
+use memory::PAGE_SIZE;
 
 /// Represents an address space
 pub struct AddressSpace {
@@ -14,6 +15,14 @@ pub struct AddressSpace {
     segments: Vec<Segment>,
     /// The address space manager.
     manager: Box<AddressSpaceManager>
+}
+
+impl Drop for AddressSpace {
+    fn drop(&mut self) {
+        for segment in &mut self.segments {
+            segment.unmap(&mut self.manager);
+        }
+    }
 }
 
 impl AddressSpace {
@@ -72,6 +81,19 @@ impl AddressSpace {
         None
     }
 
+    /// Returns true if the given memory area is contained within a single segment.
+    ///
+    /// The range starts at `start` and is `length` bytes long.
+    pub fn contains_range(&self, start: VirtualAddress, length: usize) -> bool {
+        let segment = self.get_segment_from_address(start);
+
+        if let Some(segment) = segment {
+            segment.contains(start) && segment.contains(start + length)
+        } else {
+            false
+        }
+    }
+
     /// Returns the address of the page table.
     ///
     /// # Safety
@@ -81,8 +103,17 @@ impl AddressSpace {
     }
 
     /// Maps the given page in the address space.
-    pub fn map_page(&mut self, page_address: VirtualAddress, flags: PageFlags) {
-        self.manager.map_page(page_address, flags);
+    pub fn map_page(&mut self, page_address: VirtualAddress) {
+        let segment_flags = {
+            let segment = self.get_segment_from_address(page_address);
+
+            if let Some(segment) = segment {
+                segment.flags
+            } else {
+                panic!("Write outside of segment. TODO: Handle this better.");
+            }
+        };
+        self.manager.map_page(page_address, segment_flags);
     }
 
     /// Unmaps the given page in the address space.
@@ -94,6 +125,15 @@ impl AddressSpace {
     }
 }
 
+/// All types of segments that are possible.
+#[derive(Debug)]
+pub enum SegmentType {
+    /// The content of the segment was read from a file.
+    FromFile,
+    /// The content of the segment is only in memory.
+    MemoryOnly
+}
+
 /// Represents a segment of memory in the address space.
 pub struct Segment {
     /// The start address of the segment.
@@ -101,22 +141,38 @@ pub struct Segment {
     /// The length of the segment.
     length: usize,
     /// The flags this segment is mapped with.
-    flags: PageFlags
+    flags: PageFlags,
+    /// The type of the segment.
+    segment_type: SegmentType
 }
 
 impl Segment {
     /// Creates a new segment with the given parameters.
-    pub fn new(start: VirtualAddress, length: usize, flags: PageFlags) -> Segment {
+    pub fn new(start: VirtualAddress, length: usize, flags: PageFlags, segment_type: SegmentType) -> Segment {
         Segment {
             start,
             length,
-            flags
+            flags,
+            segment_type
         }
     }
 
     /// Checks if the address is contained within the segment.
     pub fn contains(&self, address: VirtualAddress) -> bool {
         self.start <= address && address < self.start.saturating_add(self.length)
+    }
+
+    /// Unmaps this segment.
+    pub fn unmap(&self, manager: &mut Box<AddressSpaceManager>) {
+        let pages_in_segment = (self.length - 1) / PAGE_SIZE + 1;
+        for page_num in 0..pages_in_segment {
+            unsafe {
+                match self.segment_type {
+                    SegmentType::FromFile => manager.unmap_page(self.start + page_num * PAGE_SIZE),
+                    SegmentType::MemoryOnly => manager.unmap_page_unchecked(self.start + page_num * PAGE_SIZE)
+                }
+            }
+        }
     }
 }
 
@@ -141,4 +197,10 @@ pub trait AddressSpaceManager: Send {
     /// # Safety
     /// - Nothing should reference the unmapped pages.
     unsafe fn unmap_page(&mut self, start_address: VirtualAddress);
+
+    /// Unmaps the given page in the managed address space not checking if it was mapped.
+    ///
+    /// # Safety
+    /// - Nothing should reference the unmapped pages.
+    unsafe fn unmap_page_unchecked(&mut self, start_address: VirtualAddress);
 }

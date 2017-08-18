@@ -82,6 +82,11 @@ pub fn get_page_flags(page_address: VirtualAddress) -> PageFlags {
     flags
 }
 
+/// Returns the size of unused physical memory.
+pub fn get_free_memory_size() -> usize {
+    FRAME_ALLOCATOR.get_free_frame_num() * PAGE_SIZE
+}
+
 /// Maps the given page to the given frame using the given flags.
 pub fn map_page_at(page_address: VirtualAddress, frame_address: VirtualAddress, flags: PageFlags) {
     CURRENT_PAGE_TABLE

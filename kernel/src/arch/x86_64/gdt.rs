@@ -1,7 +1,9 @@
 //! Provides the global descriptor table used by the operating system.
 
-use super::memory::FINAL_STACK_TOP;
+use super::memory::{FINAL_STACK_TOP, DOUBLE_FAULT_STACK_AREA_BASE, DOUBLE_FAULT_STACK_MAX_SIZE, DOUBLE_FAULT_STACK_OFFSET};
 use core::mem::size_of;
+use multitasking::Stack;
+use multitasking::stack::AccessType;
 use x86_64::PrivilegeLevel;
 use x86_64::VirtualAddress;
 use x86_64::instructions::segmentation::set_cs;
@@ -50,16 +52,17 @@ pub struct Gdt {
 
 cpu_local! {
     /// The task state segment of the CPU.
-    pub static mut ref TSS: TaskStateSegment = {
+    pub static mut ref TSS: TaskStateSegment = |cpu_id| {
         let mut tss = TaskStateSegment::new();
         tss.privilege_stack_table[0] = VirtualAddress(FINAL_STACK_TOP);
+        tss.interrupt_stack_table[0] = VirtualAddress(DOUBLE_FAULT_STACK.get_specific(cpu_id).base_stack_pointer);
         tss
     };
 }
 
 cpu_local! {
     /// The global descriptor table of the CPU.
-    pub static ref GDT: Gdt = {
+    pub static ref GDT: Gdt = |_| {
         let mut gdt = Gdt::new();
         gdt.add_entry(Descriptor::code(DPL0));
         gdt.add_entry(Descriptor::data(DPL0));
@@ -70,6 +73,11 @@ cpu_local! {
 
         gdt
     };
+}
+
+cpu_local! {
+    /// The stack for the double fault handler of each cpu.
+    pub static ref DOUBLE_FAULT_STACK: Stack = |cpu_id| Stack::new(DOUBLE_FAULT_STACK_MAX_SIZE, DOUBLE_FAULT_STACK_MAX_SIZE, DOUBLE_FAULT_STACK_AREA_BASE + DOUBLE_FAULT_STACK_OFFSET * cpu_id, AccessType::KernelOnly, None);
 }
 
 impl Gdt {

@@ -33,8 +33,12 @@ macro_rules! export_arch {
         pub use self::$name::memory::HEAP_MAX_SIZE;
         pub use self::$name::memory::HEAP_START;
         pub use self::$name::memory::KERNEL_STACK_AREA_BASE;
-        pub use self::$name::memory::STACK_OFFSET;
-        pub use self::$name::memory::STACK_MAX_SIZE;
+        pub use self::$name::memory::KERNEL_STACK_OFFSET;
+        pub use self::$name::memory::KERNEL_STACK_MAX_SIZE;
+        pub use self::$name::memory::USER_STACK_AREA_BASE;
+        pub use self::$name::memory::USER_STACK_OFFSET;
+        pub use self::$name::memory::USER_STACK_MAX_SIZE;
+        pub use self::$name::memory::get_free_memory_size;
 
         pub use self::$name::memory::new_address_space_manager;
         pub use self::$name::memory::idle_address_space_manager;

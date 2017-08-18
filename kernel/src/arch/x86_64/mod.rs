@@ -11,11 +11,12 @@ mod syscalls;
 mod gdt;
 
 pub use self::context::Context;
-use self::gdt::GDT;
+use self::gdt::{GDT, TSS};
 use self::interrupts::SCHEDULE_INTERRUPT_NUM;
 use self::interrupts::issue_self_interrupt;
 use multitasking::{CURRENT_THREAD, StackType};
 use raw_cpuid::CpuId;
+use x86_64::VirtualAddress;
 use x86_64::instructions::{rdmsr, wrmsr};
 use x86_64::registers::*;
 
@@ -98,6 +99,7 @@ pub unsafe fn enter_first_thread() -> ! {
         .without_locking()
         .context
         .kernel_stack_pointer;
+    TSS.as_mut().privilege_stack_table[0] = VirtualAddress(stack_pointer);
     asm!("mov rsp, $0
           ret"
           : : "r"(stack_pointer) : : "intel", "volatile");

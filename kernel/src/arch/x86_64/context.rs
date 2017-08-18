@@ -1,6 +1,6 @@
 //! Provides saving and restoring of architecture specific execution context.
 
-use super::gdt::{USER_CODE_SEGMENT, USER_DATA_SEGMENT};
+use super::gdt::{USER_CODE_SEGMENT, USER_DATA_SEGMENT, TSS};
 use super::interrupts::lapic;
 use memory::{PhysicalAddress, VirtualAddress};
 use memory::address_space::AddressSpace;
@@ -18,7 +18,7 @@ pub struct Context {
 
 impl Context {
     // TODO: Remove me, I'm only for testing.
-    pub fn test(function: u64,
+    pub fn new(function: u64,
                 arg1: u64,
                 arg2: u64,
                 arg3: u64,
@@ -142,7 +142,7 @@ pub unsafe fn switch_context(old_context: &mut Context, new_context: &Context) {
         .lock()
         .kernel_stack
         .base_stack_pointer;
-    super::gdt::TSS.as_mut().privilege_stack_table[0] = ::x86_64::VirtualAddress(base_sp);
+    TSS.as_mut().privilege_stack_table[0] = ::x86_64::VirtualAddress(base_sp);
 
     switch(&mut old_context.kernel_stack_pointer,
            &mut old_context.base_pointer,

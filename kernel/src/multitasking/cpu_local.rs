@@ -25,6 +25,12 @@ impl<T> CPULocal<T> {
     pub unsafe fn new(vec: Vec<T>) -> CPULocal<T> {
         CPULocal(vec)
     }
+
+    /// Gets the local value of the given cpu.
+    pub fn get_specific(&self, cpu_id: usize) -> &T {
+        // This is safe, because the values are immutable.
+        &self.0[cpu_id]
+    }
 }
 
 /// A helper type to wrap a mutable CPU local value.

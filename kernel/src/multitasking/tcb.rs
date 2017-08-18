@@ -1,11 +1,11 @@
 //! This module defines thread control blocks (TCBs).
 
-use super::{PCB, PROCESS_LIST, ProcessID, Stack, ThreadID, get_cpu_id};
+use super::{PCB, PROCESS_LIST, ProcessID, Stack, ThreadID};
 use super::stack::AccessType;
 use arch::Context;
 use core::cmp::Ordering;
 use core::fmt;
-use memory::{KERNEL_STACK_AREA_BASE, STACK_MAX_SIZE, STACK_OFFSET, VirtualAddress};
+use memory::{KERNEL_STACK_AREA_BASE, KERNEL_STACK_MAX_SIZE, KERNEL_STACK_OFFSET, USER_STACK_AREA_BASE, USER_STACK_MAX_SIZE, USER_STACK_OFFSET, VirtualAddress};
 use x86_64::registers::control_regs::cr3;
 
 /// Represents the possible states a thread can have.
@@ -39,7 +39,7 @@ pub struct TCB {
 
 impl fmt::Debug for TCB {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Thread <ID: {}>", self.id)
+        write!(f, "Thread <ID: {}, PID: {}>", self.id, self.pid)
     }
 }
 
@@ -68,28 +68,37 @@ impl Drop for TCB {
     fn drop(&mut self) {
         let mut process_list = PROCESS_LIST.lock();
 
-        let pcb = process_list
-            .get_mut(&self.pid)
-            .expect("Process of the thread doesn't exist.");
+        let drop_pcb = {
+            let pcb = process_list
+                .get_mut(&self.pid)
+                .expect("Process of the thread doesn't exist.");
 
-        self.kernel_stack.resize(0, Some(&mut pcb.address_space));
-        self.user_stack.resize(0, Some(&mut pcb.address_space));
+            pcb.thread_count -= 1;
+
+            self.kernel_stack.resize(0, Some(&mut pcb.address_space));
+            self.user_stack.resize(0, Some(&mut pcb.address_space));
+
+            pcb.is_droppable()
+        };
+
+        if drop_pcb {
+            process_list.remove(&self.pid);
+        }
     }
 }
 
 impl TCB {
     /// Creates a new thread in the given process at the given start address.
     pub fn in_process(pid: ProcessID, id: ThreadID, pc: VirtualAddress, pcb: &mut PCB) -> TCB {
-        let kernel_stack = Stack::new(0x2000,
-                                      STACK_MAX_SIZE,
-                                      KERNEL_STACK_AREA_BASE + STACK_OFFSET * (id as usize),
+        let kernel_stack = Stack::new(0x4000,
+                                      KERNEL_STACK_MAX_SIZE,
+                                      KERNEL_STACK_AREA_BASE + KERNEL_STACK_OFFSET * (id as usize),
                                       AccessType::KernelOnly,
                                       Some(&mut pcb.address_space));
 
-        let user_stack = Stack::new(0x1000,
-                                    0x1000,
-                                    0x1000 * (id as usize), /* TODO: find a more suitable
-                                                             * position. */
+        let user_stack = Stack::new(0x2000,
+                                    USER_STACK_MAX_SIZE,
+                                    USER_STACK_AREA_BASE + USER_STACK_OFFSET * (id as usize),
                                     AccessType::UserAccessible,
                                     Some(&mut pcb.address_space));
 
@@ -103,7 +112,7 @@ impl TCB {
             user_stack,
             state: ThreadState::Ready,
             priority: 1,
-            context: Context::test(pc as u64,
+            context: Context::new(pc as u64,
                                    0,
                                    0,
                                    0,
@@ -117,14 +126,14 @@ impl TCB {
     }
 
     /// Creates a new TCB for an idle thread.
-    pub fn idle_tcb() -> TCB {
-        let id = get_cpu_id() as ThreadID;
+    pub fn idle_tcb(cpu_id: usize) -> TCB {
+        let id = cpu_id as ThreadID;
 
 
         // NOTE: This assumes that the idle address space is currently active.
         let user_stack = Stack::new(0x2000,
-                                    STACK_MAX_SIZE,
-                                    KERNEL_STACK_AREA_BASE + STACK_OFFSET * (id as usize),
+                                    KERNEL_STACK_MAX_SIZE,
+                                    KERNEL_STACK_AREA_BASE + KERNEL_STACK_OFFSET * (id as usize),
                                     AccessType::KernelOnly,
                                     None);
 
@@ -143,7 +152,10 @@ impl TCB {
 
     /// Returns true if the thread state is dead.
     pub fn is_dead(&self) -> bool {
-        self.state == ThreadState::Dead
+        let process_list = PROCESS_LIST.lock();
+        let process = process_list.get(&self.pid).expect("Process of the thread doesn't exist.");
+
+        self.state == ThreadState::Dead || process.is_dead()
     }
 
     /// Sets the thread state to ready if applicable.
@@ -155,7 +167,7 @@ impl TCB {
 
     /// Sets the thread state to running.
     pub fn set_running(&mut self) {
-        assert!(!self.is_dead(), "Trying to run a dead thread: {:?}", self);
+        debug_assert!(!self.is_dead(), "Trying to run a dead thread: {:?}", self);
 
         self.state == ThreadState::Running;
     }

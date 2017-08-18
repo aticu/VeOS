@@ -1,6 +1,7 @@
 //! Deals with configuring the I/O APIC.
 
 use super::IRQ_INTERRUPT_NUMS;
+use core::fmt;
 use memory::{NO_CACHE, PhysicalAddress, READABLE, VirtualAddress, WRITABLE, map_page_at};
 use x86_64::instructions::port::outb;
 
@@ -27,6 +28,7 @@ pub fn init() {
         set_irq(i as u8, irq);
     }
 
+    // Deactivate irq2.
     let mut irq2 = IORedirectionEntry::new();
     irq2.set_inactive();
     set_irq(2, irq2);
@@ -48,6 +50,7 @@ fn set_register(reg: u8, value: u32) {
 
 /// Sets the given IRQ number to the specified value.
 fn set_irq(number: u8, value: IORedirectionEntry) {
+    println!("Setting irq {} to {:?}", number, value);
     assert!(number < 24);
 
     let reg = 0x10 + number * 2;
@@ -124,11 +127,12 @@ impl IORedirectionEntry {
     fn new() -> IORedirectionEntry {
         let mut register = IORedirectionEntry(0);
         register.set_active();
-        register.set_delivery_mode(LOWEST_PRIORITY_DELIVERY_MODE);
+        register.set_delivery_mode(FIXED_DELIVERY_MODE);
         register.set_trigger_mode(EDGE_SENSITIVE);
         register.set_polarity(HIGH_ACTIVE_PIN_POLARITY);
         // 0xff sends the interrupt to all processors.
-        register.set_destination(PHYSICAL_DESTINATION_MODE, 0xff);
+        // TODO: Don't use this ID here.
+        register.set_destination(PHYSICAL_DESTINATION_MODE, ::multitasking::get_cpu_id() as u8);
 
         register
     }
@@ -176,5 +180,11 @@ impl IORedirectionEntry {
         // Set the actual destination.
         self.0 &= !DESTINATION.bits();
         self.0 |= (dest as u64) << 56;
+    }
+}
+
+impl fmt::Debug for IORedirectionEntry {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Vector: {:x}, Active: {}", self.0 & VECTOR.bits(), self.0 & MASK.bits() == 0)
     }
 }

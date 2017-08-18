@@ -10,19 +10,17 @@ use sync::Mutex;
 use x86_64::instructions::halt;
 
 cpu_local! {
-    pub static ref READY_LIST: Mutex<BinaryHeap<TCB>> = Mutex::new(BinaryHeap::new());
+    pub static ref READY_LIST: Mutex<BinaryHeap<TCB>> = |_| Mutex::new(BinaryHeap::new());
 }
 
-// TODO: Make this CPU local. This will initialize every current thread on the
-// current CPU though.
-lazy_static! {
+cpu_local! {
     /// Holds the TCB of the currently running thread.
-    pub static ref CURRENT_THREAD: Mutex<TCB> = Mutex::new(TCB::idle_tcb());
+    pub static ref CURRENT_THREAD: Mutex<TCB> = |cpu_id| Mutex::new(TCB::idle_tcb(cpu_id));
 }
 
 cpu_local! {
     /// Holds the TCB of the previously running thread during context switches.
-    static mut ref OLD_THREAD: Option<TCB> = None;
+    static mut ref OLD_THREAD: Option<TCB> = |_| None;
 }
 
 /// Schedules the next thread to run and dispatches it.
@@ -37,7 +35,6 @@ pub unsafe fn schedule_next_thread() {
 
     let mut ready_list = READY_LIST.lock();
 
-    // TODO: Start the timer again here to ensure fairness.
 
     // Scheduling is needed if:
     // There is another thread to schedule.
@@ -97,6 +94,7 @@ pub fn after_context_switch() {
             }
         }
     }
+    // TODO: Start the timer again here to ensure fairness.
 }
 
 /// This function gets executed whenever there is nothing else to execute.

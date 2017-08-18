@@ -7,6 +7,7 @@ mod address_space_manager;
 
 pub use self::address_space_manager::idle_address_space_manager;
 pub use self::address_space_manager::new_address_space_manager;
+pub use self::paging::get_free_memory_size;
 
 /// The maximum address of the lower part of the virtual address space.
 const VIRTUAL_LOW_MAX_ADDRESS: VirtualAddress = 0x00000fffffffffff;
@@ -17,14 +18,32 @@ const VIRTUAL_HIGH_MIN_ADDRESS: VirtualAddress = 0xffff800000000000;
 /// The top of the stack after the kernel has been remapped.
 pub const FINAL_STACK_TOP: VirtualAddress = 0xfffffe8000000000;
 
+/// The start address for the double fault stack area.
+pub const DOUBLE_FAULT_STACK_AREA_BASE: VirtualAddress = 0xfffffd0000000000;
+
+/// The distance between two double fault stack tops.
+pub const DOUBLE_FAULT_STACK_OFFSET: usize = 0x2000;
+
+/// The maximum size of a double fault stack.
+pub const DOUBLE_FAULT_STACK_MAX_SIZE: usize = 0x1000;
+
 /// The base address of the kernel stack area.
 pub const KERNEL_STACK_AREA_BASE: VirtualAddress = 0xfffffe0000000000;
 
 /// The offset of the start addresses of thread kernel stacks.
-pub const STACK_OFFSET: usize = 0x400000;
+pub const KERNEL_STACK_OFFSET: usize = 0x400000;
 
 /// The maximum size of a thread kernel stack.
-pub const STACK_MAX_SIZE: usize = 0x200000;
+pub const KERNEL_STACK_MAX_SIZE: usize = 0x200000;
+
+/// The base address of the process stack area.
+pub const USER_STACK_AREA_BASE: VirtualAddress = 0x00007f8000000000;
+
+/// The offset of the start addresses of thread stacks.
+pub const USER_STACK_OFFSET: usize = 0x400000;
+
+/// The maximum size of a thread stack.
+pub const USER_STACK_MAX_SIZE: usize = 0x200000;
 
 /// The start address of the heap.
 pub const HEAP_START: VirtualAddress = 0xfffffd8000000000;

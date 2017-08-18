@@ -1,0 +1,10 @@
+[package]
+name = "mkinitramfs"
+version = "0.1.0"
+authors = ["aticu <15schnic@gmail.com>"]
+description = "The initramfs creator of VeOS."
+keywords = ["OS", "operating", "system", "VeOS", "std"]
+license = "MIT"
+
+[dependencies]
+byteorder = "1.1.0"

@@ -82,6 +82,7 @@ impl InactivePageTable {
 
         table[256] = CURRENT_PAGE_TABLE.lock().get_l4()[256].clone();
         table[257] = CURRENT_PAGE_TABLE.lock().get_l4()[257].clone();
+        table[506] = CURRENT_PAGE_TABLE.lock().get_l4()[506].clone();
         table[507] = CURRENT_PAGE_TABLE.lock().get_l4()[507].clone();
 
         unsafe {

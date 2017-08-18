@@ -1,0 +1,19 @@
+[package]
+name = "veos_std"
+version = "0.1.0"
+authors = ["aticu <15schnic@gmail.com>"]
+description = "The standard library used by VeOS."
+keywords = ["OS", "operating", "system", "VeOS", "std"]
+license = "MIT"
+
+[lib]
+crate-type = ["rlib"]
+
+[dependencies]
+rlibc = "1.0"
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"

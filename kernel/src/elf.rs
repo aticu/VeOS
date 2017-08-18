@@ -7,8 +7,9 @@ use core::mem::size_of;
 use file_handle::FileHandle;
 use initramfs;
 use memory::{PAGE_SIZE, PhysicalAddress, VirtualAddress};
+use memory::address_space;
 use memory::address_space::{AddressSpace, Segment};
-use multitasking::create_process;
+use multitasking::{create_process, ProcessID};
 
 /// Represents an ELF file.
 struct ElfFile {
@@ -307,7 +308,7 @@ impl Header {
 
 /// Represents the different segment types in the program header.
 #[repr(u32)]
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 #[allow(dead_code)]
 enum SegmentType {
     /// An unused entry.
@@ -361,7 +362,7 @@ struct ProgramHeader {
 
 impl ProgramHeader {
     fn is_fully_contained(&self, file_size: u64) -> bool {
-        file_size >= (self.offset as u64).saturating_add(self.size_in_file as u64)
+        file_size >= (self.offset as u64).saturating_add(self.size_in_file as u64) || self.size_in_file == 0
     }
 }
 
@@ -407,12 +408,12 @@ impl<'a> Iterator for ProgramHeaderIterator<'a> {
 }
 
 /// Creates a new process from the given file on the initramfs.
-pub fn process_from_initramfs_file(name: &str) -> Result<(), ElfError> {
+pub fn process_from_initramfs_file(name: &str) -> Result<ProcessID, ElfError> {
     ElfFile::from_initramfs(name).and_then(|file| process_from_elf_file(file))
 }
 
 /// Creates a new process from the given ELF file handle.
-fn process_from_elf_file(mut file: ElfFile) -> Result<(), ElfError> {
+fn process_from_elf_file(mut file: ElfFile) -> Result<ProcessID, ElfError> {
     let mut address_space = AddressSpace::new();
 
     {
@@ -420,6 +421,10 @@ fn process_from_elf_file(mut file: ElfFile) -> Result<(), ElfError> {
 
         // For each segment.
         while let Some(program_header) = iterator.next() {
+            if program_header.segment_type != SegmentType::Load {
+                continue;
+            }
+
             // Convert the flags to page flags.
             let mut flags = ::memory::USER_ACCESSIBLE;
 
@@ -437,12 +442,18 @@ fn process_from_elf_file(mut file: ElfFile) -> Result<(), ElfError> {
 
             let segment = Segment::new(program_header.virtual_address,
                                        program_header.size_in_memory,
-                                       flags);
+                                       flags,
+                                       address_space::SegmentType::FromFile);
 
             address_space.add_segment(segment);
 
             // Map all the segments (page by page).
-            for i in 0..(program_header.size_in_file - 1) / PAGE_SIZE + 1 {
+            let pages_in_file = if program_header.size_in_file != 0 {
+                (program_header.size_in_file - 1) / PAGE_SIZE + 1
+            } else {
+                0
+            };
+            for i in 0..pages_in_file {
                 let mut segment_data_buffer: [u8; ::memory::PAGE_SIZE] =
                     unsafe { mem::uninitialized() };
 
@@ -454,7 +465,7 @@ fn process_from_elf_file(mut file: ElfFile) -> Result<(), ElfError> {
 
                 let read_result = iterator
                     .file_handle
-                    .read_at(segment_data, program_header.offset as u64);
+                    .read_at(segment_data, (program_header.offset + i * PAGE_SIZE) as u64);
 
                 if read_result.is_err() {
                     return Err(ElfError::InvalidFile);
@@ -462,6 +473,11 @@ fn process_from_elf_file(mut file: ElfFile) -> Result<(), ElfError> {
 
                 address_space.write_to(segment_data,
                                        program_header.virtual_address + i * PAGE_SIZE);
+            }
+
+            let pages_in_memory = (program_header.size_in_memory - 1) / PAGE_SIZE + 1;
+            for i in pages_in_file..pages_in_memory {
+                address_space.map_page(program_header.virtual_address + i * PAGE_SIZE);
             }
         }
     }

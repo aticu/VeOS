@@ -1,13 +1,13 @@
 //! Manages multitasking in the operating system.
 
 mod tcb;
-mod stack;
+pub mod stack;
 pub mod scheduler;
 mod cpu_local;
 mod pcb;
 
 pub use self::cpu_local::{CPULocal, CPULocalMut};
-pub use self::pcb::PCB;
+pub use self::pcb::{PCB, get_current_process};
 pub use self::scheduler::CURRENT_THREAD;
 pub use self::stack::{Stack, StackType};
 pub use self::tcb::{TCB, ThreadState};
@@ -19,14 +19,14 @@ use sync::Mutex;
 use sync::mutex::MutexGuard;
 
 /// The type of a process ID.
-type ProcessID = usize;
+pub type ProcessID = usize;
 
 /// The type of a thread ID.
 type ThreadID = u16;
 
 lazy_static! {
     /// The list of all the currently running processes.
-    pub static ref PROCESS_LIST: Mutex<BTreeMap<ProcessID, PCB>> = Mutex::new({
+    static ref PROCESS_LIST: Mutex<BTreeMap<ProcessID, PCB>> = Mutex::new({
         let mut map = BTreeMap::new();
         map.insert(0, PCB::idle_pcb());
 
@@ -44,7 +44,7 @@ fn find_pid(list: &MutexGuard<BTreeMap<ProcessID, PCB>>) -> ProcessID {
 }
 
 /// Creates a new process.
-pub fn create_process(address_space: AddressSpace, entry_address: VirtualAddress) {
+pub fn create_process(address_space: AddressSpace, entry_address: VirtualAddress) -> ProcessID {
     let mut pcb = PCB::new(address_space);
 
     let mut process_list = PROCESS_LIST.lock();
@@ -55,5 +55,7 @@ pub fn create_process(address_space: AddressSpace, entry_address: VirtualAddress
     scheduler::READY_LIST.lock().push(first_tcb);
 
     assert!(process_list.insert(id, pcb).is_none(),
-            "Overwrote an existing process.");
+            "Trying to use an already used PID ({}).", id);
+
+    id
 }

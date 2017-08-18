@@ -55,7 +55,7 @@ impl FrameAllocator {
                     list.insert(new_free_area);
                 }
             }
-            self.free_frames.set(self.free_frames.get() + 1);
+            self.free_frames.set(self.free_frames.get() - 1);
 
             page_frame
         } else {
@@ -74,5 +74,10 @@ impl FrameAllocator {
         let mut list = FREE_LIST.lock();
         self.free_frames.set(self.free_frames.get() + 1);
         list.insert(FreeMemoryArea::new(frame.get_address(), PAGE_SIZE));
+    }
+
+    /// Returns the current number of free frames.
+    pub fn get_free_frame_num(&self) -> usize {
+        self.free_frames.get()
     }
 }

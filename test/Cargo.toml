@@ -1,0 +1,19 @@
+[package]
+name = "test"
+version = "0.1.0"
+authors = ["aticu <15schnic@gmail.com>"]
+keywords = ["OS", "operating", "system", "VeOS", "std"]
+license = "MIT"
+
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
+rlibc = "1.0"
+veos_std = { path = "../std", version = "0.1" }
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"

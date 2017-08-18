@@ -229,4 +229,22 @@ pub trait PageTableManager {
             .unmap();
         tlb::flush(::x86_64::VirtualAddress(page.get_address()));
     }
+
+    /// Unmaps the given page, not checking if it was mapped.
+    ///
+    /// # Safety
+    /// - Make sure the page isn't referenced anywhere anymore.
+    unsafe fn unmap_page_unchecked(&mut self, page: Page) {
+        // TODO: Consider multiple CPUs.
+        // TODO: Consider that the page may still be in use elsewhere (don't free the
+        // frame then).
+        let entry = self.get_entry(page.get_address());
+
+        if let Some(mut entry) = entry {
+            if entry.points_to().is_some() {
+                entry.unmap();
+            }
+            tlb::flush(::x86_64::VirtualAddress(page.get_address()));
+        }
+    }
 }
