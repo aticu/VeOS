@@ -4,6 +4,7 @@ pub mod lapic;
 mod ioapic;
 
 pub use self::lapic::issue_self_interrupt;
+use super::sync::CLOCK;
 use multitasking::scheduler::schedule_next_thread;
 use x86_64::instructions::interrupts;
 use x86_64::registers::control_regs;
@@ -97,18 +98,14 @@ extern "x86-interrupt" fn double_fault_handler(stack_frame: &mut ExceptionStackF
     println!("DOUBLE FAULT!");
     println!("{:?}", stack_frame);
     println!("Error code: 0x{:x}", error_code);
+    use multitasking::{CURRENT_THREAD, TCB};
+    let tcb: &::sync::Mutex<TCB> = &CURRENT_THREAD;
+    println!("Running thread: {:?}", tcb);
     loop {}
 }
 
 /// The page fault handler of the kernel.
 extern "x86-interrupt" fn page_fault_handler(stack_frame: &mut ExceptionStackFrame, _: PageFaultErrorCode) {
-    // println!("PAGE FAULT!");
-    // println!("Address: {:x}", control_regs::cr2());
-    // println!("Error code: {:?}",
-    // error_code);
-    // println!("Page flags: {:?}",
-    // super::memory::get_page_flags(control_regs::cr2().0));
-    // println!("{:?}", stack_frame);
     ::interrupts::page_fault_handler(control_regs::cr2().0, stack_frame.instruction_pointer.0);
 }
 
@@ -129,6 +126,9 @@ extern "x86-interrupt" fn empty_handler(_: &mut ExceptionStackFrame) {}
 irq_interrupt!(
 /// The handler for the lapic timer interrupt.
 fn timer_handler {
+    unsafe {
+        CLOCK += 150;
+    }
     ::interrupts::timer_interrupt();
 });
 

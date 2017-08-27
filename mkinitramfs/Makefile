@@ -4,7 +4,7 @@ prog_name := mkinitramfs
 
 target_dir := ../target
 
-executable := target/$(build_type)/$(prog_name)
+executable := target/release/$(prog_name)
 
 rust_compiler_flags := --release
 rust_compiler := cargo

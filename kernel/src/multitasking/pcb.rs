@@ -1,7 +1,7 @@
 //! This module defines a process control block (PCB).
 
 use alloc::BTreeMap;
-use arch::get_cpu_num;
+use arch::{get_cpu_num, schedule};
 use core::ops::{Deref, DerefMut};
 use memory::address_space::AddressSpace;
 use multitasking::{ProcessID, CURRENT_THREAD, PROCESS_LIST};
@@ -62,6 +62,16 @@ impl PCB {
     /// This will cause the scheduler to not schedule any threads of this process anymore.
     pub fn kill(&mut self) {
         self.state = ProcessState::Dead;
+    }
+
+    /// Marks this process as dead.
+    ///
+    /// This will cause the scheduler to not schedule any threads of this process anymore.
+    /// The scheduler will be invoked immediately.
+    pub fn kill_immediately(&mut self) -> ! {
+        self.state = ProcessState::Dead;
+        schedule();
+        unreachable!();
     }
 
     /// Determines if this process can be dropped.

@@ -7,10 +7,28 @@
 use arch::schedule;
 use memory::VirtualAddress;
 use multitasking::CURRENT_THREAD;
+use multitasking::scheduler::{SLEEPING_LIST, READY_LIST};
+use sync::time::Timestamp;
 
 /// The timer interrupt handler for the system.
 pub fn timer_interrupt() {
     print!("!");
+    
+    {
+        let mut sleeping_list = SLEEPING_LIST.lock();
+        loop {
+            if sleeping_list.peek().is_some() {
+                if sleeping_list.peek().unwrap().get_sleep_time() <= Timestamp::get_current() {
+                    READY_LIST.lock().push(sleeping_list.pop().unwrap().0);
+                } else {
+                    break;
+                }
+            } else {
+                break;
+            }
+        }
+    }
+
     schedule();
 }
 

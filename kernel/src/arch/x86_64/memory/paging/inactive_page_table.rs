@@ -53,7 +53,7 @@ impl InactivePageTable {
         let preemption_state = CURRENT_PAGE_TABLE.lock().map_inactive(&frame);
 
         // Zero the page.
-        let mut table = &mut *L4_TABLE;
+        let table = &mut *L4_TABLE;
         table.zero();
 
         // Set up some invariants.
@@ -77,7 +77,7 @@ impl InactivePageTable {
         let frame = FRAME_ALLOCATOR.allocate();
         let preemption_state = unsafe { CURRENT_PAGE_TABLE.lock().map_inactive(&frame) };
 
-        let mut table = unsafe { &mut *L4_TABLE };
+        let table = unsafe { &mut *L4_TABLE };
         table.zero();
 
         table[256] = CURRENT_PAGE_TABLE.lock().get_l4()[256].clone();

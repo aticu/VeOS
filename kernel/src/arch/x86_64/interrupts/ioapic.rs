@@ -50,7 +50,6 @@ fn set_register(reg: u8, value: u32) {
 
 /// Sets the given IRQ number to the specified value.
 fn set_irq(number: u8, value: IORedirectionEntry) {
-    println!("Setting irq {} to {:?}", number, value);
     assert!(number < 24);
 
     let reg = 0x10 + number * 2;

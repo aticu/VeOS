@@ -1,5 +1,7 @@
 //! Handles synchronization within the kernel.
+
 pub mod mutex;
+pub mod time;
 
 pub use self::mutex::Mutex;
 use arch;

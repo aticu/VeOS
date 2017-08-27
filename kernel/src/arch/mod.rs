@@ -19,6 +19,7 @@ macro_rules! export_arch {
         pub use self::$name::sync::interrupts_enabled;
         pub use self::$name::sync::disable_interrupts;
         pub use self::$name::sync::enable_interrupts;
+        pub use self::$name::sync::get_current_timestamp;
 
         pub use self::$name::memory::init as memory_init;
         pub use self::$name::memory::map_page;
@@ -39,6 +40,7 @@ macro_rules! export_arch {
         pub use self::$name::memory::USER_STACK_OFFSET;
         pub use self::$name::memory::USER_STACK_MAX_SIZE;
         pub use self::$name::memory::get_free_memory_size;
+        pub use self::$name::memory::is_userspace_address;
 
         pub use self::$name::memory::new_address_space_manager;
         pub use self::$name::memory::idle_address_space_manager;

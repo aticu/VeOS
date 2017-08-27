@@ -6,15 +6,18 @@ use arch::Context;
 use core::cmp::Ordering;
 use core::fmt;
 use memory::{KERNEL_STACK_AREA_BASE, KERNEL_STACK_MAX_SIZE, KERNEL_STACK_OFFSET, USER_STACK_AREA_BASE, USER_STACK_MAX_SIZE, USER_STACK_OFFSET, VirtualAddress};
+use sync::time::Timestamp;
 use x86_64::registers::control_regs::cr3;
 
 /// Represents the possible states a thread can have.
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum ThreadState {
     /// The thread is currently running.
     Running,
     /// The thread is ready to run.
     Ready,
+    /// The thread is sleeping for a specified amount of time.
+    Sleeping(Timestamp),
     /// The thread is dead.
     Dead
 }
@@ -39,7 +42,7 @@ pub struct TCB {
 
 impl fmt::Debug for TCB {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Thread <ID: {}, PID: {}>", self.id, self.pid)
+        write!(f, "Thread <ID: {}, PID: {}> ({:?})", self.id, self.pid, self.state)
     }
 }
 
@@ -113,12 +116,6 @@ impl TCB {
             state: ThreadState::Ready,
             priority: 1,
             context: Context::new(pc as u64,
-                                   0,
-                                   0,
-                                   0,
-                                   0,
-                                   0,
-                                   0,
                                    stack_pointer,
                                    kernel_stack_pointer,
                                    &mut pcb.address_space)
@@ -131,7 +128,7 @@ impl TCB {
 
 
         // NOTE: This assumes that the idle address space is currently active.
-        let user_stack = Stack::new(0x2000,
+        let user_stack = Stack::new(0x3000,
                                     KERNEL_STACK_MAX_SIZE,
                                     KERNEL_STACK_AREA_BASE + KERNEL_STACK_OFFSET * (id as usize),
                                     AccessType::KernelOnly,
@@ -154,14 +151,19 @@ impl TCB {
     pub fn is_dead(&self) -> bool {
         let process_list = PROCESS_LIST.lock();
         let process = process_list.get(&self.pid).expect("Process of the thread doesn't exist.");
-
+        
         self.state == ThreadState::Dead || process.is_dead()
+    }
+
+    /// Returns true if the thread state is running.
+    pub fn is_running(&self) -> bool {
+        self.state == ThreadState::Running
     }
 
     /// Sets the thread state to ready if applicable.
     pub fn set_ready(&mut self) {
         if !self.is_dead() {
-            self.state == ThreadState::Ready;
+            self.state = ThreadState::Ready;
         }
     }
 
@@ -169,6 +171,39 @@ impl TCB {
     pub fn set_running(&mut self) {
         debug_assert!(!self.is_dead(), "Trying to run a dead thread: {:?}", self);
 
-        self.state == ThreadState::Running;
+        self.state = ThreadState::Running;
+    }
+}
+
+/// A TCB that is sorted by its sleep time (shortest first).
+pub struct SleepTimeSortedTCB(pub TCB);
+
+impl SleepTimeSortedTCB {
+    /// Returns the sleep time for this TCB.
+    pub fn get_sleep_time(&self) -> Timestamp {
+        match self.0.state {
+            ThreadState::Sleeping(time) => time,
+            _ => unreachable!()
+        }
+    }
+}
+
+impl PartialEq for SleepTimeSortedTCB {
+    fn eq(&self, other: &SleepTimeSortedTCB) -> bool {
+        self.get_sleep_time() == other.get_sleep_time()
+    }
+}
+
+impl Eq for SleepTimeSortedTCB {}
+
+impl Ord for SleepTimeSortedTCB {
+    fn cmp(&self, other: &SleepTimeSortedTCB) -> Ordering {
+        other.get_sleep_time().cmp(&self.get_sleep_time())
+    }
+}
+
+impl PartialOrd for SleepTimeSortedTCB {
+    fn partial_cmp(&self, other: &SleepTimeSortedTCB) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }

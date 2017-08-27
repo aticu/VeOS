@@ -6,8 +6,6 @@ use core::fmt::Write;
 /// The number of the print char syscall.
 const PRINT_CHAR_SYSCALL: u64 = 0;
 
-use ::syscall;
-
 /// A dummy struct to implement fmt::Write on.
 struct StdOut;
 
@@ -43,7 +41,7 @@ pub fn print(args: fmt::Arguments) {
 /// Prints a character to the screen.
 fn print_char(character: char) {
     unsafe {
-        syscall(PRINT_CHAR_SYSCALL, character as u64, 0, 0, 0, 0, 0);
+        syscall!(PRINT_CHAR_SYSCALL, character as u64);
     }
 }
 

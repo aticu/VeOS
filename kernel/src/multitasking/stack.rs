@@ -102,7 +102,7 @@ impl Stack {
                 flags |= USER_ACCESSIBLE;
             }
 
-            address_space.add_segment(Segment::new(start_address, max_size, flags, SegmentType::MemoryOnly));
+            assert!(address_space.add_segment(Segment::new(start_address, max_size, flags, SegmentType::MemoryOnly)), "Could not add stack segment.");
         }
 
         stack.resize(initial_size, address_space);

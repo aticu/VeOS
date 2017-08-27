@@ -10,7 +10,7 @@ pub use self::address_space_manager::new_address_space_manager;
 pub use self::paging::get_free_memory_size;
 
 /// The maximum address of the lower part of the virtual address space.
-const VIRTUAL_LOW_MAX_ADDRESS: VirtualAddress = 0x00000fffffffffff;
+const VIRTUAL_LOW_MAX_ADDRESS: VirtualAddress = 0x00007fffffffffff;
 
 /// The minimum address of the higher part of the virtual address space.
 const VIRTUAL_HIGH_MIN_ADDRESS: VirtualAddress = 0xffff800000000000;
@@ -154,4 +154,9 @@ pub fn get_page_flags(page_address: VirtualAddress) -> PageFlags {
 /// - Make sure that nothing references that page anymore.
 pub unsafe fn unmap_page(start_address: VirtualAddress) {
     paging::unmap_page(start_address);
+}
+
+/// Checks if the address is a kernel or a userspace address.
+pub fn is_userspace_address(address: VirtualAddress) -> bool {
+    address <= VIRTUAL_LOW_MAX_ADDRESS
 }

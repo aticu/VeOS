@@ -16,6 +16,7 @@ pub use arch::get_page_flags;
 pub use arch::map_page;
 pub use arch::map_page_at;
 pub use arch::unmap_page;
+pub use arch::is_userspace_address;
 
 use core::fmt;
 

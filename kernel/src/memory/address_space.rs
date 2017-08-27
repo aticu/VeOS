@@ -3,11 +3,10 @@
 use super::{PageFlags, PhysicalAddress, VirtualAddress};
 use alloc::Vec;
 use alloc::boxed::Box;
-use arch::idle_address_space_manager;
-use arch::new_address_space_manager;
+use arch::{idle_address_space_manager, new_address_space_manager};
 use core::mem::size_of_val;
 use core::slice;
-use memory::PAGE_SIZE;
+use memory::{PAGE_SIZE, is_userspace_address, USER_ACCESSIBLE};
 
 /// Represents an address space
 pub struct AddressSpace {
@@ -43,8 +42,21 @@ impl AddressSpace {
     }
 
     /// Adds the segment to the address space.
-    pub fn add_segment(&mut self, segment: Segment) {
-        self.segments.push(segment);
+    ///
+    /// Returns true if the segment was successfully added.
+    pub fn add_segment(&mut self, segment_to_add: Segment) -> bool {
+        for segment in &self.segments {
+            if segment_to_add.overlaps(segment) {
+                return false;
+            }
+        }
+
+        if segment_to_add.flags.contains(USER_ACCESSIBLE) && !(is_userspace_address(segment_to_add.start) && is_userspace_address(segment_to_add.end())) {
+            false
+        } else {
+            self.segments.push(segment_to_add);
+            true
+        }
     }
 
     /// Writes to the given address in the address space.
@@ -158,12 +170,22 @@ impl Segment {
     }
 
     /// Checks if the address is contained within the segment.
-    pub fn contains(&self, address: VirtualAddress) -> bool {
-        self.start <= address && address < self.start.saturating_add(self.length)
+    fn contains(&self, address: VirtualAddress) -> bool {
+        self.start <= address && address < self.end()
+    }
+
+    /// Returns true if the intersection of the segments is not empty.
+    fn overlaps(&self, other: &Segment) -> bool {
+        self.contains(other.start) || other.contains(self.start)
+    }
+    
+    /// Returns the end address (exclusive) of the segment.
+    fn end(&self) -> VirtualAddress {
+        self.start.saturating_add(self.length)
     }
 
     /// Unmaps this segment.
-    pub fn unmap(&self, manager: &mut Box<AddressSpaceManager>) {
+    fn unmap(&self, manager: &mut Box<AddressSpaceManager>) {
         let pages_in_segment = (self.length - 1) / PAGE_SIZE + 1;
         for page_num in 0..pages_in_segment {
             unsafe {

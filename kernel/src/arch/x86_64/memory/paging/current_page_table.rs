@@ -56,7 +56,7 @@ impl CurrentPageTableLock {
 
     /// Locks the current page table.
     pub fn lock(&self) -> CurrentPageTableReference {
-        let mut rc: &mut usize = &mut self.reference_count.lock();
+        let rc: &mut usize = &mut self.reference_count.lock();
         *rc += 1;
         CurrentPageTableReference {
             current_page_table: unsafe { &mut *self.current_page_table.get() },
@@ -73,7 +73,7 @@ pub struct CurrentPageTableReference<'a> {
 
 impl<'a> Drop for CurrentPageTableReference<'a> {
     fn drop(&mut self) {
-        let mut rc: &mut usize = &mut self.reference_count.lock();
+        let rc: &mut usize = &mut self.reference_count.lock();
         *rc -= 1;
     }
 }
@@ -120,8 +120,8 @@ impl CurrentPageTable {
     /// # Safety
     /// - Should not be called while another inactive table is mapped.
     pub unsafe fn map_inactive(&mut self, frame: &PageFrame) -> PreemptionState {
-        let mut l4 = self.get_l4();
-        let mut entry = &mut l4[509];
+        let l4 = self.get_l4();
+        let entry = &mut l4[509];
         let preemption_state = entry.lock();
         if !entry.flags().contains(PRESENT) {
             entry
@@ -134,8 +134,8 @@ impl CurrentPageTable {
 
     /// Unmaps the currently mapped inactive page table.
     pub fn unmap_inactive(&mut self, preemption_state: &PreemptionState) {
-        let mut l4 = self.get_l4();
-        let mut entry = &mut l4[509];
+        let l4 = self.get_l4();
+        let entry = &mut l4[509];
         debug_assert!(entry.flags().contains(PRESENT));
         entry.remove_flags(PRESENT);
         entry.unlock(&preemption_state);
@@ -157,8 +157,8 @@ impl CurrentPageTable {
     {
         // Map the page.
         let index = page_frame_hash(frame);
-        let mut temporary_map_table = self.get_temporary_map_table();
-        let mut entry = &mut temporary_map_table[index];
+        let temporary_map_table = self.get_temporary_map_table();
+        let entry = &mut temporary_map_table[index];
         let preemption_state = entry.lock();
 
         let virtual_address = TEMPORARY_ADDRESS_BASE + (index << 12);

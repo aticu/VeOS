@@ -4,9 +4,98 @@
 #![feature(naked_functions)]
 #![no_std]
 
+/// Makes a syscall with the given arguments.
+macro_rules! syscall {
+    ($num: expr) => {{
+        let result: u64;
+        asm!("syscall" :
+            "={rax}"(result) :
+            "{rax}"($num)
+            : "rax", "rdi", "rsi", "rdx", "r10", "r8", "r9", "r12", "r11", "rcx"
+            : "intel", "volatile");
+        result
+    }};
+    ($num: expr, $arg1: expr) => {{
+        let result: u64;
+        asm!("syscall" :
+            "={rax}"(result) :
+            "{rax}"($num),
+            "{rdi}"($arg1)
+            : "rax", "rdi", "rsi", "rdx", "r10", "r8", "r9", "r12", "r11", "rcx"
+            : "intel", "volatile");
+        result
+    }};
+    ($num: expr, $arg1: expr, $arg2: expr) => {{
+        let result: u64;
+        asm!("syscall" :
+            "={rax}"(result) :
+            "{rax}"($num),
+            "{rdi}"($arg1),
+            "{rsi}"($arg2)
+            : "rax", "rdi", "rsi", "rdx", "r10", "r8", "r9", "r12", "r11", "rcx"
+            : "intel", "volatile");
+        result
+    }};
+    ($num: expr, $arg1: expr, $arg2: expr, $arg3: expr) => {{
+        let result: u64;
+        asm!("syscall" :
+            "={rax}"(result) :
+            "{rax}"($num),
+            "{rdi}"($arg1),
+            "{rsi}"($arg2),
+            "{rdx}"($arg3)
+            : "rax", "rdi", "rsi", "rdx", "r10", "r8", "r9", "r12", "r11", "rcx"
+            : "intel", "volatile");
+        result
+    }};
+    ($num: expr, $arg1: expr, $arg2: expr, $arg3: expr, $arg4: expr) => {{
+        let result: u64;
+        asm!("syscall" :
+            "={rax}"(result) :
+            "{rax}"($num),
+            "{rdi}"($arg1),
+            "{rsi}"($arg2),
+            "{rdx}"($arg3),
+            "{r10}"($arg4)
+            : "rax", "rdi", "rsi", "rdx", "r10", "r8", "r9", "r12", "r11", "rcx"
+            : "intel", "volatile");
+        result
+    }};
+    ($num: expr, $arg1: expr, $arg2: expr, $arg3: expr, $arg4: expr, $arg5: expr) => {{
+        let result: u64;
+        asm!("syscall" :
+            "={rax}"(result) :
+            "{rax}"($num),
+            "{rdi}"($arg1),
+            "{rsi}"($arg2),
+            "{rdx}"($arg3),
+            "{r10}"($arg4),
+            "{r8}"($arg5)
+            : "rax", "rdi", "rsi", "rdx", "r10", "r8", "r9", "r12", "r11", "rcx"
+            : "intel", "volatile");
+        result
+    }};
+    ($num: expr, $arg1: expr, $arg2: expr, $arg3: expr, $arg4: expr, $arg5: expr, $arg6: expr) => {{
+        let result: u64;
+        asm!("syscall" :
+            "={rax}"(result) :
+            "{rax}"($num),
+            "{rdi}"($arg1),
+            "{rsi}"($arg2),
+            "{rdx}"($arg3),
+            "{r10}"($arg4),
+            "{r8}"($arg5),
+            "{r9}"($arg6)
+            : "rax", "rdi", "rsi", "rdx", "r10", "r8", "r9", "r12", "r11", "rcx"
+            : "intel", "volatile");
+        result
+    }};
+}
+
 #[macro_use]
 pub mod io;
 pub mod process;
+pub mod thread;
 
 use process::exit;
 
@@ -43,21 +132,21 @@ pub extern "C" fn panic_fmt(fmt: core::fmt::Arguments, file: &'static str, line:
     exit();
 }
 
-/// Makes a syscall with the given arguments.
-unsafe fn syscall(num: u64, arg1: u64, arg2: u64, arg3: u64, arg4: u64, arg5: u64, arg6: u64) -> i64 {
-    let result;
+//#[inline(always)]
+//unsafe fn syscall(num: u64, arg1: u64, arg2: u64, arg3: u64, arg4: u64, arg5: u64, arg6: u64) -> i64 {
+    //let result;
 
-    asm!("syscall"
-         : "={rax}"(result) : 
-         "{rax}"(num),
-         "{rdi}"(arg1),
-         "{rsi}"(arg2),
-         "{rdx}"(arg3),
-         "{r10}"(arg4),
-         "{r8}"(arg5),
-         "{r9}"(arg6)
-         : "rax", "rdi", "rsi", "rdx", "r10", "r8", "r9", "r12", "r11", "rcx"
-         : "intel", "volatile");
+    //asm!("syscall"
+         //: "={rax}"(result) : 
+         //"{rax}"(num),
+         //"{rdi}"(arg1),
+         //"{rsi}"(arg2),
+         //"{rdx}"(arg3),
+         //"{r10}"(arg4),
+         //"{r8}"(arg5),
+         //"{r9}"(arg6)
+         //: "rax", "rdi", "rsi", "rdx", "r10", "r8", "r9", "r12", "r11", "rcx"
+         //: "intel", "volatile");
 
-    result
-}
+    //result
+//}

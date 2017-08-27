@@ -223,7 +223,7 @@ impl LinkedListAllocator {
         assert_has_not_been_called!("There should only be one linked list allocator.");
         map_page(start_address, READABLE | WRITABLE);
 
-        let mut first_node = unsafe { &mut *(start_address as *mut Node) };
+        let first_node = unsafe { &mut *(start_address as *mut Node) };
 
         first_node.used = false;
         first_node.next_node = None;

@@ -36,7 +36,7 @@ impl<'a> DerefMut for Level1TableReference<'a> {
 impl<'a> Drop for Level1TableReference<'a> {
     fn drop(&mut self) {
         let table_index = PageTable::<Level2>::table_index(self.address);
-        let mut l2_entry = &mut self.table[table_index];
+        let l2_entry = &mut self.table[table_index];
 
         l2_entry.unlock(&self.preemption_state);
     }

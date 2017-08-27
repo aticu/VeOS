@@ -92,7 +92,9 @@ pub enum ElfError {
     /// - The file is not executable.
     WrongType,
     /// The file is not a valid ELF file.
-    InvalidFile
+    InvalidFile,
+    /// The segments within the ELF file overlapped.
+    OverlappingSegments
 }
 
 /// Differentiates the endianness (byte order).
@@ -445,7 +447,9 @@ fn process_from_elf_file(mut file: ElfFile) -> Result<ProcessID, ElfError> {
                                        flags,
                                        address_space::SegmentType::FromFile);
 
-            address_space.add_segment(segment);
+            if !address_space.add_segment(segment) {
+                return Err(ElfError::OverlappingSegments);
+            }
 
             // Map all the segments (page by page).
             let pages_in_file = if program_header.size_in_file != 0 {

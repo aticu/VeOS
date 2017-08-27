@@ -19,12 +19,6 @@ pub struct Context {
 impl Context {
     // TODO: Remove me, I'm only for testing.
     pub fn new(function: u64,
-                arg1: u64,
-                arg2: u64,
-                arg3: u64,
-                arg4: u64,
-                arg5: u64,
-                arg6: u64,
                 stack_pointer: u64,
                 mut kernel_stack_pointer: VirtualAddress,
                 address_space: &mut AddressSpace)
@@ -41,12 +35,6 @@ impl Context {
 
         set_initial_stack(&mut kernel_stack_pointer,
                           stack_frame,
-                          arg1,
-                          arg2,
-                          arg3,
-                          arg4,
-                          arg5,
-                          arg6,
                           address_space);
 
         Context {
@@ -87,12 +75,6 @@ unsafe fn enter_thread() -> ! {
           xor rcx, rcx
           xor rbx, rbx
           xor rax, rax
-          pop r9
-          pop r8
-          pop rcx
-          pop rdx
-          pop rsi
-          pop rdi
           iretq" : : : : "intel", "volatile");
     unreachable!();
 }
@@ -108,20 +90,8 @@ unsafe fn set_idle_stack(stack_pointer: u64) -> u64 {
 /// Sets the initial kernel stack of a thread, so that it can properly start.
 fn set_initial_stack(stack_pointer: &mut VirtualAddress,
                      stack_frame: ExceptionStackFrame,
-                     arg1: u64,
-                     arg2: u64,
-                     arg3: u64,
-                     arg4: u64,
-                     arg5: u64,
-                     arg6: u64,
                      address_space: &mut AddressSpace) {
     Stack::push_in(address_space, stack_pointer, stack_frame);
-    Stack::push_in(address_space, stack_pointer, arg1);
-    Stack::push_in(address_space, stack_pointer, arg2);
-    Stack::push_in(address_space, stack_pointer, arg3);
-    Stack::push_in(address_space, stack_pointer, arg4);
-    Stack::push_in(address_space, stack_pointer, arg5);
-    Stack::push_in(address_space, stack_pointer, arg6);
     Stack::push_in(address_space, stack_pointer, enter_thread as u64);
 }
 
