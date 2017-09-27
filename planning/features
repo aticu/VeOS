@@ -17,12 +17,11 @@ n multiprocessor support
 n real-time scheduling
 n priorities
 n priority-inversion handling
-n cpu-burst handling
 
 Interrupts:
 i general handlers
 i system timer
-n nested interrupts
+i nested interrupts
 
 Memory Managment:
 i basic allocator/deallocator
@@ -31,8 +30,7 @@ n swapping
 n thrashing prevention
 
 Interface:
-n basic syscalls
-n event based programming
+i basic syscalls
 
 Resource managment:
 n basic resource manager

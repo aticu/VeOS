@@ -93,6 +93,11 @@ impl Drop for TCB {
 impl TCB {
     /// Creates a new thread in the given process at the given start address.
     pub fn in_process(pid: ProcessID, id: ThreadID, pc: VirtualAddress, pcb: &mut PCB) -> TCB {
+        TCB::in_process_with_arguments(pid, id, pc, pcb, 0, 0, 0, 0, 0)
+    }
+
+    /// Creates a new thread in the given process at the given start address with the given arguments.
+    pub fn in_process_with_arguments(pid: ProcessID, id: ThreadID, pc: VirtualAddress, pcb: &mut PCB, arg1: u64, arg2: u64, arg3: u64, arg4: u64, arg5: u64) -> TCB {
         let kernel_stack = Stack::new(0x4000,
                                       KERNEL_STACK_MAX_SIZE,
                                       KERNEL_STACK_AREA_BASE + KERNEL_STACK_OFFSET * (id as usize),
@@ -105,7 +110,7 @@ impl TCB {
                                     AccessType::UserAccessible,
                                     Some(&mut pcb.address_space));
 
-        let stack_pointer = user_stack.base_stack_pointer as u64;
+        let stack_pointer = user_stack.base_stack_pointer;
         let kernel_stack_pointer = kernel_stack.base_stack_pointer;
 
         TCB {
@@ -115,10 +120,15 @@ impl TCB {
             user_stack,
             state: ThreadState::Ready,
             priority: 1,
-            context: Context::new(pc as u64,
-                                   stack_pointer,
-                                   kernel_stack_pointer,
-                                   &mut pcb.address_space)
+            context: Context::new(pc,
+                                  stack_pointer,
+                                  kernel_stack_pointer,
+                                  &mut pcb.address_space,
+                                  arg1,
+                                  arg2,
+                                  arg3,
+                                  arg4,
+                                  arg5)
         }
     }
 
@@ -128,19 +138,19 @@ impl TCB {
 
 
         // NOTE: This assumes that the idle address space is currently active.
-        let user_stack = Stack::new(0x3000,
+        let kernel_stack = Stack::new(0x3000,
                                     KERNEL_STACK_MAX_SIZE,
                                     KERNEL_STACK_AREA_BASE + KERNEL_STACK_OFFSET * (id as usize),
                                     AccessType::KernelOnly,
                                     None);
 
-        let stack_pointer = user_stack.base_stack_pointer as u64;
+        let stack_pointer = kernel_stack.base_stack_pointer;
 
         TCB {
             id,
             pid: 0,
-            kernel_stack: Stack::new(0, 0, 0, AccessType::KernelOnly, None),
-            user_stack,
+            kernel_stack,
+            user_stack: Stack::new(0, 0, 0, AccessType::KernelOnly, None),
             state: ThreadState::Ready,
             priority: i32::min_value(),
             context: Context::idle_context(stack_pointer, cr3().0 as usize)
@@ -172,6 +182,13 @@ impl TCB {
         debug_assert!(!self.is_dead(), "Trying to run a dead thread: {:?}", self);
 
         self.state = ThreadState::Running;
+    }
+
+    /// Marks this thread as dead.
+    ///
+    /// This will cause the scheduler to not schedule it anymore and drop it.
+    pub fn kill(&mut self) {
+        self.state = ThreadState::Dead;
     }
 }
 

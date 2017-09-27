@@ -2,6 +2,7 @@
 
 use super::gdt::{USER_CODE_SEGMENT, USER_DATA_SEGMENT, TSS};
 use super::interrupts::lapic;
+use core::mem::size_of;
 use memory::{PhysicalAddress, VirtualAddress};
 use memory::address_space::AddressSpace;
 use multitasking::Stack;
@@ -17,12 +18,17 @@ pub struct Context {
 }
 
 impl Context {
-    // TODO: Remove me, I'm only for testing.
-    pub fn new(function: u64,
-                stack_pointer: u64,
-                mut kernel_stack_pointer: VirtualAddress,
-                address_space: &mut AddressSpace)
-                -> Context {
+    /// Creates a new context.
+    pub fn new(function: VirtualAddress,
+               stack_pointer: VirtualAddress,
+               mut kernel_stack_pointer: VirtualAddress,
+               address_space: &mut AddressSpace,
+               arg1: u64,
+               arg2: u64,
+               arg3: u64,
+               arg4: u64,
+               arg5: u64)
+               -> Context {
         use x86_64::registers::flags::Flags;
 
         let stack_frame = ExceptionStackFrame {
@@ -33,9 +39,16 @@ impl Context {
             stack_segment: USER_DATA_SEGMENT.0 as u64
         };
 
-        set_initial_stack(&mut kernel_stack_pointer,
-                          stack_frame,
-                          address_space);
+        unsafe {
+            set_initial_stack(&mut kernel_stack_pointer,
+                              stack_frame,
+                              address_space,
+                              arg1,
+                              arg2,
+                              arg3,
+                              arg4,
+                              arg5);
+        }
 
         Context {
             kernel_stack_pointer,
@@ -44,8 +57,11 @@ impl Context {
         }
     }
 
-    pub fn idle_context(stack_pointer: u64, page_table_address: PhysicalAddress) -> Context {
-        let stack_pointer = unsafe { set_idle_stack(stack_pointer) };
+    /// Creates a context for an idle thread.
+    pub fn idle_context(mut stack_pointer: VirtualAddress, page_table_address: PhysicalAddress) -> Context {
+        unsafe {
+            set_idle_stack(&mut stack_pointer);
+        }
 
         Context {
             kernel_stack_pointer: stack_pointer as usize,
@@ -67,31 +83,45 @@ unsafe fn enter_thread() -> ! {
           xor r11, r11
           xor r10, r10
           xor r9, r9
-          xor r8, r8
           xor rbp, rbp
-          xor rdi, rdi
-          xor rsi, rsi
-          xor rdx, rdx
-          xor rcx, rcx
           xor rbx, rbx
           xor rax, rax
+          pop rdi
+          pop rsi
+          pop rdx
+          pop rcx
+          pop r8
           iretq" : : : : "intel", "volatile");
     unreachable!();
 }
 
 /// Sets the initial idle thread stack.
-unsafe fn set_idle_stack(stack_pointer: u64) -> u64 {
-    let mut stack_pointer = stack_pointer;
-    stack_pointer -= 8;
-    *(stack_pointer as *mut u64) = idle as u64;
-    stack_pointer
+///
+/// # Safety
+/// - Make sure that the stack pointer is valid.
+unsafe fn set_idle_stack(stack_pointer: &mut VirtualAddress) {
+    *stack_pointer -= size_of::<u64>();
+    *(*stack_pointer as *mut u64) = idle as u64;
 }
 
 /// Sets the initial kernel stack of a thread, so that it can properly start.
-fn set_initial_stack(stack_pointer: &mut VirtualAddress,
+///
+/// # Safety
+/// - Make sure that the stack pointer is valid.
+unsafe fn set_initial_stack(stack_pointer: &mut VirtualAddress,
                      stack_frame: ExceptionStackFrame,
-                     address_space: &mut AddressSpace) {
+                     address_space: &mut AddressSpace,
+                     arg1: u64,
+                     arg2: u64,
+                     arg3: u64,
+                     arg4: u64,
+                     arg5: u64) {
     Stack::push_in(address_space, stack_pointer, stack_frame);
+    Stack::push_in(address_space, stack_pointer, arg5);
+    Stack::push_in(address_space, stack_pointer, arg4);
+    Stack::push_in(address_space, stack_pointer, arg3);
+    Stack::push_in(address_space, stack_pointer, arg2);
+    Stack::push_in(address_space, stack_pointer, arg1);
     Stack::push_in(address_space, stack_pointer, enter_thread as u64);
 }
 
@@ -104,8 +134,6 @@ fn set_initial_stack(stack_pointer: &mut VirtualAddress,
 /// - Make sure preemption is disabled while calling this.
 #[naked]
 pub unsafe fn switch_context(old_context: &mut Context, new_context: &Context) {
-    println!("");
-
     let new_sp = new_context.kernel_stack_pointer;
     let new_bp = new_context.base_pointer;
     let base_sp = ::multitasking::CURRENT_THREAD

@@ -1,10 +1,12 @@
 //! Handles configuration of the Local Advanced Programmable Interrupt
 //! Controller (LAPIC).
 
-use super::{SPURIOUS_INTERRUPT_HANDLER_NUM, TIMER_INTERRUPT_HANDLER_NUM};
+use super::{SPURIOUS_INTERRUPT_HANDLER_NUM, TIMER_INTERRUPT_HANDLER_NUM, IRQ8_INTERRUPT_TICKS};
 use memory::{NO_CACHE, PhysicalAddress, READABLE, VirtualAddress, WRITABLE, map_page_at};
 use raw_cpuid::CpuId;
 use sync::{disable_preemption, restore_preemption_state};
+use x86_64::instructions::interrupts;
+use x86_64::instructions::port::{inb, outb};
 
 /// The physical base address of the memory mapped LAPIC.
 const LAPIC_BASE: PhysicalAddress = 0xfee00000;
@@ -36,6 +38,9 @@ const SPURIOUS_INTERRUPT: usize = 0xf0;
 /// The offset for the timer inital count register.
 const TIMER_INITIAL_COUNT: usize = 0x380;
 
+/// The offset for the timer current count register.
+const TIMER_CURRENT_COUNT: usize = 0x390;
+
 /// The offset for the task priority register.
 const TASK_PRIORITY_REGISTER: usize = 0x80;
 
@@ -53,6 +58,12 @@ const LOGICAL_DESTINATION_REGISTER: usize = 0xd0;
 
 /// The offset of the destination format register.
 const DESTINATION_FORMAT_REGISTER: usize = 0xe0;
+
+// TODO: This assumes the LAPICS on all CPUs have the same frequency.
+/// The amount of LAPIC timer ticks per milliseconds. Measured at runtime.
+///
+/// This value is initialized to the value that qemu uses.
+static mut TICKS_PER_MS: u32 = 1000000;
 
 /// Initializes the LAPIC.
 pub fn init() {
@@ -115,6 +126,58 @@ pub fn init() {
     }
 }
 
+/// Calibrates the timer to work properly.
+pub fn calibrate_timer() {
+    let measure_accuracy_in_ms = 125;
+
+    // Use the RTC to calibrate the LAPIC timer.
+    unsafe {
+        // Save the NMI enable state to restore it later.
+        let nmi_bit = inb(0x70) & 0x80;
+
+        // Read the previous value of status register b.
+        outb(0x70, 0x8b);
+        let previous_b = inb(0x71);
+
+        // Enable the RTC interrupts with the default frequency of 1024hz.
+        outb(0x70, 0x8b);
+        outb(0x71, previous_b | 0x40);
+
+        // Read status register c to indicate the interrupt being handled. Just in case.
+        outb(0x70, 0x8c);
+        inb(0x71);
+
+        let start_tick = *IRQ8_INTERRUPT_TICKS.lock();
+        let end_tick = start_tick + 1024 * measure_accuracy_in_ms / 1000;
+ 
+        // Enable interrupts.
+        interrupts::enable();
+
+        // Start LAPIC timer for comparison.
+        set_register(TIMER_INITIAL_COUNT, <u32>::max_value());
+
+        // Wait until the specified amount of time has passed.
+        while *IRQ8_INTERRUPT_TICKS.lock() < end_tick {
+            asm!("pause" : : : : "intel", "volatile");
+        }
+
+        // Measure LAPIC timer ticks.
+        let timer_ticks_passed = <u32>::max_value() - get_register(TIMER_CURRENT_COUNT);
+
+        // Disable interrupts again.
+        interrupts::disable();
+
+        TICKS_PER_MS = timer_ticks_passed / measure_accuracy_in_ms as u32;
+
+        // Disable RTC interrupts after we're done.
+        outb(0x70, 0x8b);
+        outb(0x71, previous_b);
+
+        // Restore the NMI state.
+        outb(0x70, nmi_bit);
+    }
+}
+
 /// Signals the end of the interrupt handler to the LAPIC.
 pub fn signal_eoi() {
     unsafe {
@@ -124,9 +187,8 @@ pub fn signal_eoi() {
 
 /// Sets the periodic lapic timer to the specified delay in milliseconds.
 pub fn set_periodic_timer(delay: u32) {
-    // TODO: Measure this more accurately.
     unsafe {
-        set_register(TIMER_INITIAL_COUNT, delay * 1000000);
+        set_register(TIMER_INITIAL_COUNT, delay * TICKS_PER_MS);
     }
 }
 

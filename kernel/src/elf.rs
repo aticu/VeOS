@@ -479,9 +479,16 @@ fn process_from_elf_file(mut file: ElfFile) -> Result<ProcessID, ElfError> {
                                        program_header.virtual_address + i * PAGE_SIZE);
             }
 
-            let pages_in_memory = (program_header.size_in_memory - 1) / PAGE_SIZE + 1;
-            for i in pages_in_file..pages_in_memory {
-                address_space.map_page(program_header.virtual_address + i * PAGE_SIZE);
+            let last_mapped_page = (program_header.virtual_address + program_header.size_in_file - 1) / PAGE_SIZE + 1;
+            let last_page_to_map = (program_header.virtual_address + program_header.size_in_memory - 1) / PAGE_SIZE + 1;
+            let page_aligned_start_address = program_header.virtual_address / PAGE_SIZE * PAGE_SIZE;
+
+            for i in 0..last_page_to_map - last_mapped_page {
+                address_space.map_page(page_aligned_start_address + (i + 1) * PAGE_SIZE);
+            }
+
+            if program_header.size_in_file < program_header.size_in_memory {
+                address_space.zero_mapped_area(program_header.virtual_address + program_header.size_in_file, program_header.size_in_memory - program_header.size_in_file);
             }
         }
     }

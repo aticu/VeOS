@@ -37,7 +37,7 @@ clean:
 
 .PHONY: run
 run: $(iso)
-	qemu-system-x86_64 -cdrom $(iso) --no-reboot -smp cores=4 -s
+	qemu-system-x86_64 -cdrom $(iso) --no-reboot -smp cores=4 -s -enable-kvm
 
 .PHONY: debug
 debug: $(iso)

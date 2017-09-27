@@ -1,4 +1,4 @@
-#![feature(const_fn)]
+#![feature(const_size_of)]
 
 //! This crate is the initramfs creator for VeOS.
 

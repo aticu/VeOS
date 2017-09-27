@@ -160,7 +160,6 @@ impl Iterator for FileIterator {
                     });
                 }
             } else {
-                println!("Test");
                 break None;
             }
         }

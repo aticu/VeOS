@@ -124,7 +124,6 @@ pub trait PageTableManager {
     fn get_l1_and_map(&mut self, address: VirtualAddress) -> Level1TableReference {
         assert!(valid_address!(address));
 
-
         let table_index = PageTable::<Level2>::table_index(address);
         let preemption_state = {
             let l2 = self.get_l4()

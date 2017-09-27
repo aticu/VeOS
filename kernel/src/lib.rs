@@ -1,5 +1,8 @@
 #![feature(lang_items)]
 #![feature(const_fn)]
+#![feature(const_size_of)]
+#![feature(const_unsafe_cell_new)]
+#![feature(const_unique_new)]
 #![feature(unique)]
 #![feature(asm)]
 #![feature(integer_atomics)]
@@ -20,9 +23,9 @@
 //! 
 //! The kernel is aiming to be a microkernel.
 
+#[allow(unused_extern_crates)]
 extern crate rlibc;
 extern crate volatile;
-extern crate spin;
 #[macro_use]
 extern crate bitflags;
 extern crate x86_64;

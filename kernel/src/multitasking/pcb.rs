@@ -2,9 +2,10 @@
 
 use alloc::BTreeMap;
 use arch::{get_cpu_num, schedule};
+use core::cmp::max;
 use core::ops::{Deref, DerefMut};
 use memory::address_space::AddressSpace;
-use multitasking::{ProcessID, CURRENT_THREAD, PROCESS_LIST};
+use multitasking::{ProcessID, CURRENT_THREAD, PROCESS_LIST, ThreadID};
 use sync::mutex::MutexGuard;
 
 /// Represents the states a process can have.
@@ -23,7 +24,9 @@ pub struct PCB {
     /// The amount of currently existing threads within this process.
     pub thread_count: u16,
     /// The state of the process.
-    state: ProcessState
+    state: ProcessState,
+    /// The highest ID of a thread within this process.
+    highest_thread_id: ThreadID
 }
 
 impl Drop for PCB {
@@ -38,6 +41,7 @@ impl PCB {
         PCB {
             address_space,
             thread_count: 1,
+            highest_thread_id: 0,
             state: ProcessState::Active
         }
     }
@@ -48,8 +52,21 @@ impl PCB {
         PCB {
             address_space: AddressSpace::idle_address_space(),
             thread_count: get_cpu_num() as u16,
+            highest_thread_id: get_cpu_num() as u16 - 1,
             state: ProcessState::Active
         }
+    }
+
+    /// Finds an ID for a new thread in this process.
+    pub fn find_thread_id(&self) -> Option<ThreadID> {
+        self.highest_thread_id.checked_add(1)
+    }
+
+    /// Adds a thread to the process.
+    pub fn add_thread(&mut self, id: ThreadID) {
+        self.highest_thread_id = max(self.highest_thread_id, id);
+
+        self.thread_count += 1;
     }
 
     /// Returns true if the process is dead.

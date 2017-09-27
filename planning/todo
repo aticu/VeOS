@@ -1,4 +1,12 @@
 Implement stack unwinding for better debugging
 Make page table locks more granular
-Make sure init functions can only be called once
-The multiboot information is not allocated yet
+Make a sensible page fault handler
+Fix the page fault bug on new thread creation
+Set the IOAPIC destination correctly
+Unmap the initial stack
+Finish commenting uncommented parts
+SMP support
+Unmap on address_space drop
+Correctly map the BSS section
+Set timer intervals from within the scheduler
+IPC

@@ -62,18 +62,27 @@ impl AddressSpace {
     /// Writes to the given address in the address space.
     pub fn write_to(&mut self, buffer: &[u8], address: VirtualAddress) {
         let segment_flags = {
-            let segment = self.get_segment_from_address(address);
-
-            if let Some(segment) = segment {
-                assert!(segment.contains(address + buffer.len() - 1));
-
-                segment.flags
-            } else {
-                panic!("Write outside of segment. TODO: Handle this better.");
-            }
+            self.get_segment(address, buffer.len()).map(|segment| segment.flags)
         };
 
-        self.manager.write_to(buffer, address, segment_flags);
+        if let Some(segment_flags) = segment_flags {
+            self.manager.write_to(buffer, address, segment_flags);
+        } else {
+            self.handle_out_of_segment(address, buffer.len());
+        }
+    }
+
+    /// Zeros an already mapped area.
+    pub fn zero_mapped_area(&mut self, start: VirtualAddress, length: usize) {
+        let segment_flags = {
+            self.get_segment(start, length).map(|segment| segment.flags)
+        };
+
+        if let Some(segment_flags) = segment_flags {
+            self.manager.zero(start, length, segment_flags);
+        } else {
+            self.handle_out_of_segment(start, length);
+        }
     }
 
     /// Writes the given value to the given address in this address space.
@@ -83,27 +92,28 @@ impl AddressSpace {
         self.write_to(buffer, address)
     }
 
-    /// Returns the segment that contains the address, if it exists.
-    fn get_segment_from_address(&self, address: VirtualAddress) -> Option<&Segment> {
+    /// Returns the segment that contains the address with length bytes space after, if it exists.
+    fn get_segment(&self, address: VirtualAddress, length: VirtualAddress) -> Option<&Segment> {
         for segment in &self.segments {
-            if segment.contains(address) {
+            if segment.contains(address) && segment.contains(address + length - 1) {
                 return Some(segment);
             }
         }
         None
     }
 
+    /// Handles the case of accesses outside of a segment.
+    fn handle_out_of_segment(&self, start: VirtualAddress, length: usize) {
+        panic!("Out of segment access (start: {:x}, length: {:x})", start, length);
+    }
+
     /// Returns true if the given memory area is contained within a single segment.
     ///
     /// The range starts at `start` and is `length` bytes long.
     pub fn contains_range(&self, start: VirtualAddress, length: usize) -> bool {
-        let segment = self.get_segment_from_address(start);
+        let segment = self.get_segment(start, length);
 
-        if let Some(segment) = segment {
-            segment.contains(start) && segment.contains(start + length)
-        } else {
-            false
-        }
+        segment.is_some()
     }
 
     /// Returns the address of the page table.
@@ -117,15 +127,15 @@ impl AddressSpace {
     /// Maps the given page in the address space.
     pub fn map_page(&mut self, page_address: VirtualAddress) {
         let segment_flags = {
-            let segment = self.get_segment_from_address(page_address);
-
-            if let Some(segment) = segment {
-                segment.flags
-            } else {
-                panic!("Write outside of segment. TODO: Handle this better.");
-            }
+            self.get_segment(page_address, 0).map(|segment| segment.flags)
         };
-        self.manager.map_page(page_address, segment_flags);
+
+        if let Some(segment_flags) = segment_flags {
+            self.manager.map_page(page_address, segment_flags);
+        } else {
+            self.handle_out_of_segment(page_address, 0);
+        }
+
     }
 
     /// Unmaps the given page in the address space.
@@ -147,6 +157,7 @@ pub enum SegmentType {
 }
 
 /// Represents a segment of memory in the address space.
+#[derive(Debug)]
 pub struct Segment {
     /// The start address of the segment.
     start: VirtualAddress,
@@ -225,4 +236,22 @@ pub trait AddressSpaceManager: Send {
     /// # Safety
     /// - Nothing should reference the unmapped pages.
     unsafe fn unmap_page_unchecked(&mut self, start_address: VirtualAddress);
+
+    /// Zeroes the given area in the managed address space.
+    fn zero(&mut self, start: VirtualAddress, length: usize, flags: PageFlags) {
+        let zero: [u8; PAGE_SIZE] = [0; PAGE_SIZE];
+        let num_of_pages = (length - 1) / PAGE_SIZE + 1;
+
+        for i in 0..num_of_pages {
+            let buffer = {
+                if (i + 1) * PAGE_SIZE > length {
+                    &zero[0..length % PAGE_SIZE]
+                } else {
+                    &zero[..]
+                }
+            };
+            self.write_to(buffer, start + i * PAGE_SIZE, flags);
+        }
+    }
+
 }
