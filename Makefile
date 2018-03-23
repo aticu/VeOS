@@ -11,6 +11,8 @@ make_args := arch=$(arch) build_type=$(build_type)
 
 initramfs := $(target_dir)/boot/initramfs
 
+export RUST_TARGET_PATH=$(PWD)/targets
+
 .PHONY: all
 all: copy_to_target $(initramfs)
 

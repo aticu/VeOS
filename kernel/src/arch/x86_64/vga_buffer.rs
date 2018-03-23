@@ -76,6 +76,7 @@ impl Buffer {
     /// Writes a character to this buffer.
     fn write_char(&mut self, row_position: usize, column_position: usize, character: ScreenChar) {
         let start = self.address.as_ptr();
+        // TODO better safety check here
         unsafe {
             let position_ptr = start.offset((row_position * self.width + column_position) as isize);
             (&mut *position_ptr).write(character);
@@ -220,7 +221,7 @@ pub static WRITER: Mutex<Writer> = Mutex::new(Writer {
 pub struct Info {
     pub height: usize,
     pub width: usize,
-    pub address: usize
+    pub address: VirtualAddress
 }
 
 /// Initializes the buffer for use.

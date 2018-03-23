@@ -3,6 +3,7 @@
 #![feature(const_size_of)]
 #![feature(const_unsafe_cell_new)]
 #![feature(const_unique_new)]
+#![feature(ptr_internals)]
 #![feature(unique)]
 #![feature(asm)]
 #![feature(integer_atomics)]
@@ -95,12 +96,6 @@ pub extern "C" fn main(magic_number: u32, information_structure_address: usize) 
     unsafe {
         arch::enter_first_thread();
     }
-}
-
-#[cfg(not(test))]
-#[lang = "eh_personality"]
-extern "C" fn eh_personality() {
-    unimplemented!();
 }
 
 /// The panic handler.
