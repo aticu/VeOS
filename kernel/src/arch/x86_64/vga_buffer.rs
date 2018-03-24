@@ -8,6 +8,7 @@ use core::fmt;
 use core::ptr::Unique;
 use sync::Mutex;
 use volatile::Volatile;
+use memory::VirtualAddress;
 
 /// Represents a color in the buffer.
 #[allow(dead_code)]

@@ -18,5 +18,6 @@ long_mode_start: ;first 64-bit code to be executed
 
     ;in case the rust code ever returns, halt the CPU indefinitely
 .endlessLoop:
+    cli
     hlt
     jmp .endlessLoop

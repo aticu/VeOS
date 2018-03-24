@@ -1,48 +1,37 @@
-arch ?= x86_64
-build_type ?= debug
+include config.mk
 
-modules := kernel init test
-
-target_dir := target
-
-iso := image.iso
-
-make_args := arch=$(arch) build_type=$(build_type)
-
-initramfs := $(target_dir)/boot/initramfs
+ifeq ($(BUILD_TYPE),release)
+	RUST_COMPILER_FLAGS += --release
+endif
 
 export RUST_TARGET_PATH=$(PWD)/targets
 
-.PHONY: all
-all: copy_to_target $(initramfs)
+TARGET_FILES := $(TARGET_DIR)/conf/mkinitramfs $(TARGET_DIR)/boot/initramfs
+BUILD_DIRS := $(TARGET_DIR)
+INITRAMFS_FILES :=
 
-.PHONY: copy_to_target
-copy_to_target:
-	$(foreach module,$(modules),$(MAKE) -C $(module) copy_to_target $(make_args) &&) true
-	cp -r conf $(target_dir)
+.PHONY: all
+all: target_files
+
+include $(patsubst %,%/module.mk,$(MODULES))
+
+.PHONY: target_files
+target_files: $(TARGET_FILES)
 
 .PHONY: clean
 clean:
-	$(foreach module,$(modules),$(MAKE) -C $(module) clean $(make_args) && ) true
-	rm -rf target $(iso)
-	$(MAKE) -C mkinitramfs clean $(make_args)
+	rm -rf $(BUILD_DIRS)
 
 .PHONY: run
-run: $(iso)
-	qemu-system-x86_64 -cdrom $(iso) --no-reboot -smp cores=4 -s -enable-kvm
+run: $(ISO)
+	qemu-system-x86_64 -cdrom $(ISO) $(QEMU_FLAGS) -enable-kvm
 
-run_verbose: $(iso)
-	qemu-system-x86_64 -cdrom $(iso) -d int --no-reboot -smp cores=4 -s
+run_verbose: $(ISO)
+	qemu-system-x86_64 -cdrom $(ISO) $(QEMU_FLAGS) -d int
 
-$(iso): all
-	grub-mkrescue -o $(iso) $(target_dir) 2>/dev/null
+$(ISO): all
+	grub-mkrescue -o $(ISO) $(TARGET_DIR) 2>/dev/null
 
-.PHONY: $(modules)
-$(modules):
-	$(MAKE) -C $@ $(make_args)
-
-.PHONY: initramfs
-initramfs:
-	$(MAKE) -C mkinitramfs run $(make_args)
-
-$(initramfs): initramfs
+$(TARGET_DIR)/conf/mkinitramfs:
+	@mkdir -p $(shell dirname $@)
+	echo $(INITRAMFS_FILES) | tr " " "\n" > $@
