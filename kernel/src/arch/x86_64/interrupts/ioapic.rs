@@ -1,18 +1,19 @@
 //! Deals with configuring the I/O APIC.
 
 use super::IRQ_INTERRUPT_NUMS;
+use super::super::memory::map_page_at;
 use core::fmt;
-use memory::{NO_CACHE, PhysicalAddress, READABLE, VirtualAddress, WRITABLE, map_page_at};
+use memory::{Address, NO_CACHE, PhysicalAddress, READABLE, VirtualAddress, WRITABLE};
 use x86_64::instructions::port::outb;
 
 /// The physical base address of the memory mapped I/O APIC.
-const IO_APIC_BASE: PhysicalAddress = 0xfec00000;
+const IO_APIC_BASE: PhysicalAddress = PhysicalAddress::from_const(0xfec00000);
 
 /// Initializes the I/O APIC.
 pub fn init() {
     assert_has_not_been_called!("The I/O APIC should only be initialized once.");
 
-    map_page_at(to_virtual!(IO_APIC_BASE),
+    map_page_at(get_ioapic_base(),
                 IO_APIC_BASE,
                 READABLE | WRITABLE | NO_CACHE);
 
@@ -43,8 +44,8 @@ pub fn init() {
 /// Writes an I/O APIC register.
 fn set_register(reg: u8, value: u32) {
     unsafe {
-        *(get_ioapic_base() as *mut u32) = reg as u32;
-        *((get_ioapic_base() + 0x10) as *mut u32) = value;
+        *get_ioapic_base().as_mut_ptr() = reg as u32;
+        *(get_ioapic_base() + 0x10).as_mut_ptr() = value;
     }
 }
 
@@ -63,7 +64,7 @@ fn set_irq(number: u8, value: IORedirectionEntry) {
 
 /// Returns the base address for the I/O APIC.
 fn get_ioapic_base() -> VirtualAddress {
-    to_virtual!(IO_APIC_BASE)
+    IO_APIC_BASE.to_virtual()
 }
 
 /// Represents an entry in the I/O APIC redirection table.

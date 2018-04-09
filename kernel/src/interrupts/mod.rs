@@ -44,7 +44,7 @@ pub fn page_fault_handler(address: VirtualAddress, program_counter: VirtualAddre
     unsafe { ::sync::disable_preemption() };
     let current_thread = CURRENT_THREAD.lock();
 
-    println!("Page fault in process {} (thread {}) at address {:x} (PC: {:x})",
+    println!("Page fault in process {} (thread {}) at address {:?} (PC: {:?})",
              current_thread.pid,
              current_thread.id,
              address,

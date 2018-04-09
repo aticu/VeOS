@@ -7,7 +7,7 @@ use super::paging::page_table_entry::*;
 use super::paging::page_table_manager::PageTableManager;
 use alloc::boxed::Box;
 use core::ptr;
-use memory::{PageFlags, PhysicalAddress, VirtualAddress};
+use memory::{Address, PageFlags, PhysicalAddress, VirtualAddress};
 use memory::address_space;
 
 struct AddressSpaceManager {
@@ -26,15 +26,15 @@ impl address_space::AddressSpaceManager for AddressSpaceManager {
     fn write_to(&mut self, buffer: &[u8], address: VirtualAddress, flags: PageFlags) {
         let flags = convert_flags(flags);
 
-        let start_page_num = address / PAGE_SIZE;
-        let end_page_num = (address + buffer.len() - 1) / PAGE_SIZE + 1;
+        let start_page_num = address.page_num();
+        let end_page_num = (address + buffer.len() - 1).page_num() + 1;
 
-        let mut current_offset = address % PAGE_SIZE;
+        let mut current_offset = address.offset_in_page();
         let mut current_buffer_position = 0;
 
         // For all pages.
         for page_num in start_page_num..end_page_num {
-            let page_address = page_num * PAGE_SIZE;
+            let page_address = VirtualAddress::from_page_num(page_num);
 
             // First map with write permissions.
             self.table
@@ -63,7 +63,7 @@ impl address_space::AddressSpaceManager for AddressSpaceManager {
 
                     unsafe {
                         ptr::copy_nonoverlapping(buffer.as_ptr(),
-                                                 start_address as *mut u8,
+                                                 start_address.as_mut_ptr(),
                                                  write_length);
                     }
 
@@ -82,7 +82,7 @@ impl address_space::AddressSpaceManager for AddressSpaceManager {
     }
 
     unsafe fn get_page_table_address(&self) -> PhysicalAddress {
-        self.table.get_frame().get_address()
+       self.table.get_frame().get_address()
     }
 
     fn map_page(&mut self, page_address: VirtualAddress, flags: PageFlags) {

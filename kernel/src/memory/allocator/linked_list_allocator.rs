@@ -4,7 +4,7 @@ use super::align;
 use arch::PAGE_SIZE;
 use core::fmt;
 use core::mem::{align_of, size_of};
-use memory::{READABLE, VirtualAddress, WRITABLE, map_page, unmap_page};
+use memory::{Address, READABLE, VirtualAddress, WRITABLE, map_page, unmap_page};
 
 /// The linked list allocator interface.
 pub struct LinkedListAllocator {
@@ -54,24 +54,22 @@ impl Node {
                    alignment: usize)
                    -> Option<usize> {
         if !self.used {
-            let start_address = (self as *const _ as usize).saturating_add(size_of::<Node>());
+            let start_address = VirtualAddress::from_usize(self as *const _ as usize) + size_of::<Node>();
             let aligned_address = align(start_address, alignment);
 
             if let Some(node_ptr) = self.next_node {
-                let end_address = node_ptr as usize;
-                let next_node_start = align(aligned_address.saturating_add(size),
+                let end_address = VirtualAddress::from_usize(node_ptr as usize);
+                let next_node_start = align(aligned_address + size,
                                             align_of::<Node>());
                 if end_address == next_node_start {
                     Some(0)
-                } else if end_address > next_node_start.saturating_add(size_of::<Node>()) {
-                    Some(end_address
-                             .saturating_sub(size)
-                             .saturating_sub(aligned_address))
+                } else if end_address > next_node_start + size_of::<Node>() {
+                    Some(end_address - size - aligned_address)
                 } else {
                     None
                 }
             } else {
-                if max_address > aligned_address.saturating_add(size) {
+                if max_address > aligned_address + size {
                     Some(0)
                 } else {
                     None
@@ -85,9 +83,9 @@ impl Node {
     /// Checks if this node contains the given allocation.
     fn contains_allocation(&self, ptr: *mut u8, _: usize, alignment: usize) -> bool {
         if self.used {
-            let start_address = (self as *const _ as usize).saturating_add(size_of::<Node>());
+            let start_address = VirtualAddress::from_usize(self as *const _ as usize) + size_of::<Node>();
             let aligned_address = align(start_address, alignment);
-            ptr as usize == aligned_address
+            VirtualAddress::from_usize(ptr as usize) == aligned_address
         } else {
             false
         }
@@ -103,25 +101,25 @@ impl Node {
              size: usize,
              alignment: usize)
              -> *mut u8 {
-        let start_address = (self as *const _ as usize).saturating_add(size_of::<Node>());
+        let start_address = VirtualAddress::from_usize(self as *const _ as usize) + size_of::<Node>();
         let aligned_address = align(start_address, alignment);
-        let next_node_start = align(aligned_address.saturating_add(size), align_of::<Node>());
+        let next_node_start = align(aligned_address + size, align_of::<Node>());
 
         // Map all the necessary pages.
-        while next_node_start.saturating_add(size_of::<Node>()) > *end_address {
+        while next_node_start + size_of::<Node>() > *end_address {
             map_page(*end_address, READABLE | WRITABLE);
-            *end_address = (*end_address).saturating_add(PAGE_SIZE);
+            *end_address = (*end_address) + PAGE_SIZE;
         }
 
-        if self.next_node.is_none() || self.next_node.unwrap() as usize != next_node_start {
-            let next_node = unsafe { &mut *(next_node_start as *mut Node) };
+        if self.next_node.is_none() || VirtualAddress::from_usize(self.next_node.unwrap() as usize) != next_node_start {
+            let next_node: &mut Node = unsafe { &mut *(next_node_start.as_mut_ptr()) };
             next_node.used = false;
             next_node.next_node = self.next_node;
             self.next_node = Some(next_node);
         }
         self.used = true;
 
-        aligned_address as *mut u8
+        aligned_address.as_mut_ptr()
     }
 
     /// Merges the nodes, if they are free.
@@ -159,9 +157,9 @@ impl Node {
                 last_node.next_node = None;
 
                 // Shrink the heap.
-                let last_address = (last_node as *mut Node as usize)
-                    .saturating_add(size_of::<Node>());
-                while (*end_address).saturating_sub(PAGE_SIZE) > last_address {
+                let last_address = VirtualAddress::from_usize(last_node as *mut Node as usize)
+                    + size_of::<Node>();
+                while (*end_address) - PAGE_SIZE > last_address {
                     *end_address -= PAGE_SIZE;
                     unsafe {
                         unmap_page(*end_address);
@@ -223,7 +221,7 @@ impl LinkedListAllocator {
         assert_has_not_been_called!("There should only be one linked list allocator.");
         map_page(start_address, READABLE | WRITABLE);
 
-        let first_node = unsafe { &mut *(start_address as *mut Node) };
+        let first_node: &mut Node = unsafe { &mut *(start_address.as_mut_ptr()) };
 
         first_node.used = false;
         first_node.next_node = None;
@@ -231,7 +229,7 @@ impl LinkedListAllocator {
         LinkedListAllocator {
             max_address,
             first_node,
-            end_address: start_address.saturating_add(PAGE_SIZE)
+            end_address: start_address + PAGE_SIZE
         }
     }
 

@@ -14,17 +14,17 @@ use self::page_table_manager::PageTableManager;
 use super::*;
 use core::fmt;
 use memory;
-use memory::{PageFlags, PhysicalAddress, VirtualAddress};
+use memory::{Address, PageFlags, PhysicalAddress, VirtualAddress};
 
 /// Initializes the paging.
-pub fn init(initramfs_start: PhysicalAddress, initramfs_length: usize) {
+pub fn init(initramfs_area: MemoryArea<PhysicalAddress>) {
     assert_has_not_been_called!("The x86_64 paging module should only be initialized once.");
 
     free_list::init();
 
     unsafe { remap_kernel() };
 
-    unsafe { map_initramfs(initramfs_start, initramfs_length) };
+    unsafe { map_initramfs(initramfs_area) };
 }
 
 /// Converts the general `PageFlags` to x86_64-specific flags.
@@ -88,7 +88,7 @@ pub fn get_free_memory_size() -> usize {
 }
 
 /// Maps the given page to the given frame using the given flags.
-pub fn map_page_at(page_address: VirtualAddress, frame_address: VirtualAddress, flags: PageFlags) {
+pub fn map_page_at(page_address: VirtualAddress, frame_address: PhysicalAddress, flags: PageFlags) {
     CURRENT_PAGE_TABLE
         .lock()
         .map_page_at(Page::from_address(page_address),
@@ -117,15 +117,15 @@ pub unsafe fn unmap_page(start_address: VirtualAddress) {
 ///
 /// # Safety
 /// - This should only be called once.
-unsafe fn map_initramfs(initramfs_start: PhysicalAddress, initramfs_length: usize) {
+unsafe fn map_initramfs(initramfs_area: MemoryArea<PhysicalAddress>) {
     assert_has_not_been_called!("Trying to map the initramfs twice");
 
-    if initramfs_length > 0 {
-        let initramfs_page_amount = (initramfs_length - 1) / PAGE_SIZE + 1;
+    if initramfs_area.length() > 0 {
+        let initramfs_page_amount = (initramfs_area.length() - 1) / PAGE_SIZE + 1;
 
         // Map the initramfs.
         for i in 0..initramfs_page_amount {
-            let physical_address = initramfs_start + i * PAGE_SIZE;
+            let physical_address = initramfs_area.start_address() + i * PAGE_SIZE;
             let virtual_address = INITRAMFS_MAP_AREA_START + i * PAGE_SIZE;
             map_page_at(virtual_address, physical_address, memory::READABLE);
         }
@@ -143,10 +143,10 @@ unsafe fn remap_kernel() {
 
     {
         // Map a section.
-        let mut map_section = |size: usize, start: usize, flags: PageTableEntryFlags| for i in
+        let mut map_section = |size: usize, start: PhysicalAddress, flags: PageTableEntryFlags| for i in
             0..size / PAGE_SIZE {
             let address = start + i * PAGE_SIZE;
-            new_page_table.map_page_at(Page::from_address(to_virtual!(address)),
+            new_page_table.map_page_at(Page::from_address(address.to_virtual()),
                                        PageFrame::from_address(address),
                                        flags);
         };
@@ -169,8 +169,9 @@ unsafe fn remap_kernel() {
     }
 
     // Map the VGA buffer.
-    new_page_table.map_page_at(Page::from_address(to_virtual!(0xb8000)),
-                               PageFrame::from_address(0xb8000),
+    // TODO: Allow for a different address to be used here.
+    new_page_table.map_page_at(Page::from_address(VirtualAddress::from_usize(to_virtual!(0xb8000))),
+                               PageFrame::from_address(PhysicalAddress::from_usize(0xb8000)),
                                WRITABLE | GLOBAL | NO_EXECUTE);
 
     // Map the stack pages.
@@ -195,12 +196,12 @@ unsafe fn remap_kernel() {
 
 /// Represents a page.
 #[derive(Clone, Copy)]
-pub struct Page(usize);
+pub struct Page(VirtualAddress);
 
 impl Page {
     /// Returns the page that contains the given virtual address.
     pub fn from_address(address: VirtualAddress) -> Page {
-        Page(address & !(PAGE_SIZE - 1))
+        Page(VirtualAddress::from_usize(address.as_usize() & !(PAGE_SIZE - 1)))
     }
 
     /// Returns the virtual address of this page.
@@ -211,17 +212,17 @@ impl Page {
 
 impl fmt::Debug for Page {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Page: {:x}", self.0)
+        write!(f, "Page: {:?}", self.0)
     }
 }
 
 /// Represents a page frame.
-pub struct PageFrame(usize);
+pub struct PageFrame(PhysicalAddress);
 
 impl PageFrame {
     /// Returns the page frame that contains the given physical address.
     pub fn from_address(address: PhysicalAddress) -> PageFrame {
-        PageFrame(address & !(PAGE_SIZE - 1))
+        PageFrame(PhysicalAddress::from_usize(address.as_usize() & !(PAGE_SIZE - 1)))
     }
 
     /// Returns the physical address of this page frame.
@@ -240,6 +241,6 @@ impl PageFrame {
 
 impl fmt::Debug for PageFrame {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "PageFrame: {:x}", self.0)
+        write!(f, "PageFrame: {:?}", self.0)
     }
 }

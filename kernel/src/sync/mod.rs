@@ -14,7 +14,7 @@ pub struct PreemptionState {
 }
 
 impl PreemptionState {
-    /// Reads the current state of preemption.
+    /// Reads the current state of preemptability.
     fn new() -> PreemptionState {
         PreemptionState { interrupts_enabled: arch::interrupts_enabled() }
     }

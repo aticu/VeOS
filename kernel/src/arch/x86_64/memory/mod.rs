@@ -1,6 +1,6 @@
 //! Handles all x86_64 memory related issues.
 
-use memory::{PageFlags, PhysicalAddress, VirtualAddress};
+use memory::{Address, MemoryArea, PageFlags, PhysicalAddress, VirtualAddress};
 
 mod paging;
 mod address_space_manager;
@@ -10,16 +10,16 @@ pub use self::address_space_manager::new_address_space_manager;
 pub use self::paging::get_free_memory_size;
 
 /// The maximum address of the lower part of the virtual address space.
-const VIRTUAL_LOW_MAX_ADDRESS: VirtualAddress = 0x00007fffffffffff;
+const VIRTUAL_LOW_MAX_ADDRESS: VirtualAddress = VirtualAddress::from_const(0x00007fffffffffff);
 
 /// The minimum address of the higher part of the virtual address space.
-const VIRTUAL_HIGH_MIN_ADDRESS: VirtualAddress = 0xffff800000000000;
+const VIRTUAL_HIGH_MIN_ADDRESS: VirtualAddress = VirtualAddress::from_const(0xffff800000000000);
 
 /// The top of the stack after the kernel has been remapped.
-pub const FINAL_STACK_TOP: VirtualAddress = 0xfffffe8000000000;
+pub const FINAL_STACK_TOP: VirtualAddress = VirtualAddress::from_const(0xfffffe8000000000);
 
 /// The start address for the double fault stack area.
-pub const DOUBLE_FAULT_STACK_AREA_BASE: VirtualAddress = 0xfffffd0000000000;
+pub const DOUBLE_FAULT_STACK_AREA_BASE: VirtualAddress = VirtualAddress::from_const(0xfffffd0000000000);
 
 /// The distance between two double fault stack tops.
 pub const DOUBLE_FAULT_STACK_OFFSET: usize = 0x2000;
@@ -28,7 +28,7 @@ pub const DOUBLE_FAULT_STACK_OFFSET: usize = 0x2000;
 pub const DOUBLE_FAULT_STACK_MAX_SIZE: usize = 0x1000;
 
 /// The base address of the kernel stack area.
-pub const KERNEL_STACK_AREA_BASE: VirtualAddress = 0xfffffe0000000000;
+pub const KERNEL_STACK_AREA_BASE: VirtualAddress = VirtualAddress::from_const(0xfffffe0000000000);
 
 /// The offset of the start addresses of thread kernel stacks.
 pub const KERNEL_STACK_OFFSET: usize = 0x400000;
@@ -37,7 +37,7 @@ pub const KERNEL_STACK_OFFSET: usize = 0x400000;
 pub const KERNEL_STACK_MAX_SIZE: usize = 0x200000;
 
 /// The base address of the process stack area.
-pub const USER_STACK_AREA_BASE: VirtualAddress = 0x00007f8000000000;
+pub const USER_STACK_AREA_BASE: VirtualAddress = VirtualAddress::from_const(0x00007f8000000000);
 
 /// The offset of the start addresses of thread stacks.
 pub const USER_STACK_OFFSET: usize = 0x400000;
@@ -46,7 +46,7 @@ pub const USER_STACK_OFFSET: usize = 0x400000;
 pub const USER_STACK_MAX_SIZE: usize = 0x200000;
 
 /// The start address of the heap.
-pub const HEAP_START: VirtualAddress = 0xfffffd8000000000;
+pub const HEAP_START: VirtualAddress = VirtualAddress::from_const(0xfffffd8000000000);
 
 /// The maximum size of the heap.
 ///
@@ -57,13 +57,10 @@ pub const HEAP_MAX_SIZE: usize = PAGE_SIZE * 512 * 512 * 512;
 pub const PAGE_SIZE: usize = 0x1000;
 
 /// The area where the initramfs will be mapped.
-const INITRAMFS_MAP_AREA_START: VirtualAddress = 0xffff800000000000 + 512 * 512 * 512;
+const INITRAMFS_MAP_AREA_START: VirtualAddress = VirtualAddress::from_const(0xffff800000000000 + 512 * 512 * 512);
 
-/// The run-time start address of the initramfs.
-static mut INITRAMFS_START: VirtualAddress = 0;
-
-/// The run-time length of the initramfs.
-static mut INITRAMFS_LENGTH: usize = 0;
+/// The run-time memory area of the initramfs.
+static mut INITRAMFS_AREA: MemoryArea<VirtualAddress> = MemoryArea::const_default();
 
 extern "C" {
     /// The end of the kernel in its initial mapping.
@@ -97,38 +94,29 @@ extern "C" {
 }
 
 /// The physical address at which the kernel starts.
-pub fn get_kernel_start_address() -> PhysicalAddress {
-    unsafe { TEXT_START }
-}
-
-/// The physical address at which the kernel ends.
-pub fn get_kernel_end_address() -> PhysicalAddress {
-    unsafe { KERNEL_END }
+pub fn get_kernel_area() -> MemoryArea<PhysicalAddress> {
+    let start = unsafe { TEXT_START };
+    let end = unsafe { KERNEL_END };
+    MemoryArea::from_start_and_end(start, end)
 }
 
 /// Initializes the memory manager.
 pub fn init() {
     assert_has_not_been_called!("The x86_64 memory initialization should only be called once.");
 
-    let physical_initramfs_start = ::boot::get_initramfs_start();
-    let initramfs_length = ::boot::get_initramfs_length();
+    let physical_initramfs_area = ::boot::get_initramfs_area();
+    
+    paging::init(physical_initramfs_area);
 
-    paging::init(physical_initramfs_start, initramfs_length);
-
+    let start = INITRAMFS_MAP_AREA_START + physical_initramfs_area.start_address().offset_in_page();
     unsafe {
-        INITRAMFS_START = INITRAMFS_MAP_AREA_START + physical_initramfs_start % PAGE_SIZE;
-        INITRAMFS_LENGTH = initramfs_length;
+        INITRAMFS_AREA = MemoryArea::new(start, physical_initramfs_area.length());
     }
 }
 
 /// Returns the start address of the initramfs.
-pub fn get_initramfs_start() -> VirtualAddress {
-    unsafe { INITRAMFS_START }
-}
-
-/// Returns the length of the initramfs.
-pub fn get_initramfs_length() -> usize {
-    unsafe { INITRAMFS_LENGTH }
+pub fn get_initramfs_area() -> MemoryArea<VirtualAddress> {
+    unsafe { INITRAMFS_AREA }
 }
 
 /// Maps the given page using the given flags.

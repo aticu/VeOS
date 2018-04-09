@@ -2,7 +2,7 @@
 
 use arch::schedule;
 use elf;
-use memory::VirtualAddress;
+use memory::{Address, VirtualAddress};
 use multitasking::{CURRENT_THREAD, get_current_process, TCB};
 use multitasking::scheduler::READY_LIST;
 use sync::time::{Timestamp, Time};
@@ -13,9 +13,9 @@ pub fn syscall_handler(num: u64, arg1: u64, arg2: u64, arg3: u64, arg4: u64, arg
         0 => print_char(arg1 as u8 as char),
         1 => kill_process(),
         2 => return_pid(),
-        3 => exec(arg1 as VirtualAddress, arg2 as usize),
+        3 => exec(VirtualAddress::from_usize(arg1 as usize), arg2 as usize),
         4 => sleep(arg1),
-        5 => create_thread(arg1 as VirtualAddress, arg2, arg3, arg4, arg5, arg6),
+        5 => create_thread(VirtualAddress::from_usize(arg1 as usize), arg2, arg3, arg4, arg5, arg6),
         6 => kill_thread(),
         _ => unknown_syscall(num),
     }

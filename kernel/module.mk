@@ -7,6 +7,7 @@ KERNEL_BUILD_TARGET := $(ARCH)-unknown-none-gnu
 KERNEL_LINKER_FLAGS := -n -T $(LINKER_SCRIPT) --gc-sections
 
 KERNEL_LIB := kernel/target/$(KERNEL_BUILD_TARGET)/$(BUILD_TYPE)/libveos.a
+KERNEL_BINARY := kernel/target/$(KERNEL_BUILD_TARGET)/build/kernel-$(ARCH).bin
 
 KERNEL_RUST_COMPILER_FLAGS := --target $(KERNEL_BUILD_TARGET)
 ifeq ($(BUILD_TYPE),release)
@@ -23,11 +24,11 @@ $(TARGET_DIR)/boot/grub/grub.cfg: kernel/src/arch/$(ARCH)/grub.cfg
 	@mkdir -p $(shell dirname $@)
 	cp $< $@
 
-$(TARGET_DIR)/boot/kernel.bin: kernel/target/$(KERNEL_BUILD_TARGET)/build/kernel-$(ARCH).bin
+$(TARGET_DIR)/boot/kernel.bin: $(KERNEL_BINARY)
 	@mkdir -p $(shell dirname $@)
 	cp $< $@
 
-kernel/target/$(KERNEL_BUILD_TARGET)/build/kernel-$(ARCH).bin: $(ASSEMBLY_OBJECT_FILES) $(KERNEL_LINKER_SCRIPT) $(KERNEL_LIB)
+$(KERNEL_BINARY): $(ASSEMBLY_OBJECT_FILES) $(KERNEL_LINKER_SCRIPT) $(KERNEL_LIB)
 	$(LINKER) $(KERNEL_LINKER_FLAGS) -o $@ $(ASSEMBLY_OBJECT_FILES) $(KERNEL_LIB)
 
 $(KERNEL_LIB): $(shell find kernel/src -name "*.rs")

@@ -1,7 +1,7 @@
 //! This modules is responsible for reading the initramfs.
 
 use alloc::boxed::Box;
-use arch::{get_initramfs_length, get_initramfs_start};
+use arch::get_initramfs_area;
 use core::{ptr, slice, str};
 use core::mem::size_of;
 use file_handle::{FileError, FileHandle, Result, SeekFrom};
@@ -93,7 +93,7 @@ impl FileHandle for FileDescriptor {
         if self.current_offset.saturating_add(buffer.len() as u64) > self.length as u64 {
             Err(FileError::SeekPastEnd)
         } else {
-            let source = unsafe { &*((self.start + self.current_offset as usize) as *const u8) };
+            let source = unsafe { &*((self.start + self.current_offset as usize).as_ptr()) };
             unsafe {
                 ptr::copy_nonoverlapping(source, buffer.as_mut_ptr(), buffer.len());
             }
@@ -124,8 +124,9 @@ impl Iterator for FileIterator {
     type Item = FileMetadata;
 
     fn next(&mut self) -> Option<FileMetadata> {
-        let start = get_initramfs_start();
-        let length = get_initramfs_length();
+        let area = get_initramfs_area();
+        let start = area.start_address();
+        let length = area.length();
 
         loop {
             if self.current_file_metadata_address < self.max_address {
@@ -146,7 +147,7 @@ impl Iterator for FileIterator {
                 self.current_file_metadata_address += size_of::<u64>();
 
                 if name_offset + name_length <= length as u64 && content_offset + content_length <= length as u64 {
-                    let name_slice = unsafe { slice::from_raw_parts((start + name_offset as usize) as *const u8, name_length as usize) };
+                    let name_slice = unsafe { slice::from_raw_parts((start + name_offset as usize).as_ptr(), name_length as usize) };
                     let name = str::from_utf8(name_slice);
 
                     if name.is_err() {
@@ -171,7 +172,7 @@ fn get_file_iterator() -> Result<FileIterator> {
     if !initramfs_valid() {
         Err(FileError::InvalidFilesystem)
     } else {
-        let start = get_initramfs_start();
+        let start = get_initramfs_area().start_address();
 
         let first_metadata = start + size_of::<[u8; 8]>() + size_of::<u64>();
         let amount_of_files = unsafe { read_u64_big_endian(start + size_of::<[u8; 8]>()) } as usize;
@@ -188,7 +189,7 @@ fn get_file_iterator() -> Result<FileIterator> {
 /// # Safety
 /// - Make sure that the address is contained within the initramfs.
 unsafe fn read_u64_big_endian(address: VirtualAddress) -> u64 {
-    let bytes: [u8; size_of::<u64>()] = *(address as *const [u8; size_of::<u64>()]);
+    let bytes: [u8; size_of::<u64>()] = *(address.as_ptr());
     let mut result: u64 = 0;
 
     for i in 0..size_of::<u64>() {
@@ -200,13 +201,14 @@ unsafe fn read_u64_big_endian(address: VirtualAddress) -> u64 {
 
 /// Checks whether the initramfs is valid.
 fn initramfs_valid() -> bool {
-    let start = get_initramfs_start();
-    let length = get_initramfs_length();
+    let area = get_initramfs_area();
+    let start = area.start_address();
+    let length = area.length();
 
     if length < size_of::<[u8; 8]>() + size_of::<u64>() {
         false
     } else {
-        let magic_in_file: [u8; 8] = unsafe { *(start as *const [u8; 8]) };
+        let magic_in_file: [u8; 8] = unsafe { *(start.as_ptr()) };
 
         let amount_of_files = unsafe { read_u64_big_endian(start + size_of::<[u8; 8]>()) };
 

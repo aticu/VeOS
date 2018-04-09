@@ -6,7 +6,7 @@ use core::mem;
 use core::mem::size_of;
 use file_handle::FileHandle;
 use initramfs;
-use memory::{PAGE_SIZE, PhysicalAddress, VirtualAddress};
+use memory::{Address, MemoryArea, PAGE_SIZE, PhysicalAddress, VirtualAddress};
 use memory::address_space;
 use memory::address_space::{AddressSpace, Segment};
 use multitasking::{create_process, ProcessID};
@@ -241,7 +241,7 @@ impl fmt::Debug for Header {
         } else {
             write!(f,
                    "Magic: ['\\x{:x}', '{}', '{}', '{}'],
-{}: {:?}, {}: {:?}, {}: {}, {}: {:?}, {}: {}, {}: {:x}",
+{}: {:?}, {}: {:?}, {}: {}, {}: {:?}, {}: {}, {}: {:?}",
                    self.magic[0],
                    self.magic[1] as char,
                    self.magic[2] as char,
@@ -442,8 +442,8 @@ fn process_from_elf_file(mut file: ElfFile) -> Result<ProcessID, ElfError> {
                 flags |= ::memory::EXECUTABLE;
             }
 
-            let segment = Segment::new(program_header.virtual_address,
-                                       program_header.size_in_memory,
+            let segment = Segment::new(MemoryArea::new(program_header.virtual_address,
+                                       program_header.size_in_memory),
                                        flags,
                                        address_space::SegmentType::FromFile);
 
@@ -479,9 +479,9 @@ fn process_from_elf_file(mut file: ElfFile) -> Result<ProcessID, ElfError> {
                                        program_header.virtual_address + i * PAGE_SIZE);
             }
 
-            let last_mapped_page = (program_header.virtual_address + program_header.size_in_file - 1) / PAGE_SIZE + 1;
-            let last_page_to_map = (program_header.virtual_address + program_header.size_in_memory - 1) / PAGE_SIZE + 1;
-            let page_aligned_start_address = program_header.virtual_address / PAGE_SIZE * PAGE_SIZE;
+            let last_mapped_page = (program_header.virtual_address + program_header.size_in_file - 1).as_usize() / PAGE_SIZE + 1;
+            let last_page_to_map = (program_header.virtual_address + program_header.size_in_memory - 1).as_usize() / PAGE_SIZE + 1;
+            let page_aligned_start_address = program_header.virtual_address.page_align_down();
 
             for i in 0..last_page_to_map - last_mapped_page {
                 address_space.map_page(page_aligned_start_address + (i + 1) * PAGE_SIZE);

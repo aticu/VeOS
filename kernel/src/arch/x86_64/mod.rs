@@ -14,6 +14,7 @@ pub use self::context::Context;
 use self::gdt::{GDT, TSS};
 use self::interrupts::SCHEDULE_INTERRUPT_NUM;
 use self::interrupts::issue_self_interrupt;
+use memory::Address;
 use multitasking::{CURRENT_THREAD, StackType};
 use raw_cpuid::CpuId;
 use x86_64::VirtualAddress;
@@ -99,7 +100,7 @@ pub unsafe fn enter_first_thread() -> ! {
         .without_locking()
         .context
         .kernel_stack_pointer;
-    TSS.as_mut().privilege_stack_table[0] = VirtualAddress(stack_pointer);
+    TSS.as_mut().privilege_stack_table[0] = VirtualAddress(stack_pointer.as_usize());
     asm!("mov rsp, $0
           ret"
           : : "r"(stack_pointer) : : "intel", "volatile");

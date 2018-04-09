@@ -5,7 +5,7 @@ mod linked_list_allocator;
 use self::linked_list_allocator::LinkedListAllocator;
 use alloc::allocator::{Alloc, AllocErr, Layout};
 use arch::{HEAP_MAX_SIZE, HEAP_START};
-use memory::VirtualAddress;
+use memory::{Address, VirtualAddress};
 use sync::mutex::Mutex;
 
 pub struct Allocator;
@@ -35,10 +35,10 @@ lazy_static! {
 fn align(address: VirtualAddress, alignment: usize) -> VirtualAddress {
     debug_assert!(alignment.is_power_of_two());
 
-    if address % alignment == 0 {
+    if address.as_usize() % alignment == 0 {
         address
     } else {
         let alignment_bitmask = !(alignment - 1);
-        (address & alignment_bitmask) + alignment
+        VirtualAddress::from_usize((address.as_usize() & alignment_bitmask) + alignment)
     }
 }

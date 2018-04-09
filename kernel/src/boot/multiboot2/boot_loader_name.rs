@@ -1,6 +1,7 @@
 //! Handles the boot loader name tag in multiboot2.
 
 use super::get_tag;
+use memory::{Address, VirtualAddress};
 
 /// Represents the tag of the boot loader name.
 #[repr(C)]
@@ -16,6 +17,6 @@ pub fn get_bootloader_name() -> &'static str {
     let tag_address: *const BootLoaderName = get_tag(2).expect("Boot loader name required.") as
                                              *const BootLoaderName;
     let tag: &BootLoaderName = unsafe { &*tag_address };
-    let string_address: usize = tag_address as usize + 8;
+    let string_address: VirtualAddress = VirtualAddress::from_usize(to_virtual!(tag_address as usize + 8));
     from_c_str!(string_address, tag.size as usize - 9).expect("Bootloader name illegally formatted")
 }

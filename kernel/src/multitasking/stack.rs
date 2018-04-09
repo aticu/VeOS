@@ -4,7 +4,7 @@ use arch::STACK_TYPE;
 use core::cmp::{max, min};
 use core::fmt;
 use core::mem::size_of;
-use memory::{PAGE_SIZE, READABLE, USER_ACCESSIBLE, VirtualAddress, WRITABLE, map_page, unmap_page};
+use memory::{MemoryArea, READABLE, USER_ACCESSIBLE, VirtualAddress, WRITABLE, map_page, unmap_page};
 use memory::address_space::{AddressSpace, Segment, SegmentType};
 
 // NOTE: For now only full descending stacks are supported.
@@ -46,7 +46,7 @@ pub struct Stack {
 impl fmt::Debug for Stack {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f,
-               "Bottom: {:x}, Top: {:x}, Max size: {:x}",
+               "Bottom: {:?}, Top: {:?}, Max size: {:x}",
                self.bottom_address,
                self.top_address,
                self.max_size)
@@ -102,7 +102,9 @@ impl Stack {
                 flags |= USER_ACCESSIBLE;
             }
 
-            assert!(address_space.add_segment(Segment::new(start_address, max_size, flags, SegmentType::MemoryOnly)), "Could not add stack segment.");
+            let area = MemoryArea::new(start_address, max_size);
+
+            assert!(address_space.add_segment(Segment::new(area, flags, SegmentType::MemoryOnly)), "Could not add stack segment.");
         }
 
         stack.resize(initial_size, address_space);
@@ -123,10 +125,10 @@ impl Stack {
                     flags |= USER_ACCESSIBLE;
                 }
 
-                let first_page_to_map = new_bottom / PAGE_SIZE;
+                let first_page_to_map = new_bottom.page_num();
 
                 // This should be one less, but the range is exclusive.
-                let last_page_to_map = self.bottom_address / PAGE_SIZE;
+                let last_page_to_map = self.bottom_address.page_num();
 
                 // TODO: flags shouldn't be passed, it should be segment checked instead.
                 let mut map_fn = |page_address, flags| match address_space {
@@ -135,7 +137,7 @@ impl Stack {
                 };
 
                 for page_num in first_page_to_map..last_page_to_map {
-                    map_fn(page_num * PAGE_SIZE, flags);
+                    map_fn(VirtualAddress::from_page_num(page_num), flags);
                 }
 
                 self.bottom_address = new_bottom;
@@ -149,12 +151,11 @@ impl Stack {
             StackType::FullDescending => {
                 let new_bottom = min(self.top_address, self.bottom_address + amount);
 
-                let first_page_to_unmap = self.bottom_address / PAGE_SIZE;
+                let first_page_to_unmap = self.bottom_address.page_num();
 
                 // This should be one less, but the range is exclusive.
-                let last_page_to_unmap = new_bottom / PAGE_SIZE;
+                let last_page_to_unmap = new_bottom.page_num();
 
-                // TODO: flags shouldn't be passed, it should be segment checked instead.
                 let mut unmap_fn = |page_address| unsafe {
                     match address_space {
                         Some(ref mut address_space) => address_space.unmap_page(page_address),
@@ -163,7 +164,7 @@ impl Stack {
                 };
 
                 for page_num in first_page_to_unmap..last_page_to_unmap {
-                    unmap_fn(page_num * PAGE_SIZE);
+                    unmap_fn(VirtualAddress::from_page_num(page_num));
                 }
 
                 self.bottom_address = new_bottom;

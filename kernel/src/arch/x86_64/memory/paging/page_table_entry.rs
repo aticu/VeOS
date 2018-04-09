@@ -4,7 +4,7 @@ use super::PageFrame;
 use super::frame_allocator::FRAME_ALLOCATOR;
 use core::fmt;
 use core::sync::atomic::{AtomicU64, Ordering};
-use memory::PhysicalAddress;
+use memory::{Address, PhysicalAddress};
 use sync::{PreemptionState, cpu_relax, disable_preemption, restore_preemption_state};
 
 /// Serves as a mask for the physical address in a page table entry.
@@ -62,7 +62,7 @@ impl PageTableEntry {
     /// Returns the address this entry points to.
     pub fn points_to(&self) -> Option<PhysicalAddress> {
         if self.flags().contains(PRESENT) {
-            Some(self.0 as usize & PHYSICAL_ADDRESS_MASK)
+            Some(PhysicalAddress::from_usize(self.0 as usize & PHYSICAL_ADDRESS_MASK))
         } else {
             None
         }
@@ -70,9 +70,9 @@ impl PageTableEntry {
 
     /// Sets the address of this entry.
     pub fn set_address(&mut self, address: PhysicalAddress) -> &mut PageTableEntry {
-        assert_eq!(address & !PHYSICAL_ADDRESS_MASK, 0);
+        assert_eq!(address.as_usize() & !PHYSICAL_ADDRESS_MASK, 0);
         self.0 &= !PHYSICAL_ADDRESS_MASK as u64; // Clear address field first.
-        self.0 |= address as u64 & PHYSICAL_ADDRESS_MASK as u64;
+        self.0 |= address.as_usize() as u64 & PHYSICAL_ADDRESS_MASK as u64;
         self
     }
 
@@ -151,7 +151,7 @@ impl fmt::Debug for PageTableEntry {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if self.flags().contains(PRESENT) {
             write!(f,
-                   "Entry(Address=0x{:x}, Flags={:?})",
+                   "Entry(Address={:?}, Flags={:?})",
                    self.points_to().unwrap(),
                    self.flags())
         } else {

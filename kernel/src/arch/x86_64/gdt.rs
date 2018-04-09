@@ -2,6 +2,7 @@
 
 use super::memory::{FINAL_STACK_TOP, DOUBLE_FAULT_STACK_AREA_BASE, DOUBLE_FAULT_STACK_MAX_SIZE, DOUBLE_FAULT_STACK_OFFSET};
 use core::mem::size_of;
+use memory::Address;
 use multitasking::Stack;
 use multitasking::stack::AccessType;
 use x86_64::PrivilegeLevel;
@@ -54,8 +55,8 @@ cpu_local! {
     /// The task state segment of the CPU.
     pub static mut ref TSS: TaskStateSegment = |cpu_id| {
         let mut tss = TaskStateSegment::new();
-        tss.privilege_stack_table[0] = VirtualAddress(FINAL_STACK_TOP);
-        tss.interrupt_stack_table[0] = VirtualAddress(DOUBLE_FAULT_STACK.get_specific(cpu_id).base_stack_pointer);
+        tss.privilege_stack_table[0] = VirtualAddress(FINAL_STACK_TOP.as_usize());
+        tss.interrupt_stack_table[0] = VirtualAddress(DOUBLE_FAULT_STACK.get_specific(cpu_id).base_stack_pointer.as_usize());
         tss
     };
 }

@@ -8,6 +8,7 @@ use super::page_table_entry::*;
 use super::page_table_manager::PageTableManager;
 use super::super::TEMPORARY_MAP_TABLE;
 use core::ptr::Unique;
+use memory::{Address, PhysicalAddress};
 use sync::PreemptionState;
 use x86_64::registers::control_regs::cr3;
 
@@ -127,7 +128,7 @@ impl InactivePageTable {
     pub fn from_current_table() -> InactivePageTable {
         InactivePageTable {
             l4_table: unsafe { Unique::new_unchecked(L4_TABLE) },
-            l4_frame: PageFrame::from_address(cr3().0 as usize),
+            l4_frame: PageFrame::from_address(PhysicalAddress::from_usize(cr3().0 as usize)),
             preemption_state: None
         }
     }

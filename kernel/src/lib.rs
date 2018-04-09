@@ -4,6 +4,7 @@
 #![feature(const_unsafe_cell_new)]
 #![feature(const_unique_new)]
 #![feature(ptr_internals)]
+#![feature(repr_transparent)]
 #![feature(unique)]
 #![feature(asm)]
 #![feature(integer_atomics)]

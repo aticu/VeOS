@@ -3,6 +3,7 @@
 use super::get_tag;
 #[cfg(target_arch = "x86_64")]
 use arch::vga_buffer;
+use memory::{Address, VirtualAddress};
 
 /// Represents the framebuffer information tag.
 #[repr(C)]
@@ -30,14 +31,14 @@ pub fn get_vga_info() -> vga_buffer::Info {
             vga_buffer::Info {
                 height: framebuffer_tag.framebuffer_height as usize,
                 width: framebuffer_tag.framebuffer_width as usize,
-                address: to_virtual!(framebuffer_tag.framebuffer_addr) as usize
+                address: VirtualAddress::from_usize(to_virtual!(framebuffer_tag.framebuffer_addr))
             }
         },
         None => {
             vga_buffer::Info {
                 height: 25,
                 width: 80,
-                address: to_virtual!(0xb8000)
+                address: VirtualAddress::from_usize(to_virtual!(0xb8000))
             }
         },
     }

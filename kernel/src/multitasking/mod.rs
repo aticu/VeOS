@@ -36,6 +36,7 @@ lazy_static! {
 
 /// Finds an unused process ID.
 fn find_pid(list: &MutexGuard<BTreeMap<ProcessID, PCB>>) -> ProcessID {
+    // UNOPTIMIZED
     let mut pid = 1;
     while list.contains_key(&pid) {
         pid += 1;

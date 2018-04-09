@@ -5,7 +5,7 @@ use super::page_table_entry::*;
 use core::marker::PhantomData;
 use core::ops::Index;
 use core::ops::IndexMut;
-use memory::VirtualAddress;
+use memory::{Address, VirtualAddress};
 
 /// The number of entries in a page table.
 pub const ENTRY_NUMBER: usize = 512;
@@ -77,7 +77,7 @@ impl<T: ReducablePageTableLevel> PageTable<T> {
         let flags = self[index].flags();
         debug_assert!(!flags.contains(HUGE_PAGE));
         if flags.contains(PRESENT) {
-            Some((self as *const _ as usize | index << 3) << 9)
+            Some(VirtualAddress::from_usize((self as *const _ as usize | index << 3) << 9))
         } else {
             None
         }
@@ -115,7 +115,7 @@ impl<T: ReducablePageTableLevel> PageTable<T> {
     pub fn get_next_level(&self, address: VirtualAddress) -> Option<&PageTable<T::NextLevel>> {
         let index = PageTable::<T>::table_index(address);
         self.get_next_level_address(index)
-            .map(|address| unsafe { &*(address as *const PageTable<T::NextLevel>) })
+            .map(|address| unsafe { &*address.as_ptr() })
     }
 
     /// Returns a mutable reference to next page table of there is one.
@@ -124,14 +124,14 @@ impl<T: ReducablePageTableLevel> PageTable<T> {
                               -> Option<&mut PageTable<T::NextLevel>> {
         let index = PageTable::<T>::table_index(address);
         self.get_next_level_address(index)
-            .map(|address| unsafe { &mut *(address as *mut PageTable<T::NextLevel>) })
+            .map(|address| unsafe { &mut *address.as_mut_ptr() })
     }
 }
 
 impl<T: PageTableLevel> PageTable<T> {
     /// Returns the index of the given page table level in the given address.
     pub fn table_index(address: VirtualAddress) -> usize {
-        (address >> (12 + 9 * (T::get_level() - 1))) & 0o777
+        (address.as_usize() >> (12 + 9 * (T::get_level() - 1))) & 0o777
     }
 
     /// Zeros the given table out.

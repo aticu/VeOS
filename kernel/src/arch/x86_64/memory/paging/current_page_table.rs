@@ -9,7 +9,7 @@ use core::cell::UnsafeCell;
 use core::ops::{Deref, DerefMut};
 use core::ptr;
 use core::ptr::Unique;
-use memory::PhysicalAddress;
+use memory::{Address, PhysicalAddress, VirtualAddress};
 use sync::{Mutex, PreemptionState};
 use x86_64::instructions::tlb;
 use x86_64::registers::control_regs;
@@ -21,7 +21,7 @@ use x86_64::registers::control_regs;
 const L4_TABLE: *mut PageTable<Level4> = 0xfffffffffffff000 as *mut PageTable<Level4>;
 
 /// The base address for all temporary addresses.
-const TEMPORARY_ADDRESS_BASE: usize = 0xffffffffffc00000;
+const TEMPORARY_ADDRESS_BASE: VirtualAddress = VirtualAddress::from_const(0xffffffffffc00000);
 
 /// The method to access the current page table.
 pub static CURRENT_PAGE_TABLE: CurrentPageTableLock =
@@ -164,7 +164,7 @@ impl CurrentPageTable {
         let virtual_address = TEMPORARY_ADDRESS_BASE + (index << 12);
 
         if entry.points_to() != Some(frame.get_address()) {
-            tlb::flush(::x86_64::VirtualAddress(virtual_address));
+            tlb::flush(::x86_64::VirtualAddress(virtual_address.as_usize()));
             entry.set_address(frame.get_address());
             entry.set_flags(PRESENT | WRITABLE | DISABLE_CACHE | NO_EXECUTE);
         }
@@ -183,7 +183,7 @@ impl CurrentPageTable {
                                               physical_address: PhysicalAddress,
                                               data: T) {
         self.with_temporary_page(&PageFrame::from_address(physical_address), |page| {
-            let virtual_address = page.get_address() | (physical_address & 0xfff);
+            let virtual_address = page.get_address().as_usize() | (physical_address.offset_in_page());
 
             unsafe {
                 ptr::write(virtual_address as *mut T, data);
@@ -194,7 +194,7 @@ impl CurrentPageTable {
     /// Reads from the given physical address.
     pub fn read_from_physical<T: Sized + Copy>(&mut self, physical_address: PhysicalAddress) -> T {
         self.with_temporary_page(&PageFrame::from_address(physical_address), |page| {
-            let virtual_address = page.get_address() | (physical_address & 0xfff);
+            let virtual_address = page.get_address().as_usize() | (physical_address.offset_in_page());
 
             unsafe { ptr::read(virtual_address as *mut T) }
         })
@@ -205,7 +205,7 @@ impl CurrentPageTable {
     /// The old page table will not be mapped into the new one. This should be
     /// done manually.
     pub unsafe fn switch(&mut self, new_table: InactivePageTable) -> InactivePageTable {
-        let old_frame = PageFrame::from_address(control_regs::cr3().0 as PhysicalAddress);
+        let old_frame = PageFrame::from_address(PhysicalAddress::from_usize(control_regs::cr3().0 as usize));
         let old_table = InactivePageTable::from_frame(old_frame.copy(), &new_table);
 
         let new_frame = new_table.get_frame();
@@ -213,7 +213,7 @@ impl CurrentPageTable {
         drop(new_table);
 
         // Make the switch.
-        control_regs::cr3_write(::x86_64::PhysicalAddress(new_frame.get_address() as u64));
+        control_regs::cr3_write(::x86_64::PhysicalAddress(new_frame.get_address().as_usize() as u64));
 
         // Map the now inactive old table.
         self.map_inactive(&old_frame);
@@ -227,7 +227,8 @@ impl CurrentPageTable {
 /// This serves to speed up temporary mapping of page frames,
 /// by better utilizing the available space.
 fn page_frame_hash(frame: &PageFrame) -> usize {
-    let mut address = frame.get_address() >> 12;
+    // UNOPTIMIZED: Possibly use a better hash algorithm here?
+    let mut address = frame.get_address().as_usize() >> 12;
     address *= 101489;
     address % 512
 }

@@ -5,6 +5,7 @@ mod ioapic;
 
 pub use self::lapic::issue_self_interrupt;
 use super::sync::CLOCK;
+use memory::{Address, VirtualAddress};
 use multitasking::scheduler::schedule_next_thread;
 use sync::Mutex;
 use x86_64::instructions::interrupts;
@@ -126,7 +127,7 @@ extern "x86-interrupt" fn double_fault_handler(stack_frame: &mut ExceptionStackF
 
 /// The page fault handler of the kernel.
 extern "x86-interrupt" fn page_fault_handler(stack_frame: &mut ExceptionStackFrame, _error_code: PageFaultErrorCode) {
-    ::interrupts::page_fault_handler(control_regs::cr2().0, stack_frame.instruction_pointer.0);
+    ::interrupts::page_fault_handler(VirtualAddress::from_usize(control_regs::cr2().0), VirtualAddress::from_usize(stack_frame.instruction_pointer.0));
 }
 
 /// The software interrupt handler that invokes schedule operations.

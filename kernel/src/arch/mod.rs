@@ -23,12 +23,9 @@ macro_rules! export_arch {
 
         pub use self::$name::memory::init as memory_init;
         pub use self::$name::memory::map_page;
-        pub use self::$name::memory::map_page_at;
         pub use self::$name::memory::unmap_page;
-        pub use self::$name::memory::get_kernel_start_address;
-        pub use self::$name::memory::get_kernel_end_address;
-        pub use self::$name::memory::get_initramfs_start;
-        pub use self::$name::memory::get_initramfs_length;
+        pub use self::$name::memory::get_kernel_area;
+        pub use self::$name::memory::get_initramfs_area;
         pub use self::$name::memory::get_page_flags;
         pub use self::$name::memory::PAGE_SIZE;
         pub use self::$name::memory::HEAP_MAX_SIZE;

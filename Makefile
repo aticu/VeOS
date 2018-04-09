@@ -26,8 +26,13 @@ clean:
 run: $(ISO)
 	qemu-system-x86_64 -cdrom $(ISO) $(QEMU_FLAGS) -enable-kvm
 
-run_verbose: $(ISO)
-	qemu-system-x86_64 -cdrom $(ISO) $(QEMU_FLAGS) -d int
+.PHONY: run_debug
+run_debug: $(ISO)
+	qemu-system-x86_64 -cdrom $(ISO) $(QEMU_FLAGS) -d int -S
+
+.PHONY: gdb
+gdb:
+	gdb $(KERNEL_BINARY) -ex "target remote :1234"
 
 $(ISO): all
 	grub-mkrescue -o $(ISO) $(TARGET_DIR) 2>/dev/null

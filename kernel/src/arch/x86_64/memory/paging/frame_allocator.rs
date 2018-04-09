@@ -3,7 +3,7 @@
 use super::{PAGE_SIZE, PageFrame};
 use super::free_list::{FREE_LIST, FreeListIterator};
 use core::cell::Cell;
-use memory::{FreeMemoryArea, oom};
+use memory::{MemoryArea, oom};
 
 /// Used to allocate page frames.
 pub struct FrameAllocator {
@@ -22,7 +22,7 @@ lazy_static! {
             let mut number = 0;
 
             for entry in FreeListIterator::new() {
-                number += entry.length / PAGE_SIZE;
+                number += entry.length() / PAGE_SIZE;
             }
 
             Cell::new(number)
@@ -45,13 +45,13 @@ impl FrameAllocator {
 
         if !free_area.is_none() {
             let free_area = free_area.unwrap();
-            let page_frame = PageFrame::from_address(free_area.start_address);
+            let page_frame = PageFrame::from_address(free_area.start_address());
 
             let new_free_area = free_area.without_first_frame();
 
             list.remove(free_area);
             unsafe {
-                if new_free_area.length > 0 {
+                if new_free_area.length() > 0 {
                     list.insert(new_free_area);
                 }
             }
@@ -73,7 +73,7 @@ impl FrameAllocator {
         // locking mechanism.
         let mut list = FREE_LIST.lock();
         self.free_frames.set(self.free_frames.get() + 1);
-        list.insert(FreeMemoryArea::new(frame.get_address(), PAGE_SIZE));
+        list.insert(MemoryArea::new(frame.get_address(), PAGE_SIZE));
     }
 
     /// Returns the current number of free frames.

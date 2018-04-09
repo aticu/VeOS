@@ -5,7 +5,7 @@ use super::frame_allocator::FRAME_ALLOCATOR;
 use super::page_table::{Level1, Level2, Level4, PageTable};
 use super::page_table_entry::{PRESENT, PageTableEntry, PageTableEntryFlags};
 use core::ops::{Deref, DerefMut};
-use memory::{PhysicalAddress, VirtualAddress};
+use memory::{Address, PhysicalAddress, VirtualAddress};
 use sync::PreemptionState;
 use x86_64::instructions::tlb;
 
@@ -73,7 +73,7 @@ pub trait PageTableManager {
     fn translate_address(&mut self, address: VirtualAddress) -> Option<PhysicalAddress> {
         self.get_l1(address)
             .and_then(|l1| l1[PageTable::<Level1>::table_index(address)].points_to())
-            .map(|page_address| page_address + (address & 0xfff))
+            .map(|page_address| page_address + (address.as_usize() & 0xfff))
     }
 
     /// Returns a mutable reference to the level 1 table corresponding to the
@@ -169,7 +169,7 @@ pub trait PageTableManager {
     fn map_page_at(&mut self, page: Page, frame: PageFrame, flags: PageTableEntryFlags) {
         if let Some(entry) = self.get_entry(page.get_address()) {
             debug_assert!(!entry.flags().contains(PRESENT),
-                          "Trying to double map page {:x}",
+                          "Trying to double map page {:?}",
                           page.get_address());
         }
 
@@ -185,7 +185,7 @@ pub trait PageTableManager {
     fn map_page(&mut self, page: Page, flags: PageTableEntryFlags) {
         if let Some(entry) = self.get_entry(page.get_address()) {
             debug_assert!(!entry.flags().contains(PRESENT),
-                          "Trying to double map page {:x}",
+                          "Trying to double map page {:?}",
                           page.get_address());
         }
 
@@ -226,7 +226,7 @@ pub trait PageTableManager {
         entry
             .expect("Trying to unmap a page that isn't mapped.")
             .unmap();
-        tlb::flush(::x86_64::VirtualAddress(page.get_address()));
+        tlb::flush(::x86_64::VirtualAddress(page.get_address().as_usize()));
     }
 
     /// Unmaps the given page, not checking if it was mapped.
@@ -243,7 +243,7 @@ pub trait PageTableManager {
             if entry.points_to().is_some() {
                 entry.unmap();
             }
-            tlb::flush(::x86_64::VirtualAddress(page.get_address()));
+            tlb::flush(::x86_64::VirtualAddress(page.get_address().as_usize()));
         }
     }
 }

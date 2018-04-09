@@ -3,14 +3,16 @@
 use super::gdt::{USER_CODE_SEGMENT, USER_DATA_SEGMENT, TSS};
 use super::interrupts::lapic;
 use core::mem::size_of;
-use memory::{PhysicalAddress, VirtualAddress};
+use memory::{Address, PhysicalAddress, VirtualAddress};
 use memory::address_space::AddressSpace;
 use multitasking::Stack;
 use multitasking::scheduler::{after_context_switch, idle};
+use x86_64::registers::control_regs::cr3;
 use x86_64::structures::idt::ExceptionStackFrame;
 
 // TODO: Floating point state is not saved yet.
 /// Saves the an execution context.
+#[derive(Debug)]
 pub struct Context {
     pub kernel_stack_pointer: VirtualAddress,
     base_pointer: VirtualAddress,
@@ -32,10 +34,10 @@ impl Context {
         use x86_64::registers::flags::Flags;
 
         let stack_frame = ExceptionStackFrame {
-            instruction_pointer: ::x86_64::VirtualAddress(function as usize),
+            instruction_pointer: ::x86_64::VirtualAddress(function.as_usize()),
             code_segment: USER_CODE_SEGMENT.0 as u64,
             cpu_flags: (Flags::IF | Flags::A1).bits() as u64,
-            stack_pointer: ::x86_64::VirtualAddress(stack_pointer as usize),
+            stack_pointer: ::x86_64::VirtualAddress(stack_pointer.as_usize()),
             stack_segment: USER_DATA_SEGMENT.0 as u64
         };
 
@@ -58,15 +60,15 @@ impl Context {
     }
 
     /// Creates a context for an idle thread.
-    pub fn idle_context(mut stack_pointer: VirtualAddress, page_table_address: PhysicalAddress) -> Context {
+    pub fn idle_context(mut stack_pointer: VirtualAddress) -> Context {
         unsafe {
             set_idle_stack(&mut stack_pointer);
         }
 
         Context {
-            kernel_stack_pointer: stack_pointer as usize,
-            base_pointer: stack_pointer as usize,
-            page_table_address
+            kernel_stack_pointer: stack_pointer,
+            base_pointer: stack_pointer,
+            page_table_address: PhysicalAddress::from_usize(cr3().0 as usize)
         }
     }
 }
@@ -101,7 +103,7 @@ unsafe fn enter_thread() -> ! {
 /// - Make sure that the stack pointer is valid.
 unsafe fn set_idle_stack(stack_pointer: &mut VirtualAddress) {
     *stack_pointer -= size_of::<u64>();
-    *(*stack_pointer as *mut u64) = idle as u64;
+    *((*stack_pointer).as_mut_ptr()) = idle as u64;
 }
 
 /// Sets the initial kernel stack of a thread, so that it can properly start.
@@ -129,8 +131,7 @@ unsafe fn set_initial_stack(stack_pointer: &mut VirtualAddress,
 ///
 /// # Safety
 /// - To make sure that everything is properly cleaned up after switching the
-/// context this should
-/// only be called by the scheduler.
+/// context, this should only be called by the scheduler.
 /// - Make sure preemption is disabled while calling this.
 #[naked]
 pub unsafe fn switch_context(old_context: &mut Context, new_context: &Context) {
@@ -140,13 +141,13 @@ pub unsafe fn switch_context(old_context: &mut Context, new_context: &Context) {
         .lock()
         .kernel_stack
         .base_stack_pointer;
-    TSS.as_mut().privilege_stack_table[0] = ::x86_64::VirtualAddress(base_sp);
+    TSS.as_mut().privilege_stack_table[0] = ::x86_64::VirtualAddress(base_sp.as_usize());
 
     switch(&mut old_context.kernel_stack_pointer,
            &mut old_context.base_pointer,
-           new_sp,
-           new_bp,
-           new_context.page_table_address);
+           new_sp.as_usize(),
+           new_bp.as_usize(),
+           new_context.page_table_address.as_usize());
 }
 
 /// This is the function actually performing the switch.
@@ -155,8 +156,8 @@ pub unsafe fn switch_context(old_context: &mut Context, new_context: &Context) {
 /// - Should only be called by switch_context.
 #[naked]
 #[inline(never)]
-unsafe extern "C" fn switch(old_sp: &mut usize,
-                            old_bp: &mut usize,
+unsafe extern "C" fn switch(old_sp: &mut VirtualAddress,
+                            old_bp: &mut VirtualAddress,
                             new_sp: usize,
                             new_bp: usize,
                             new_page_table: usize) {

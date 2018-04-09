@@ -160,7 +160,7 @@ impl Writer {
         for i in 0..self.buffer.width {
             let char_below = self.buffer.read_char(line, i);
 
-            self.buffer.write_char((line - 1), i, char_below);
+            self.buffer.write_char(line - 1, i, char_below);
         }
     }
 
@@ -194,7 +194,7 @@ impl Writer {
 
         self.buffer.height = info.height;
         self.buffer.width = info.width;
-        self.buffer.address = unsafe { Unique::new_unchecked(info.address as *mut _) };
+        self.buffer.address = unsafe { Unique::new_unchecked(info.address.as_mut_ptr()) };
     }
 }
 

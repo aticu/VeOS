@@ -2,6 +2,7 @@
 
 #[cfg(target_arch = "x86_64")]
 use arch::vga_buffer;
+use memory::{Address, VirtualAddress};
 
 /// Initialize the system without help of a boot loader.
 pub fn init() {
@@ -19,6 +20,6 @@ pub fn get_vga_info() -> vga_buffer::Info {
     vga_buffer::Info {
         height: 25,
         width: 80,
-        address: 0xffff8000000b8000
+        address: VirtualAddress::from_usize(0xffff8000000b8000)
     }
 }

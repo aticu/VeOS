@@ -6,14 +6,14 @@ use alloc::boxed::Box;
 use arch::{idle_address_space_manager, new_address_space_manager};
 use core::mem::size_of_val;
 use core::slice;
-use memory::{PAGE_SIZE, is_userspace_address, USER_ACCESSIBLE};
+use memory::{MemoryArea, PAGE_SIZE, is_userspace_address, USER_ACCESSIBLE};
 
 /// Represents an address space
 pub struct AddressSpace {
     /// The segments that are part of the address space.
     segments: Vec<Segment>,
     /// The address space manager.
-    manager: Box<AddressSpaceManager>
+    manager: Box<AddressSpaceManager> // TODO: Change to the actual addres space manager type
 }
 
 impl Drop for AddressSpace {
@@ -51,7 +51,7 @@ impl AddressSpace {
             }
         }
 
-        if segment_to_add.flags.contains(USER_ACCESSIBLE) && !(is_userspace_address(segment_to_add.start) && is_userspace_address(segment_to_add.end())) {
+        if segment_to_add.flags.contains(USER_ACCESSIBLE) && !(is_userspace_address(segment_to_add.start_address()) && is_userspace_address(segment_to_add.end_address())) {
             false
         } else {
             self.segments.push(segment_to_add);
@@ -93,7 +93,7 @@ impl AddressSpace {
     }
 
     /// Returns the segment that contains the address with length bytes space after, if it exists.
-    fn get_segment(&self, address: VirtualAddress, length: VirtualAddress) -> Option<&Segment> {
+    fn get_segment(&self, address: VirtualAddress, length: usize) -> Option<&Segment> {
         for segment in &self.segments {
             if segment.contains(address) && segment.contains(address + length - 1) {
                 return Some(segment);
@@ -104,7 +104,7 @@ impl AddressSpace {
 
     /// Handles the case of accesses outside of a segment.
     fn handle_out_of_segment(&self, start: VirtualAddress, length: usize) {
-        panic!("Out of segment access (start: {:x}, length: {:x})", start, length);
+        panic!("Out of segment access (start: {:?}, length: {:x})", start, length);
     }
 
     /// Returns true if the given memory area is contained within a single segment.
@@ -159,10 +159,8 @@ pub enum SegmentType {
 /// Represents a segment of memory in the address space.
 #[derive(Debug)]
 pub struct Segment {
-    /// The start address of the segment.
-    start: VirtualAddress,
-    /// The length of the segment.
-    length: usize,
+    /// The memory area of the segment.
+    memory_area: MemoryArea<VirtualAddress>,
     /// The flags this segment is mapped with.
     flags: PageFlags,
     /// The type of the segment.
@@ -171,38 +169,44 @@ pub struct Segment {
 
 impl Segment {
     /// Creates a new segment with the given parameters.
-    pub fn new(start: VirtualAddress, length: usize, flags: PageFlags, segment_type: SegmentType) -> Segment {
+    pub fn new(memory_area: MemoryArea<VirtualAddress>, flags: PageFlags, segment_type: SegmentType) -> Segment {
         Segment {
-            start,
-            length,
+            memory_area,
             flags,
             segment_type
         }
     }
 
-    /// Checks if the address is contained within the segment.
-    fn contains(&self, address: VirtualAddress) -> bool {
-        self.start <= address && address < self.end()
-    }
-
     /// Returns true if the intersection of the segments is not empty.
     fn overlaps(&self, other: &Segment) -> bool {
-        self.contains(other.start) || other.contains(self.start)
-    }
-    
-    /// Returns the end address (exclusive) of the segment.
-    fn end(&self) -> VirtualAddress {
-        self.start.saturating_add(self.length)
+        self.memory_area.overlaps_with(other.memory_area)
     }
 
+    /// Returns true if the segment contains the given address.
+    fn contains(&self, address: VirtualAddress) -> bool {
+        self.memory_area.contains(address)
+    }
+
+    /// Returns the start address of this segment.
+    fn start_address(&self) -> VirtualAddress {
+        self.memory_area.start_address()
+    }
+
+    /// Returns the end address of this segment.
+    fn end_address(&self) -> VirtualAddress {
+        self.memory_area.end_address()
+    }
+    
     /// Unmaps this segment.
     fn unmap(&self, manager: &mut Box<AddressSpaceManager>) {
-        let pages_in_segment = (self.length - 1) / PAGE_SIZE + 1;
+        let pages_in_segment = (self.memory_area.length() - 1) / PAGE_SIZE + 1;
         for page_num in 0..pages_in_segment {
             unsafe {
                 match self.segment_type {
-                    SegmentType::FromFile => manager.unmap_page(self.start + page_num * PAGE_SIZE),
-                    SegmentType::MemoryOnly => manager.unmap_page_unchecked(self.start + page_num * PAGE_SIZE)
+                    SegmentType::FromFile =>
+                        manager.unmap_page(self.start_address() + page_num * PAGE_SIZE),
+                    SegmentType::MemoryOnly =>
+                        manager.unmap_page_unchecked(self.start_address() + page_num * PAGE_SIZE)
                 }
             }
         }
@@ -220,7 +224,7 @@ pub trait AddressSpaceManager: Send {
     ///
     /// # Safety
     /// - Should only be used by architecture specific code.
-    unsafe fn get_page_table_address(&self) -> VirtualAddress;
+    unsafe fn get_page_table_address(&self) -> PhysicalAddress; // TODO: Find something better than exposing this publicly.
 
     /// Maps the given page in the managed address space.
     fn map_page(&mut self, page_address: VirtualAddress, flags: PageFlags);

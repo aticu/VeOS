@@ -5,8 +5,7 @@ mod freestanding;
 
 #[cfg(target_arch = "x86_64")]
 use arch::vga_buffer;
-use memory::{FreeMemoryArea, PAGE_SIZE, PhysicalAddress, get_kernel_end_address,
-             get_kernel_start_address};
+use memory::{Address, MemoryArea, PAGE_SIZE, PhysicalAddress, get_kernel_area};
 
 /// Lists possiblities for boot sources.
 enum BootMethod {
@@ -18,67 +17,37 @@ enum BootMethod {
     Multiboot2
 }
 
-/// Represents an area to be excluded from the available memory map.
-struct MemoryMapExcludeArea {
-    /// The start address of the area to be excluded.
-    start: PhysicalAddress,
-    /// The length of the area to be excluded.
-    length: usize
-}
+/// The memory area containing the initramfs.
+fn initramfs() -> MemoryArea<PhysicalAddress> {
+    let area = get_initramfs_area();
+    // Align to the previous page.
+    let initramfs_start = area.start_address().page_align_down();
 
-impl MemoryMapExcludeArea {
-    /// The memory area containing the kernel.
-    fn kernel() -> MemoryMapExcludeArea {
-        MemoryMapExcludeArea {
-            start: get_kernel_start_address(),
-            length: get_kernel_end_address() - get_kernel_start_address()
-        }
-    }
-
-    /// The memory area containing the initramfs.
-    fn initramfs() -> MemoryMapExcludeArea {
-        // Align to the previous page.
-        let initramfs_start = get_initramfs_start() / PAGE_SIZE * PAGE_SIZE;
-
-        // Round up the the next page boundary.
-        let initramfs_length = get_initramfs_length();
-        let initramfs_length = if initramfs_length > 0 {
-            (initramfs_length - 1) / PAGE_SIZE * PAGE_SIZE + PAGE_SIZE
-        } else {
-            0
-        };
-        MemoryMapExcludeArea {
-            start: initramfs_start,
-            length: initramfs_length
-        }
-    }
-
-    /// Checks if the area is contained within another area.
-    fn is_contained_in(&self, area: FreeMemoryArea) -> bool {
-        area.start_address() <= self.start && self.start + self.length <= area.end_address()
-    }
-
-    /// Returns the first address not contained in the area.
-    fn end_address(&self) -> PhysicalAddress {
-        self.start + self.length
-    }
+    // Round up the the next page boundary.
+    let initramfs_length = area.length();
+    let initramfs_length = if initramfs_length > 0 {
+        (initramfs_length - 1) / PAGE_SIZE * PAGE_SIZE + PAGE_SIZE
+    } else {
+        0
+    };
+    MemoryArea::new(initramfs_start, initramfs_length)
 }
 
 /// Provides an iterator for a memory map.
 pub struct MemoryMapIterator {
     multiboot_iterator: multiboot::MemoryMapIterator,
-    to_exclude: [MemoryMapExcludeArea; 2],
-    current_entry: Option<FreeMemoryArea>,
+    to_exclude: [MemoryArea<PhysicalAddress>; 2],
+    current_entry: Option<MemoryArea<PhysicalAddress>>,
     exclude_index: usize
 }
 
 impl MemoryMapIterator {
     /// Creates a new memory map iterator.
     fn new() -> MemoryMapIterator {
-        let kernel_area = MemoryMapExcludeArea::kernel();
-        let initramfs_area = MemoryMapExcludeArea::initramfs();
+        let kernel_area = get_kernel_area();
+        let initramfs_area = initramfs();
 
-        let to_exclude = if kernel_area.start <= initramfs_area.start {
+        let to_exclude = if kernel_area.start_address() <= initramfs_area.start_address() {
             [kernel_area, initramfs_area]
         } else {
             [initramfs_area, kernel_area]
@@ -100,9 +69,9 @@ impl MemoryMapIterator {
 }
 
 impl Iterator for MemoryMapIterator {
-    type Item = FreeMemoryArea;
+    type Item = MemoryArea<PhysicalAddress>;
 
-    fn next(&mut self) -> Option<FreeMemoryArea> {
+    fn next(&mut self) -> Option<MemoryArea<PhysicalAddress>> {
         // NOTE: This assumes function makes a few assumptions to work properly:
         // - The to_exclude list must be ordered by the start addresses.
         // - The to_exclude entries must not overlap.
@@ -131,10 +100,10 @@ impl Iterator for MemoryMapIterator {
                                let (entry_before, entry_after) = {
                                    let exclude_area = &self.to_exclude[self.exclude_index];
 
-                                   (FreeMemoryArea::new(current_entry.start_address(),
-                                                        exclude_area.start -
+                                   (MemoryArea::new(current_entry.start_address(),
+                                                        exclude_area.start_address() -
                                                         current_entry.start_address()),
-                                    FreeMemoryArea::new(exclude_area.end_address(),
+                                    MemoryArea::new(exclude_area.end_address(),
                                                         current_entry.end_address() -
                                                         exclude_area.end_address()))
                                };
@@ -217,18 +186,10 @@ pub fn get_bootloader_name() -> &'static str {
     }
 }
 
-/// Returns the start address of the initramfs.
-pub fn get_initramfs_start() -> PhysicalAddress {
+/// Returns the memory area of the initramfs.
+pub fn get_initramfs_area() -> MemoryArea<PhysicalAddress> {
     match *get_boot_method() {
-        BootMethod::Multiboot => multiboot::get_initramfs_start(),
-        _ => unimplemented!(),
-    }
-}
-
-/// Returns the length of the initramfs.
-pub fn get_initramfs_length() -> usize {
-    match *get_boot_method() {
-        BootMethod::Multiboot => multiboot::get_initramfs_length(),
+        BootMethod::Multiboot => multiboot::get_initramfs_area(),
         _ => unimplemented!(),
     }
 }

@@ -2,14 +2,15 @@
 //! Controller (LAPIC).
 
 use super::{SPURIOUS_INTERRUPT_HANDLER_NUM, TIMER_INTERRUPT_HANDLER_NUM, IRQ8_INTERRUPT_TICKS};
-use memory::{NO_CACHE, PhysicalAddress, READABLE, VirtualAddress, WRITABLE, map_page_at};
+use super::super::memory::map_page_at;
+use memory::{Address, NO_CACHE, PhysicalAddress, READABLE, VirtualAddress, WRITABLE};
 use raw_cpuid::CpuId;
 use sync::{disable_preemption, restore_preemption_state};
 use x86_64::instructions::interrupts;
 use x86_64::instructions::port::{inb, outb};
 
 /// The physical base address of the memory mapped LAPIC.
-const LAPIC_BASE: PhysicalAddress = 0xfee00000;
+const LAPIC_BASE: PhysicalAddress = PhysicalAddress::from_const(0xfee00000);
 
 /// The offset for the CMCI interrupt LVT register.
 const CMCI_INTERRUPT: usize = 0x2f0;
@@ -69,7 +70,7 @@ static mut TICKS_PER_MS: u32 = 1000000;
 pub fn init() {
     assert_has_not_been_called!("The LAPIC should only be initialized once.");
 
-    map_page_at(to_virtual!(LAPIC_BASE),
+    map_page_at(get_lapic_base(),
                 LAPIC_BASE,
                 READABLE | WRITABLE | NO_CACHE);
 
@@ -221,7 +222,7 @@ fn set_icr(value: u64) {
 
 /// Returns the base address for the LAPIC of this CPU.
 fn get_lapic_base() -> VirtualAddress {
-    to_virtual!(LAPIC_BASE)
+    LAPIC_BASE.to_virtual()
 }
 
 /// Sets a LAPIC register.
@@ -232,7 +233,7 @@ fn get_lapic_base() -> VirtualAddress {
 unsafe fn set_register(offset: usize, value: u32) {
     assert!(offset < 0x1000);
 
-    *((get_lapic_base() + offset) as *mut u32) = value;
+    *(get_lapic_base() + offset).as_mut_ptr() = value;
 }
 
 /// Gets a LAPIC register.
@@ -242,7 +243,7 @@ unsafe fn set_register(offset: usize, value: u32) {
 unsafe fn get_register(offset: usize) -> u32 {
     assert!(offset < 0x1000);
 
-    *((get_lapic_base() + offset) as *mut u32)
+    *(get_lapic_base() + offset).as_mut_ptr()
 }
 
 /// Sets an LVT register.

@@ -7,7 +7,6 @@ use core::cmp::Ordering;
 use core::fmt;
 use memory::{KERNEL_STACK_AREA_BASE, KERNEL_STACK_MAX_SIZE, KERNEL_STACK_OFFSET, USER_STACK_AREA_BASE, USER_STACK_MAX_SIZE, USER_STACK_OFFSET, VirtualAddress};
 use sync::time::Timestamp;
-use x86_64::registers::control_regs::cr3;
 
 /// Represents the possible states a thread can have.
 #[derive(Debug, PartialEq)]
@@ -150,10 +149,10 @@ impl TCB {
             id,
             pid: 0,
             kernel_stack,
-            user_stack: Stack::new(0, 0, 0, AccessType::KernelOnly, None),
+            user_stack: Stack::new(0, 0, VirtualAddress::default(), AccessType::KernelOnly, None),
             state: ThreadState::Ready,
             priority: i32::min_value(),
-            context: Context::idle_context(stack_pointer, cr3().0 as usize)
+            context: Context::idle_context(stack_pointer)
         }
     }
 

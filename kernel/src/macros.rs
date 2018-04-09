@@ -12,12 +12,13 @@ macro_rules! from_c_str {
         use core::str;
         use core::slice;
         unsafe {
-            assert_eq!(*(($address + $length) as *const u8), 0);
+            let null_value: u8 = *($address + $length).as_ptr();
+            assert_eq!(null_value, 0);
         }
         if $length > 0 {
             let bytes: &[u8] = unsafe {
                                        slice::from_raw_parts($address
-                                           as *const u8, $length as usize)
+                                           .as_ptr(), $length as usize)
                                };
             str::from_utf8(bytes)
         } else {
@@ -25,9 +26,9 @@ macro_rules! from_c_str {
         }
     }};
     ($address: expr) => {{
-        let mut address: usize = $address;
+        let mut address: VirtualAddress = $address;
         unsafe {
-            while *(address as *const u8) != 0 {
+            while *(address.as_ptr::<u8>()) != 0 {
                 address += 1;
             }
         }
@@ -42,9 +43,9 @@ macro_rules! from_raw_str {
         use core::str;
         use core::slice;
         if $length > 0 {
+            let ptr: *const u8 = $address.as_ptr();
             let bytes: &[u8] = unsafe {
-                                       slice::from_raw_parts($address
-                                           as *const u8, $length as usize)
+                                       slice::from_raw_parts(ptr, $length as usize)
                                };
             str::from_utf8(bytes)
         } else {
