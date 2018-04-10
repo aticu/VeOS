@@ -1,10 +1,10 @@
 //! Handles interactions with the current page table.
 
-use super::{Page, PageFrame};
 use super::inactive_page_table::InactivePageTable;
 use super::page_table::{Level1, Level4, PageTable};
 use super::page_table_entry::*;
 use super::page_table_manager::PageTableManager;
+use super::{Page, PageFrame};
 use core::cell::UnsafeCell;
 use core::ops::{Deref, DerefMut};
 use core::ptr;
@@ -110,7 +110,9 @@ impl CurrentPageTable {
     /// - At any point in time there should only be exactly one current page
     /// table struct.
     const unsafe fn new() -> CurrentPageTable {
-        CurrentPageTable { l4_table: Unique::new_unchecked(L4_TABLE) }
+        CurrentPageTable {
+            l4_table: Unique::new_unchecked(L4_TABLE)
+        }
     }
 
     /// Tries to map an inactive page table.
@@ -153,7 +155,8 @@ impl CurrentPageTable {
 
     /// Performs the given action with the mapped page.
     pub fn with_temporary_page<F, T>(&mut self, frame: &PageFrame, action: F) -> T
-        where F: Fn(&mut Page) -> T
+    where
+        F: Fn(&mut Page) -> T
     {
         // Map the page.
         let index = page_frame_hash(frame);
@@ -179,11 +182,14 @@ impl CurrentPageTable {
     }
 
     /// Writes the given value to the given physical address.
-    pub fn write_at_physical<T: Sized + Copy>(&mut self,
-                                              physical_address: PhysicalAddress,
-                                              data: T) {
+    pub fn write_at_physical<T: Sized + Copy>(
+        &mut self,
+        physical_address: PhysicalAddress,
+        data: T
+    ) {
         self.with_temporary_page(&PageFrame::from_address(physical_address), |page| {
-            let virtual_address = page.get_address().as_usize() | (physical_address.offset_in_page());
+            let virtual_address =
+                page.get_address().as_usize() | (physical_address.offset_in_page());
 
             unsafe {
                 ptr::write(virtual_address as *mut T, data);
@@ -194,7 +200,8 @@ impl CurrentPageTable {
     /// Reads from the given physical address.
     pub fn read_from_physical<T: Sized + Copy>(&mut self, physical_address: PhysicalAddress) -> T {
         self.with_temporary_page(&PageFrame::from_address(physical_address), |page| {
-            let virtual_address = page.get_address().as_usize() | (physical_address.offset_in_page());
+            let virtual_address =
+                page.get_address().as_usize() | (physical_address.offset_in_page());
 
             unsafe { ptr::read(virtual_address as *mut T) }
         })
@@ -205,7 +212,8 @@ impl CurrentPageTable {
     /// The old page table will not be mapped into the new one. This should be
     /// done manually.
     pub unsafe fn switch(&mut self, new_table: InactivePageTable) -> InactivePageTable {
-        let old_frame = PageFrame::from_address(PhysicalAddress::from_usize(control_regs::cr3().0 as usize));
+        let old_frame =
+            PageFrame::from_address(PhysicalAddress::from_usize(control_regs::cr3().0 as usize));
         let old_table = InactivePageTable::from_frame(old_frame.copy(), &new_table);
 
         let new_frame = new_table.get_frame();
@@ -213,7 +221,9 @@ impl CurrentPageTable {
         drop(new_table);
 
         // Make the switch.
-        control_regs::cr3_write(::x86_64::PhysicalAddress(new_frame.get_address().as_usize() as u64));
+        control_regs::cr3_write(::x86_64::PhysicalAddress(
+            new_frame.get_address().as_usize() as u64
+        ));
 
         // Map the now inactive old table.
         self.map_inactive(&old_frame);

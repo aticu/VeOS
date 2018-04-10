@@ -4,7 +4,7 @@ use super::align;
 use arch::PAGE_SIZE;
 use core::fmt;
 use core::mem::{align_of, size_of};
-use memory::{Address, READABLE, VirtualAddress, WRITABLE, map_page, unmap_page};
+use memory::{map_page, unmap_page, Address, VirtualAddress, READABLE, WRITABLE};
 
 /// The linked list allocator interface.
 pub struct LinkedListAllocator {
@@ -35,11 +35,11 @@ impl fmt::Debug for Node {
             write!(f, "{}: [{:x}..]", used_string, start_address)
         } else {
             let end_address = self.next_node.unwrap() as usize;
-            write!(f,
-                   "{}: [{:x}..{:x}]",
-                   used_string,
-                   start_address,
-                   end_address)
+            write!(
+                f,
+                "{}: [{:x}..{:x}]",
+                used_string, start_address, end_address
+            )
         }
     }
 }
@@ -48,19 +48,20 @@ impl Node {
     /// Determines the space wasted by using this node for the given allocation.
     ///
     /// Returns None if the node cannot hold the allocation.
-    fn space_waste(&self,
-                   max_address: VirtualAddress,
-                   size: usize,
-                   alignment: usize)
-                   -> Option<usize> {
+    fn space_waste(
+        &self,
+        max_address: VirtualAddress,
+        size: usize,
+        alignment: usize
+    ) -> Option<usize> {
         if !self.used {
-            let start_address = VirtualAddress::from_usize(self as *const _ as usize) + size_of::<Node>();
+            let start_address =
+                VirtualAddress::from_usize(self as *const _ as usize) + size_of::<Node>();
             let aligned_address = align(start_address, alignment);
 
             if let Some(node_ptr) = self.next_node {
                 let end_address = VirtualAddress::from_usize(node_ptr as usize);
-                let next_node_start = align(aligned_address + size,
-                                            align_of::<Node>());
+                let next_node_start = align(aligned_address + size, align_of::<Node>());
                 if end_address == next_node_start {
                     Some(0)
                 } else if end_address > next_node_start + size_of::<Node>() {
@@ -83,7 +84,8 @@ impl Node {
     /// Checks if this node contains the given allocation.
     fn contains_allocation(&self, ptr: *mut u8, _: usize, alignment: usize) -> bool {
         if self.used {
-            let start_address = VirtualAddress::from_usize(self as *const _ as usize) + size_of::<Node>();
+            let start_address =
+                VirtualAddress::from_usize(self as *const _ as usize) + size_of::<Node>();
             let aligned_address = align(start_address, alignment);
             VirtualAddress::from_usize(ptr as usize) == aligned_address
         } else {
@@ -96,12 +98,14 @@ impl Node {
     /// This assumes that the node fits into the space.
     ///
     /// This returns the start address of the allocated area.
-    fn split(&mut self,
-             end_address: &mut VirtualAddress,
-             size: usize,
-             alignment: usize)
-             -> *mut u8 {
-        let start_address = VirtualAddress::from_usize(self as *const _ as usize) + size_of::<Node>();
+    fn split(
+        &mut self,
+        end_address: &mut VirtualAddress,
+        size: usize,
+        alignment: usize
+    ) -> *mut u8 {
+        let start_address =
+            VirtualAddress::from_usize(self as *const _ as usize) + size_of::<Node>();
         let aligned_address = align(start_address, alignment);
         let next_node_start = align(aligned_address + size, align_of::<Node>());
 
@@ -111,7 +115,9 @@ impl Node {
             *end_address = (*end_address) + PAGE_SIZE;
         }
 
-        if self.next_node.is_none() || VirtualAddress::from_usize(self.next_node.unwrap() as usize) != next_node_start {
+        if self.next_node.is_none()
+            || VirtualAddress::from_usize(self.next_node.unwrap() as usize) != next_node_start
+        {
             let next_node: &mut Node = unsafe { &mut *(next_node_start.as_mut_ptr()) };
             next_node.used = false;
             next_node.next_node = self.next_node;
@@ -123,10 +129,12 @@ impl Node {
     }
 
     /// Merges the nodes, if they are free.
-    fn merge(&mut self,
-             end_address: &mut VirtualAddress,
-             previous: Option<&mut Node>,
-             next: Option<&mut Node>) {
+    fn merge(
+        &mut self,
+        end_address: &mut VirtualAddress,
+        previous: Option<&mut Node>,
+        next: Option<&mut Node>
+    ) {
         if let Some(next_node) = next {
             if next_node.next_node.is_some() {
                 // If the node is between other nodes.
@@ -157,8 +165,8 @@ impl Node {
                 last_node.next_node = None;
 
                 // Shrink the heap.
-                let last_address = VirtualAddress::from_usize(last_node as *mut Node as usize)
-                    + size_of::<Node>();
+                let last_address =
+                    VirtualAddress::from_usize(last_node as *mut Node as usize) + size_of::<Node>();
                 while (*end_address) - PAGE_SIZE > last_address {
                     *end_address -= PAGE_SIZE;
                     unsafe {

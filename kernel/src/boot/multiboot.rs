@@ -63,7 +63,6 @@ bitflags! {
 }
 
 /// Represents an entry in the given memory map.
-#[derive(Debug)]
 #[repr(C, packed)]
 struct MmapEntry {
     /// The size of the entry.
@@ -100,8 +99,8 @@ pub fn init(information_structure_address: usize) {
     assert_has_not_been_called!("The multiboot module should only be initialized once.");
 
     unsafe {
-        STRUCT_BASE_ADDRESS = to_virtual!(information_structure_address) as
-                              *const MultibootInformation
+        STRUCT_BASE_ADDRESS =
+            to_virtual!(information_structure_address) as *const MultibootInformation
     };
 
     assert!(!get_flags().contains(A_OUT | ELF));
@@ -111,8 +110,10 @@ pub fn init(information_structure_address: usize) {
 pub fn get_initramfs_area() -> MemoryArea<PhysicalAddress> {
     let module_entry = get_initramfs_module_entry();
 
-    MemoryArea::from_start_and_end(PhysicalAddress::from_usize(module_entry.mod_start as usize),
-        PhysicalAddress::from_usize(module_entry.mod_end as usize))
+    MemoryArea::from_start_and_end(
+        PhysicalAddress::from_usize(module_entry.mod_start as usize),
+        PhysicalAddress::from_usize(module_entry.mod_end as usize)
+    )
 }
 
 /// Returns the module entry for the initramfs.
@@ -124,7 +125,9 @@ fn get_initramfs_module_entry() -> &'static ModuleEntry {
     for i in 0..mod_count {
         let mod_entry =
             unsafe { &*((mod_addr + i * size_of::<ModuleEntry>()) as *const ModuleEntry) };
-        let mod_string = from_c_str!(VirtualAddress::from_usize(to_virtual!(mod_entry.string as usize))).unwrap();
+        let mod_string = from_c_str!(VirtualAddress::from_usize(to_virtual!(
+            mod_entry.string as usize
+        ))).unwrap();
         if mod_string == "initramfs" {
             return mod_entry;
         }
@@ -136,7 +139,9 @@ fn get_initramfs_module_entry() -> &'static ModuleEntry {
 /// Returns the name of the boot loader.
 pub fn get_bootloader_name() -> &'static str {
     if get_flags().contains(BOOT_LOADER_NAME) {
-        from_c_str!(VirtualAddress::from_usize(to_virtual!(get_info().boot_loader_name))).unwrap()
+        from_c_str!(VirtualAddress::from_usize(to_virtual!(
+            get_info().boot_loader_name
+        ))).unwrap()
     } else {
         // When no specific name was given by the boot loader.
         "a multiboot compliant bootloader"
@@ -189,7 +194,10 @@ impl Iterator for MemoryMapIterator {
 
             if current_entry.mem_type == 1 {
                 // only a type of 1 is usable memory
-                return Some(MemoryArea::new(current_entry.base_addr, current_entry.length));
+                return Some(MemoryArea::new(
+                    current_entry.base_addr,
+                    current_entry.length
+                ));
             }
         }
         None

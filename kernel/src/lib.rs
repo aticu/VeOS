@@ -22,7 +22,7 @@
 //! The VeOS operating system kernel.
 //!
 //! This crate contains all of the rust code for the VeOS kernel.
-//! 
+//!
 //! The kernel is aiming to be a microkernel.
 
 #[allow(unused_extern_crates)]
@@ -35,9 +35,9 @@ extern crate x86_64;
 extern crate lazy_static;
 #[macro_use]
 extern crate once;
-extern crate raw_cpuid;
 #[cfg(not(test))]
 extern crate alloc;
+extern crate raw_cpuid;
 
 #[macro_use]
 mod macros;
@@ -45,14 +45,14 @@ mod macros;
 mod io;
 mod arch;
 mod boot;
-mod sync;
-mod memory;
-mod multitasking;
-mod syscalls;
-mod interrupts;
-mod initramfs;
 mod elf;
 mod file_handle;
+mod initramfs;
+mod interrupts;
+mod memory;
+mod multitasking;
+mod sync;
+mod syscalls;
 
 /// The name of the operating system.
 static OS_NAME: &str = "VeOS";
@@ -80,17 +80,24 @@ pub extern "C" fn main(magic_number: u32, information_structure_address: usize) 
     arch::early_init();
     boot::init(magic_number, information_structure_address);
     io::init();
-    println!("Booted {} using {}...",
-             OS_NAME,
-             boot::get_bootloader_name());
+    println!(
+        "Booted {} using {}...",
+        OS_NAME,
+        boot::get_bootloader_name()
+    );
     memory::init();
     arch::init();
 
     let extended_info = raw_cpuid::CpuId::new().get_extended_function_info();
     let unwrapped_info = extended_info.unwrap();
-    println!("The processor is a {}",
-             unwrapped_info.processor_brand_string().unwrap());
-    println!("The available amount of memory is {}MiB.", arch::get_free_memory_size() / 1024 / 1024);
+    println!(
+        "The processor is a {}",
+        unwrapped_info.processor_brand_string().unwrap()
+    );
+    println!(
+        "The available amount of memory is {}MiB.",
+        arch::get_free_memory_size() / 1024 / 1024
+    );
 
     elf::process_from_initramfs_file("/bin/init").expect("Initprocess could not be loaded");
 

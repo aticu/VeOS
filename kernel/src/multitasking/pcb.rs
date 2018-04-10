@@ -5,7 +5,7 @@ use arch::{get_cpu_num, schedule};
 use core::cmp::max;
 use core::ops::{Deref, DerefMut};
 use memory::address_space::AddressSpace;
-use multitasking::{ProcessID, CURRENT_THREAD, PROCESS_LIST, ThreadID};
+use multitasking::{ProcessID, ThreadID, CURRENT_THREAD, PROCESS_LIST};
 use sync::mutex::MutexGuard;
 
 /// Represents the states a process can have.
@@ -76,15 +76,16 @@ impl PCB {
 
     /// Marks this process as dead.
     ///
-    /// This will cause the scheduler to not schedule any threads of this process anymore.
+    /// This will cause the scheduler to not schedule any threads of this
+    /// process anymore.
     pub fn kill(&mut self) {
         self.state = ProcessState::Dead;
     }
 
     /// Marks this process as dead.
     ///
-    /// This will cause the scheduler to not schedule any threads of this process anymore.
-    /// The scheduler will be invoked immediately.
+    /// This will cause the scheduler to not schedule any threads of this
+    /// process anymore. The scheduler will be invoked immediately.
     pub fn kill_immediately(&mut self) -> ! {
         self.state = ProcessState::Dead;
         schedule();
@@ -115,7 +116,9 @@ impl<'a> Deref for ProcessLock<'a> {
 
 impl<'a> DerefMut for ProcessLock<'a> {
     fn deref_mut(&mut self) -> &mut PCB {
-        self.guard.get_mut(&self.key).expect("Process not existing.")
+        self.guard
+            .get_mut(&self.key)
+            .expect("Process not existing.")
     }
 }
 

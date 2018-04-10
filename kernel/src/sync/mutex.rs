@@ -3,14 +3,14 @@
 //! This is a modification of the Mutex code from the spin crate (see
 //! https://crates.io/crates/spin).
 
-use super::{PreemptionState, cpu_relax, disable_preemption, restore_preemption_state};
+use super::{cpu_relax, disable_preemption, restore_preemption_state, PreemptionState};
 use core::cell::UnsafeCell;
 use core::default::Default;
 use core::fmt;
 use core::marker::Sync;
 use core::ops::{Deref, DerefMut, Drop};
 use core::option::Option::{self, None, Some};
-use core::sync::atomic::{ATOMIC_BOOL_INIT, AtomicBool, Ordering};
+use core::sync::atomic::{AtomicBool, Ordering, ATOMIC_BOOL_INIT};
 
 /// This type provides MUTual EXclusion based on spinning.
 ///
@@ -68,7 +68,7 @@ impl<T> Mutex<T> {
         // We know statically that there are no outstanding references to
         // `self` so there's no need to lock.
         let Mutex { data, .. } = self;
-        unsafe { data.into_inner() }
+        data.into_inner()
     }
 }
 
@@ -81,8 +81,7 @@ impl<T: ?Sized> Mutex<T> {
             unsafe {
                 preemption_state = disable_preemption();
             }
-            let lock_switch = !self.lock
-                                   .compare_and_swap(false, true, Ordering::Acquire);
+            let lock_switch = !self.lock.compare_and_swap(false, true, Ordering::Acquire);
             if lock_switch {
                 break;
             } else {
@@ -133,18 +132,17 @@ impl<T: ?Sized> Mutex<T> {
     /// a guard within Some.
     pub fn try_lock(&self) -> Option<MutexGuard<T>> {
         let preemption_state = unsafe { disable_preemption() };
-        let lock_switch = !self.lock
-                               .compare_and_swap(false, true, Ordering::Acquire);
+        let lock_switch = !self.lock.compare_and_swap(false, true, Ordering::Acquire);
         // if self.lock.compare_and_swap(false, true, Ordering::Acquire) == false
         if lock_switch {
             unsafe {
                 *self.preemption_state.get() = preemption_state;
             }
             Some(MutexGuard {
-                     lock: &self.lock,
-                     preemption_state: unsafe { &*self.preemption_state.get() },
-                     data: unsafe { &mut *self.data.get() }
-                 })
+                lock: &self.lock,
+                preemption_state: unsafe { &*self.preemption_state.get() },
+                data: unsafe { &mut *self.data.get() }
+            })
         } else {
             unsafe {
                 restore_preemption_state(&preemption_state);
@@ -158,7 +156,7 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for Mutex<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.try_lock() {
             Some(guard) => write!(f, "Mutex {{ data: {:?} }}", &*guard),
-            None => write!(f, "Mutex {{ <locked> }}"),
+            None => write!(f, "Mutex {{ <locked> }}")
         }
     }
 }

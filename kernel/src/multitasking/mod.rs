@@ -1,22 +1,22 @@
 //! Manages multitasking in the operating system.
 
-mod tcb;
-pub mod stack;
-pub mod scheduler;
 mod cpu_local;
 mod pcb;
+pub mod scheduler;
+pub mod stack;
+mod tcb;
 
 pub use self::cpu_local::{CPULocal, CPULocalMut};
-pub use self::pcb::{PCB, get_current_process};
+pub use self::pcb::{get_current_process, PCB};
 pub use self::scheduler::CURRENT_THREAD;
 pub use self::stack::{Stack, StackType};
-pub use self::tcb::{TCB, ThreadState};
+pub use self::tcb::{ThreadState, TCB};
 use alloc::btree_map::BTreeMap;
 pub use arch::{get_cpu_id, get_cpu_num};
-use memory::VirtualAddress;
 use memory::address_space::AddressSpace;
-use sync::Mutex;
+use memory::VirtualAddress;
 use sync::mutex::MutexGuard;
+use sync::Mutex;
 
 /// The type of a process ID.
 pub type ProcessID = usize;
@@ -55,8 +55,11 @@ pub fn create_process(address_space: AddressSpace, entry_address: VirtualAddress
 
     scheduler::READY_LIST.lock().push(first_tcb);
 
-    assert!(process_list.insert(id, pcb).is_none(),
-            "Trying to use an already used PID ({}).", id);
+    assert!(
+        process_list.insert(id, pcb).is_none(),
+        "Trying to use an already used PID ({}).",
+        id
+    );
 
     id
 }

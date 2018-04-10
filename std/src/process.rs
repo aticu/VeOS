@@ -13,7 +13,7 @@ const EXEC_SYSCALL_NUM: u64 = 3;
 #[derive(Debug)]
 pub enum ProcessError {
     /// The error is not further specified.
-    Unspecified
+    Unspecified,
 }
 
 /// Exits the current process.
@@ -26,17 +26,13 @@ pub fn exit() -> ! {
 
 /// Returns the ID of the current process.
 pub fn get_pid() -> u64 {
-    unsafe {
-        syscall!(GET_PID_SYSCALL_NUM) as u64
-    }
+    unsafe { syscall!(GET_PID_SYSCALL_NUM) as u64 }
 }
 
 /// Creates a new process from the given executable.
 pub fn exec(name: &str) -> Result<u64, ProcessError> {
     let name_ptr = name as *const str as *const usize as u64;
-    let result = unsafe {
-        syscall!(EXEC_SYSCALL_NUM, name_ptr, name.len() as u64) as i64
-    };
+    let result = unsafe { syscall!(EXEC_SYSCALL_NUM, name_ptr, name.len() as u64) as i64 };
     if result < 0 {
         Err(ProcessError::Unspecified)
     } else {

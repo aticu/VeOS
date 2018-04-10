@@ -1,12 +1,12 @@
 //! Provides saving and restoring of architecture specific execution context.
 
-use super::gdt::{USER_CODE_SEGMENT, USER_DATA_SEGMENT, TSS};
+use super::gdt::{TSS, USER_CODE_SEGMENT, USER_DATA_SEGMENT};
 use super::interrupts::lapic;
 use core::mem::size_of;
-use memory::{Address, PhysicalAddress, VirtualAddress};
 use memory::address_space::AddressSpace;
-use multitasking::Stack;
+use memory::{Address, PhysicalAddress, VirtualAddress};
 use multitasking::scheduler::{after_context_switch, idle};
+use multitasking::Stack;
 use x86_64::registers::control_regs::cr3;
 use x86_64::structures::idt::ExceptionStackFrame;
 
@@ -21,16 +21,17 @@ pub struct Context {
 
 impl Context {
     /// Creates a new context.
-    pub fn new(function: VirtualAddress,
-               stack_pointer: VirtualAddress,
-               mut kernel_stack_pointer: VirtualAddress,
-               address_space: &mut AddressSpace,
-               arg1: u64,
-               arg2: u64,
-               arg3: u64,
-               arg4: u64,
-               arg5: u64)
-               -> Context {
+    pub fn new(
+        function: VirtualAddress,
+        stack_pointer: VirtualAddress,
+        mut kernel_stack_pointer: VirtualAddress,
+        address_space: &mut AddressSpace,
+        arg1: u64,
+        arg2: u64,
+        arg3: u64,
+        arg4: u64,
+        arg5: u64
+    ) -> Context {
         use x86_64::registers::flags::Flags;
 
         let stack_frame = ExceptionStackFrame {
@@ -42,14 +43,16 @@ impl Context {
         };
 
         unsafe {
-            set_initial_stack(&mut kernel_stack_pointer,
-                              stack_frame,
-                              address_space,
-                              arg1,
-                              arg2,
-                              arg3,
-                              arg4,
-                              arg5);
+            set_initial_stack(
+                &mut kernel_stack_pointer,
+                stack_frame,
+                address_space,
+                arg1,
+                arg2,
+                arg3,
+                arg4,
+                arg5
+            );
         }
 
         Context {
@@ -110,14 +113,16 @@ unsafe fn set_idle_stack(stack_pointer: &mut VirtualAddress) {
 ///
 /// # Safety
 /// - Make sure that the stack pointer is valid.
-unsafe fn set_initial_stack(stack_pointer: &mut VirtualAddress,
-                     stack_frame: ExceptionStackFrame,
-                     address_space: &mut AddressSpace,
-                     arg1: u64,
-                     arg2: u64,
-                     arg3: u64,
-                     arg4: u64,
-                     arg5: u64) {
+unsafe fn set_initial_stack(
+    stack_pointer: &mut VirtualAddress,
+    stack_frame: ExceptionStackFrame,
+    address_space: &mut AddressSpace,
+    arg1: u64,
+    arg2: u64,
+    arg3: u64,
+    arg4: u64,
+    arg5: u64
+) {
     Stack::push_in(address_space, stack_pointer, stack_frame);
     Stack::push_in(address_space, stack_pointer, arg5);
     Stack::push_in(address_space, stack_pointer, arg4);
@@ -135,6 +140,29 @@ unsafe fn set_initial_stack(stack_pointer: &mut VirtualAddress,
 /// - Make sure preemption is disabled while calling this.
 #[naked]
 pub unsafe fn switch_context(old_context: &mut Context, new_context: &Context) {
+    #[naked]
+    #[inline(never)]
+    unsafe extern "C" fn switch(
+        old_sp: &mut VirtualAddress,
+        old_bp: &mut VirtualAddress,
+        new_sp: usize,
+        new_bp: usize,
+        new_page_table: usize
+    ) {
+        asm!("mov [rdi], rsp
+            mov [rsi], rbp
+            mov rsp, rdx
+            mov rbp, rcx
+            mov cr3, r8"
+            : :
+            "{rdi}"(old_sp),
+            "{rsi}"(old_bp),
+            "{rdx}"(new_sp),
+            "{rcx}"(new_bp),
+            "{r8}"(new_page_table)
+            : : "intel", "volatile");
+    }
+
     let new_sp = new_context.kernel_stack_pointer;
     let new_bp = new_context.base_pointer;
     let base_sp = ::multitasking::CURRENT_THREAD
@@ -143,34 +171,11 @@ pub unsafe fn switch_context(old_context: &mut Context, new_context: &Context) {
         .base_stack_pointer;
     TSS.as_mut().privilege_stack_table[0] = ::x86_64::VirtualAddress(base_sp.as_usize());
 
-    switch(&mut old_context.kernel_stack_pointer,
-           &mut old_context.base_pointer,
-           new_sp.as_usize(),
-           new_bp.as_usize(),
-           new_context.page_table_address.as_usize());
-}
-
-/// This is the function actually performing the switch.
-///
-/// # Safety
-/// - Should only be called by switch_context.
-#[naked]
-#[inline(never)]
-unsafe extern "C" fn switch(old_sp: &mut VirtualAddress,
-                            old_bp: &mut VirtualAddress,
-                            new_sp: usize,
-                            new_bp: usize,
-                            new_page_table: usize) {
-    asm!("mov [rdi], rsp
-          mov [rsi], rbp
-          mov rsp, rdx
-          mov rbp, rcx
-          mov cr3, r8"
-          : :
-          "{rdi}"(old_sp),
-          "{rsi}"(old_bp),
-          "{rdx}"(new_sp),
-          "{rcx}"(new_bp),
-          "{r8}"(new_page_table)
-          : : "intel", "volatile");
+    switch(
+        &mut old_context.kernel_stack_pointer,
+        &mut old_context.base_pointer,
+        new_sp.as_usize(),
+        new_bp.as_usize(),
+        new_context.page_table_address.as_usize()
+    );
 }

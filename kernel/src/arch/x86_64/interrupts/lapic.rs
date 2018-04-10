@@ -1,9 +1,9 @@
 //! Handles configuration of the Local Advanced Programmable Interrupt
 //! Controller (LAPIC).
 
-use super::{SPURIOUS_INTERRUPT_HANDLER_NUM, TIMER_INTERRUPT_HANDLER_NUM, IRQ8_INTERRUPT_TICKS};
 use super::super::memory::map_page_at;
-use memory::{Address, NO_CACHE, PhysicalAddress, READABLE, VirtualAddress, WRITABLE};
+use super::{IRQ8_INTERRUPT_TICKS, SPURIOUS_INTERRUPT_HANDLER_NUM, TIMER_INTERRUPT_HANDLER_NUM};
+use memory::{PhysicalAddress, VirtualAddress, NO_CACHE, READABLE, WRITABLE};
 use raw_cpuid::CpuId;
 use sync::{disable_preemption, restore_preemption_state};
 use x86_64::instructions::interrupts;
@@ -70,9 +70,7 @@ static mut TICKS_PER_MS: u32 = 1000000;
 pub fn init() {
     assert_has_not_been_called!("The LAPIC should only be initialized once.");
 
-    map_page_at(get_lapic_base(),
-                LAPIC_BASE,
-                READABLE | WRITABLE | NO_CACHE);
+    map_page_at(get_lapic_base(), LAPIC_BASE, READABLE | WRITABLE | NO_CACHE);
 
     let cpu_id = CpuId::new()
         .get_feature_info()
@@ -111,8 +109,10 @@ pub fn init() {
         set_register(TIMER_INITIAL_COUNT, 0);
 
         // Enable the LAPIC.
-        set_register(SPURIOUS_INTERRUPT,
-                     0x100 + SPURIOUS_INTERRUPT_HANDLER_NUM as u32);
+        set_register(
+            SPURIOUS_INTERRUPT,
+            0x100 + SPURIOUS_INTERRUPT_HANDLER_NUM as u32
+        );
 
         // Set the local interrupt registers again, to make sure they have the right
         // value.
@@ -150,7 +150,7 @@ pub fn calibrate_timer() {
 
         let start_tick = *IRQ8_INTERRUPT_TICKS.lock();
         let end_tick = start_tick + 1024 * measure_accuracy_in_ms / 1000;
- 
+
         // Enable interrupts.
         interrupts::enable();
 

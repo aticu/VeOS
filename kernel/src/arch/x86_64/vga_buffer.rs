@@ -6,9 +6,9 @@
 use boot;
 use core::fmt;
 use core::ptr::Unique;
+use memory::VirtualAddress;
 use sync::Mutex;
 use volatile::Volatile;
-use memory::VirtualAddress;
 
 /// Represents a color in the buffer.
 #[allow(dead_code)]
@@ -120,16 +120,17 @@ impl Writer {
                 let row_position = self.row_position;
                 let color_code = self.color_code;
 
-                self.buffer
-                    .write_char(row_position,
-                                column_position,
-                                ScreenChar {
-                                    character: byte,
-                                    color_code: color_code
-                                });
+                self.buffer.write_char(
+                    row_position,
+                    column_position,
+                    ScreenChar {
+                        character: byte,
+                        color_code: color_code
+                    }
+                );
 
                 self.column_position += 1;
-            },
+            }
         }
     }
 
@@ -208,12 +209,11 @@ impl fmt::Write for Writer {
 
 /// The Writer that is used to print to the screen.
 pub static WRITER: Mutex<Writer> = Mutex::new(Writer {
-                                                  column_position: 0,
-                                                  row_position: 0,
-                                                  color_code: ColorCode::new(Color::LightGray,
-                                                                             Color::Black),
-                                                  buffer: Buffer::new(to_virtual!(0xb8000), 25, 80)
-                                              });
+    column_position: 0,
+    row_position: 0,
+    color_code: ColorCode::new(Color::LightGray, Color::Black),
+    buffer: Buffer::new(to_virtual!(0xb8000), 25, 80)
+});
 
 /// Contains basic buffer information.
 ///

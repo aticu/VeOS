@@ -6,8 +6,8 @@
 
 use arch::schedule;
 use memory::VirtualAddress;
+use multitasking::scheduler::{READY_LIST, SLEEPING_LIST};
 use multitasking::CURRENT_THREAD;
-use multitasking::scheduler::{SLEEPING_LIST, READY_LIST};
 use sync::time::Timestamp;
 
 /// The timer interrupt handler for the system.
@@ -44,11 +44,10 @@ pub fn page_fault_handler(address: VirtualAddress, program_counter: VirtualAddre
     unsafe { ::sync::disable_preemption() };
     let current_thread = CURRENT_THREAD.lock();
 
-    println!("Page fault in process {} (thread {}) at address {:?} (PC: {:?})",
-             current_thread.pid,
-             current_thread.id,
-             address,
-             program_counter);
+    println!(
+        "Page fault in process {} (thread {}) at address {:?} (PC: {:?})",
+        current_thread.pid, current_thread.id, address, program_counter
+    );
 
     println!("Page flags: {:?}", ::memory::get_page_flags(address));
     loop {}

@@ -16,12 +16,16 @@ pub struct PreemptionState {
 impl PreemptionState {
     /// Reads the current state of preemptability.
     fn new() -> PreemptionState {
-        PreemptionState { interrupts_enabled: arch::interrupts_enabled() }
+        PreemptionState {
+            interrupts_enabled: arch::interrupts_enabled()
+        }
     }
 
     /// Statically returns a default preemption state.
     const fn default() -> PreemptionState {
-        PreemptionState { interrupts_enabled: false }
+        PreemptionState {
+            interrupts_enabled: false
+        }
     }
 
     /// Restores the saved preemption state.
@@ -34,7 +38,9 @@ impl PreemptionState {
     /// # Safety
     /// - Make sure that every preemption state is properly restored only once.
     pub unsafe fn copy(&self) -> PreemptionState {
-        PreemptionState { interrupts_enabled: self.interrupts_enabled }
+        PreemptionState {
+            interrupts_enabled: self.interrupts_enabled
+        }
     }
 }
 

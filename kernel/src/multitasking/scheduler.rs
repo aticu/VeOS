@@ -1,13 +1,13 @@
 //! This module implements a scheduler.
 
-use super::{TCB, ThreadState};
 use super::tcb::SleepTimeSortedTCB;
+use super::{ThreadState, TCB};
 use alloc::binary_heap::BinaryHeap;
 use arch::schedule;
 use arch::switch_context;
 use core::mem::swap;
-use sync::{disable_preemption, enable_preemption, restore_preemption_state};
 use sync::Mutex;
+use sync::{disable_preemption, enable_preemption, restore_preemption_state};
 use x86_64::instructions::halt;
 
 cpu_local! {
@@ -15,7 +15,8 @@ cpu_local! {
 }
 
 lazy_static! {
-    pub static ref SLEEPING_LIST: Mutex<BinaryHeap<SleepTimeSortedTCB>> = Mutex::new(BinaryHeap::new());
+    pub static ref SLEEPING_LIST: Mutex<BinaryHeap<SleepTimeSortedTCB>> =
+        Mutex::new(BinaryHeap::new());
 }
 
 cpu_local! {
@@ -40,14 +41,14 @@ pub unsafe fn schedule_next_thread() {
 
     let mut ready_list = READY_LIST.lock();
 
-
     // Scheduling is needed if:
     // There is another thread to schedule.
     let schedule_needed = ready_list.peek().is_some();
     // And it has at least the same priority.
     let schedule_needed = schedule_needed && ready_list.peek().unwrap() >= &CURRENT_THREAD.lock();
     // Or the current thread can't run anymore.
-    let schedule_needed = schedule_needed || !CURRENT_THREAD.lock().is_running() || CURRENT_THREAD.lock().is_dead();
+    let schedule_needed =
+        schedule_needed || !CURRENT_THREAD.lock().is_running() || CURRENT_THREAD.lock().is_dead();
 
     // Only switch if actually needed.
     if schedule_needed {
@@ -58,8 +59,10 @@ pub unsafe fn schedule_next_thread() {
         drop(ready_list);
 
         // Now swap the references.
-        swap(&mut *CURRENT_THREAD.lock(),
-             OLD_THREAD.as_mut().as_mut().unwrap());
+        swap(
+            &mut *CURRENT_THREAD.lock(),
+            OLD_THREAD.as_mut().as_mut().unwrap()
+        );
 
         // OLD_THREAD holds the thread that was previously running.
         // CURRENT_THREAD now holds the thread that is to run now.
@@ -71,8 +74,10 @@ pub unsafe fn schedule_next_thread() {
         CURRENT_THREAD.lock().set_running();
 
         // This is where the actual switch happens.
-        switch_context(&mut OLD_THREAD.as_mut().as_mut().unwrap().context,
-                       &CURRENT_THREAD.without_locking().context);
+        switch_context(
+            &mut OLD_THREAD.as_mut().as_mut().unwrap().context,
+            &CURRENT_THREAD.without_locking().context
+        );
 
         after_context_switch();
     } else {
@@ -100,7 +105,8 @@ pub fn after_context_switch() {
     // TODO: Start the timer again here to ensure fairness.
 }
 
-/// Returns the old thread to the corresponding queue after switching the context.
+/// Returns the old thread to the corresponding queue after switching the
+/// context.
 fn return_old_thread_to_queue(thread: TCB) {
     match thread.state {
         ThreadState::Ready => READY_LIST.lock().push(thread),
@@ -113,7 +119,9 @@ fn return_old_thread_to_queue(thread: TCB) {
 ///
 /// It can perform various tasks, such as cleaning up unused resources.
 ///
-/// Once it's done performing it's initial cleanup, it sleeps in a loop, performing periodic cleanup. It should also be interruptable as often as possible.
+/// Once it's done performing it's initial cleanup, it sleeps in a loop,
+/// performing periodic cleanup. It should also be interruptable as often as
+/// possible.
 pub fn idle() -> ! {
     // TODO: Peform initial cleanup here.
     unsafe {

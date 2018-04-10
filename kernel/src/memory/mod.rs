@@ -1,26 +1,26 @@
 //! Handles all memory related things.
 
-pub mod allocator;
 pub mod address_space;
+pub mod allocator;
 
+pub use arch::get_kernel_area;
+pub use arch::get_page_flags;
+pub use arch::is_userspace_address;
+pub use arch::map_page;
+pub use arch::unmap_page;
 pub use arch::KERNEL_STACK_AREA_BASE;
 pub use arch::KERNEL_STACK_MAX_SIZE;
 pub use arch::KERNEL_STACK_OFFSET;
-pub use arch::USER_STACK_AREA_BASE;
-pub use arch::USER_STACK_OFFSET;
-pub use arch::USER_STACK_MAX_SIZE;
 pub use arch::PAGE_SIZE;
-pub use arch::get_kernel_area;
-pub use arch::get_page_flags;
-pub use arch::map_page;
-pub use arch::unmap_page;
-pub use arch::is_userspace_address;
+pub use arch::USER_STACK_AREA_BASE;
+pub use arch::USER_STACK_MAX_SIZE;
+pub use arch::USER_STACK_OFFSET;
 
 use core::fmt;
 use core::ops::{Add, AddAssign, Sub, SubAssign};
 
 /// Represents something that can act like an address.
-pub trait Address: PartialOrd + Ord + Add<usize, Output=Self> + Sized + Clone + Copy {
+pub trait Address: PartialOrd + Ord + Add<usize, Output = Self> + Sized + Clone + Copy {
     /// Returns the value of the address as a `usize`.
     #[inline(always)]
     fn as_usize(&self) -> usize;
@@ -212,11 +212,20 @@ impl<AddressType: Address> MemoryArea<AddressType> {
     }
 
     /// Creates a new MemoryArea.
-    pub fn from_start_and_end(start_address: AddressType, end_address: AddressType) -> MemoryArea<AddressType> {
+    pub fn from_start_and_end(
+        start_address: AddressType,
+        end_address: AddressType
+    ) -> MemoryArea<AddressType> {
         if start_address > end_address {
-            MemoryArea::new(start_address, start_address.as_usize() - end_address.as_usize())
+            MemoryArea::new(
+                start_address,
+                start_address.as_usize() - end_address.as_usize()
+            )
         } else {
-            MemoryArea::new(start_address, end_address.as_usize() - start_address.as_usize())
+            MemoryArea::new(
+                start_address,
+                end_address.as_usize() - start_address.as_usize()
+            )
         }
     }
 
@@ -226,7 +235,7 @@ impl<AddressType: Address> MemoryArea<AddressType> {
     }
 
     /// Returns the end address of this memory area.
-    /// 
+    ///
     /// The end address is the address of the first byte not contained in it.
     pub fn end_address(&self) -> AddressType {
         self.start_address + self.length
@@ -279,10 +288,12 @@ impl MemoryArea<VirtualAddress> {
 
 impl<AddressType: Address + fmt::Debug> fmt::Debug for MemoryArea<AddressType> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f,
-               "Start: {:?}, Length: {:x}",
-               self.start_address,
-               self.length())
+        write!(
+            f,
+            "Start: {:?}, Length: {:x}",
+            self.start_address,
+            self.length()
+        )
     }
 }
 

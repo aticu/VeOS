@@ -1,12 +1,12 @@
 //! This module defines address spaces.
 
 use super::{PageFlags, PhysicalAddress, VirtualAddress};
-use alloc::Vec;
 use alloc::boxed::Box;
+use alloc::Vec;
 use arch::{idle_address_space_manager, new_address_space_manager};
 use core::mem::size_of_val;
 use core::slice;
-use memory::{MemoryArea, PAGE_SIZE, is_userspace_address, USER_ACCESSIBLE};
+use memory::{is_userspace_address, MemoryArea, PAGE_SIZE, USER_ACCESSIBLE};
 
 /// Represents an address space
 pub struct AddressSpace {
@@ -51,7 +51,10 @@ impl AddressSpace {
             }
         }
 
-        if segment_to_add.flags.contains(USER_ACCESSIBLE) && !(is_userspace_address(segment_to_add.start_address()) && is_userspace_address(segment_to_add.end_address())) {
+        if segment_to_add.flags.contains(USER_ACCESSIBLE)
+            && !(is_userspace_address(segment_to_add.start_address())
+                && is_userspace_address(segment_to_add.end_address()))
+        {
             false
         } else {
             self.segments.push(segment_to_add);
@@ -61,27 +64,24 @@ impl AddressSpace {
 
     /// Writes to the given address in the address space.
     pub fn write_to(&mut self, buffer: &[u8], address: VirtualAddress) {
-        let segment_flags = {
-            self.get_segment(address, buffer.len()).map(|segment| segment.flags)
-        };
+        let area = MemoryArea::new(address, buffer.len());
+        let segment_flags = { self.get_segment(area).map(|segment| segment.flags) };
 
         if let Some(segment_flags) = segment_flags {
             self.manager.write_to(buffer, address, segment_flags);
         } else {
-            self.handle_out_of_segment(address, buffer.len());
+            self.handle_out_of_segment(area);
         }
     }
 
     /// Zeros an already mapped area.
-    pub fn zero_mapped_area(&mut self, start: VirtualAddress, length: usize) {
-        let segment_flags = {
-            self.get_segment(start, length).map(|segment| segment.flags)
-        };
+    pub fn zero_mapped_area(&mut self, area: MemoryArea<VirtualAddress>) {
+        let segment_flags = { self.get_segment(area).map(|segment| segment.flags) };
 
         if let Some(segment_flags) = segment_flags {
-            self.manager.zero(start, length, segment_flags);
+            self.manager.zero(area, segment_flags);
         } else {
-            self.handle_out_of_segment(start, length);
+            self.handle_out_of_segment(area);
         }
     }
 
@@ -92,10 +92,11 @@ impl AddressSpace {
         self.write_to(buffer, address)
     }
 
-    /// Returns the segment that contains the address with length bytes space after, if it exists.
-    fn get_segment(&self, address: VirtualAddress, length: usize) -> Option<&Segment> {
+    /// Returns the segment that contains the address with length bytes space
+    /// after, if it exists.
+    fn get_segment(&self, area: MemoryArea<VirtualAddress>) -> Option<&Segment> {
         for segment in &self.segments {
-            if segment.contains(address) && segment.contains(address + length - 1) {
+            if segment.contains_area(area) {
                 return Some(segment);
             }
         }
@@ -103,15 +104,16 @@ impl AddressSpace {
     }
 
     /// Handles the case of accesses outside of a segment.
-    fn handle_out_of_segment(&self, start: VirtualAddress, length: usize) {
-        panic!("Out of segment access (start: {:?}, length: {:x})", start, length);
+    fn handle_out_of_segment(&self, area: MemoryArea<VirtualAddress>) {
+        panic!("Out of segment access (area: {:?})", area);
     }
 
-    /// Returns true if the given memory area is contained within a single segment.
+    /// Returns true if the given memory area is contained within a single
+    /// segment.
     ///
     /// The range starts at `start` and is `length` bytes long.
-    pub fn contains_range(&self, start: VirtualAddress, length: usize) -> bool {
-        let segment = self.get_segment(start, length);
+    pub fn contains_area(&self, area: MemoryArea<VirtualAddress>) -> bool {
+        let segment = self.get_segment(area);
 
         segment.is_some()
     }
@@ -127,15 +129,15 @@ impl AddressSpace {
     /// Maps the given page in the address space.
     pub fn map_page(&mut self, page_address: VirtualAddress) {
         let segment_flags = {
-            self.get_segment(page_address, 0).map(|segment| segment.flags)
+            self.get_segment(MemoryArea::new(page_address, 0))
+                .map(|segment| segment.flags)
         };
 
         if let Some(segment_flags) = segment_flags {
             self.manager.map_page(page_address, segment_flags);
         } else {
-            self.handle_out_of_segment(page_address, 0);
+            self.handle_out_of_segment(MemoryArea::new(page_address, 0));
         }
-
     }
 
     /// Unmaps the given page in the address space.
@@ -169,7 +171,11 @@ pub struct Segment {
 
 impl Segment {
     /// Creates a new segment with the given parameters.
-    pub fn new(memory_area: MemoryArea<VirtualAddress>, flags: PageFlags, segment_type: SegmentType) -> Segment {
+    pub fn new(
+        memory_area: MemoryArea<VirtualAddress>,
+        flags: PageFlags,
+        segment_type: SegmentType
+    ) -> Segment {
         Segment {
             memory_area,
             flags,
@@ -182,9 +188,9 @@ impl Segment {
         self.memory_area.overlaps_with(other.memory_area)
     }
 
-    /// Returns true if the segment contains the given address.
-    fn contains(&self, address: VirtualAddress) -> bool {
-        self.memory_area.contains(address)
+    /// Checks whether this segment contains the given memory area.
+    fn contains_area(&self, area: MemoryArea<VirtualAddress>) -> bool {
+        area.is_contained_in(self.memory_area)
     }
 
     /// Returns the start address of this segment.
@@ -196,17 +202,19 @@ impl Segment {
     fn end_address(&self) -> VirtualAddress {
         self.memory_area.end_address()
     }
-    
+
     /// Unmaps this segment.
     fn unmap(&self, manager: &mut Box<AddressSpaceManager>) {
         let pages_in_segment = (self.memory_area.length() - 1) / PAGE_SIZE + 1;
         for page_num in 0..pages_in_segment {
             unsafe {
                 match self.segment_type {
-                    SegmentType::FromFile =>
-                        manager.unmap_page(self.start_address() + page_num * PAGE_SIZE),
-                    SegmentType::MemoryOnly =>
+                    SegmentType::FromFile => {
+                        manager.unmap_page(self.start_address() + page_num * PAGE_SIZE)
+                    },
+                    SegmentType::MemoryOnly => {
                         manager.unmap_page_unchecked(self.start_address() + page_num * PAGE_SIZE)
+                    },
                 }
             }
         }
@@ -235,14 +243,27 @@ pub trait AddressSpaceManager: Send {
     /// - Nothing should reference the unmapped pages.
     unsafe fn unmap_page(&mut self, start_address: VirtualAddress);
 
-    /// Unmaps the given page in the managed address space not checking if it was mapped.
+    /// Unmaps the given page in the managed address space not checking if it
+    /// was mapped.
     ///
     /// # Safety
     /// - Nothing should reference the unmapped pages.
-    unsafe fn unmap_page_unchecked(&mut self, start_address: VirtualAddress);
+    unsafe fn unmap_page_unchecked(&mut self, start_address: VirtualAddress); // TODO: Check if this is necessary.
+
+    /// Creates a new kernel stack.
+    ///
+    /// This assumes that the given thread id is unused.
+    //fn create_kernel_stack(id: ThreadId);
+
+    /// Creates a new user mode stack.
+    ///
+    /// This assumes that the given thread id is unused.
+    //fn create_user_stack(id: ThreadId);
 
     /// Zeroes the given area in the managed address space.
-    fn zero(&mut self, start: VirtualAddress, length: usize, flags: PageFlags) {
+    fn zero(&mut self, area: MemoryArea<VirtualAddress>, flags: PageFlags) {
+        let start = area.start_address();
+        let length = area.length();
         let zero: [u8; PAGE_SIZE] = [0; PAGE_SIZE];
         let num_of_pages = (length - 1) / PAGE_SIZE + 1;
 
@@ -257,5 +278,4 @@ pub trait AddressSpaceManager: Send {
             self.write_to(buffer, start + i * PAGE_SIZE, flags);
         }
     }
-
 }

@@ -34,12 +34,10 @@ pub fn get_vga_info() -> vga_buffer::Info {
                 address: VirtualAddress::from_usize(to_virtual!(framebuffer_tag.framebuffer_addr))
             }
         },
-        None => {
-            vga_buffer::Info {
-                height: 25,
-                width: 80,
-                address: VirtualAddress::from_usize(to_virtual!(0xb8000))
-            }
-        },
+        None => vga_buffer::Info {
+            height: 25,
+            width: 80,
+            address: VirtualAddress::from_usize(to_virtual!(0xb8000))
+        }
     }
 }

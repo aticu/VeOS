@@ -1,9 +1,9 @@
 //! Serves to accept syscalls.
 
-use super::gdt::{KERNEL_CODE_SEGMENT, TSS, USER_32BIT_CODE_SEGMENT};
+use super::gdt::{USER_32BIT_CODE_SEGMENT, KERNEL_CODE_SEGMENT, TSS};
 use syscalls::syscall_handler;
 use x86_64::registers::flags::Flags;
-use x86_64::registers::msr::{IA32_FMASK, IA32_KERNEL_GS_BASE, IA32_LSTAR, IA32_STAR, wrmsr};
+use x86_64::registers::msr::{wrmsr, IA32_FMASK, IA32_KERNEL_GS_BASE, IA32_LSTAR, IA32_STAR};
 
 /// Initializes the system to be able to accept syscalls.
 pub fn init() {
@@ -13,7 +13,7 @@ pub fn init() {
     let star_value = sysret_cs << 48 | syscall_cs << 32;
     let lstar_value = syscall_entry as u64;
     let fmask_value = Flags::IF.bits() as u64;
-    let gs_base_value = &TSS.privilege_stack_table[0] as *const _ as u64;
+    let gs_base_value = unsafe { &TSS.privilege_stack_table[0] as *const _ as u64 };
 
     unsafe {
         wrmsr(IA32_LSTAR, lstar_value);
@@ -22,7 +22,6 @@ pub fn init() {
         wrmsr(IA32_KERNEL_GS_BASE, gs_base_value);
     }
 }
-
 
 /// The entry point for all syscalls.
 #[naked]

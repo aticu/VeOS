@@ -8,7 +8,7 @@ pub enum Time {
     /// A microsecond (µ-second) is 1/1,000,000 of a second.
     Microseconds(i64),
     /// A millisecond is 1/1,000 of a second.
-    Milliseconds(i64),
+    Milliseconds(i64)
 }
 
 /// The number of µ-seconds in a millisecond.
@@ -19,7 +19,9 @@ impl Time {
     pub fn as_microseconds(self) -> Time {
         match self {
             Time::Microseconds(time) => Time::Microseconds(time),
-            Time::Milliseconds(time) => Time::Microseconds(time.saturating_mul(MILLISECOND_MULTIPLIER)),
+            Time::Milliseconds(time) => {
+                Time::Microseconds(time.saturating_mul(MILLISECOND_MULTIPLIER))
+            },
         }
     }
 }
@@ -37,7 +39,8 @@ impl fmt::Debug for Timestamp {
 }
 
 impl Timestamp {
-    /// Returns a new time stamp with the offset of the given amount of microseconds.
+    /// Returns a new time stamp with the offset of the given amount of
+    /// microseconds.
     pub fn from_microseconds(time: u64) -> Timestamp {
         Timestamp(time)
     }

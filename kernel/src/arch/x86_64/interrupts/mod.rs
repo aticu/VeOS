@@ -1,7 +1,7 @@
 //! Handles interrupts on the x86_64 architecture.
 
-pub mod lapic;
 mod ioapic;
+pub mod lapic;
 
 pub use self::lapic::issue_self_interrupt;
 use super::sync::CLOCK;
@@ -9,16 +9,17 @@ use memory::{Address, VirtualAddress};
 use multitasking::scheduler::schedule_next_thread;
 use sync::Mutex;
 use x86_64::instructions::interrupts;
+use x86_64::instructions::port::{inb, outb};
 use x86_64::registers::control_regs;
 use x86_64::structures::idt::{ExceptionStackFrame, Idt, PageFaultErrorCode};
-use x86_64::instructions::port::{inb, outb};
 
 /// The vector for the scheduling interrupt.
 pub const SCHEDULE_INTERRUPT_NUM: u8 = 0x20;
 
 /// The vectors for the IRQs.
-const IRQ_INTERRUPT_NUMS: [u8; 16] = [0xEC, 0xE4, 0xFF, 0x94, 0x8C, 0x84, 0x7C, 0x74, 0xD4, 0xCC,
-                                      0xC4, 0xBC, 0xB4, 0xAC, 0xA4, 0x9C];
+const IRQ_INTERRUPT_NUMS: [u8; 16] = [
+    0xEC, 0xE4, 0xFF, 0x94, 0x8C, 0x84, 0x7C, 0x74, 0xD4, 0xCC, 0xC4, 0xBC, 0xB4, 0xAC, 0xA4, 0x9C,
+];
 
 /// The vector for the LAPIC timer interrupt.
 const TIMER_INTERRUPT_HANDLER_NUM: u8 = 0x30;
@@ -115,7 +116,10 @@ extern "x86-interrupt" fn breakpoint_handler(stack_frame: &mut ExceptionStackFra
 }
 
 /// The double fault handler of the kernel.
-extern "x86-interrupt" fn double_fault_handler(stack_frame: &mut ExceptionStackFrame, error_code: u64) {
+extern "x86-interrupt" fn double_fault_handler(
+    stack_frame: &mut ExceptionStackFrame,
+    error_code: u64
+) {
     println!("DOUBLE FAULT!");
     println!("{:?}", stack_frame);
     println!("Error code: 0x{:x}", error_code);
@@ -126,8 +130,14 @@ extern "x86-interrupt" fn double_fault_handler(stack_frame: &mut ExceptionStackF
 }
 
 /// The page fault handler of the kernel.
-extern "x86-interrupt" fn page_fault_handler(stack_frame: &mut ExceptionStackFrame, _error_code: PageFaultErrorCode) {
-    ::interrupts::page_fault_handler(VirtualAddress::from_usize(control_regs::cr2().0), VirtualAddress::from_usize(stack_frame.instruction_pointer.0));
+extern "x86-interrupt" fn page_fault_handler(
+    stack_frame: &mut ExceptionStackFrame,
+    _error_code: PageFaultErrorCode
+) {
+    ::interrupts::page_fault_handler(
+        VirtualAddress::from_usize(control_regs::cr2().0),
+        VirtualAddress::from_usize(stack_frame.instruction_pointer.0)
+    );
 }
 
 /// The software interrupt handler that invokes schedule operations.

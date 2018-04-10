@@ -1,9 +1,9 @@
 //! Uses a trait that has general page table managing functions.
 
-use super::{Page, PageFrame};
 use super::frame_allocator::FRAME_ALLOCATOR;
 use super::page_table::{Level1, Level2, Level4, PageTable};
-use super::page_table_entry::{PRESENT, PageTableEntry, PageTableEntryFlags};
+use super::page_table_entry::{PageTableEntry, PageTableEntryFlags, PRESENT};
+use super::{Page, PageFrame};
 use core::ops::{Deref, DerefMut};
 use memory::{Address, PhysicalAddress, VirtualAddress};
 use sync::PreemptionState;
@@ -97,22 +97,20 @@ pub trait PageTableManager {
                         None
                     }
                 },
-                None => None,
+                None => None
             }
         };
 
         match preemption_state {
-            Some(preemption_state) => {
-                Some(Level1TableReference {
-                         table: self.get_l4()
-                             .get_next_level_mut(address)
-                             .and_then(|l3| l3.get_next_level_mut(address))
-                             .unwrap(),
-                         address,
-                         preemption_state
-                     })
-            },
-            None => None,
+            Some(preemption_state) => Some(Level1TableReference {
+                table: self.get_l4()
+                    .get_next_level_mut(address)
+                    .and_then(|l3| l3.get_next_level_mut(address))
+                    .unwrap(),
+                address,
+                preemption_state
+            }),
+            None => None
         }
     }
 
@@ -155,22 +153,28 @@ pub trait PageTableManager {
     /// are not already mapped.
     fn get_entry_and_map(&mut self, address: VirtualAddress) -> PageTableEntryReference {
         let l1 = self.get_l1_and_map(address);
-        PageTableEntryReference { table_reference: l1 }
+        PageTableEntryReference {
+            table_reference: l1
+        }
     }
 
     /// Returns a mutable reference to the level 1 page table entry
     /// corresponding to the given address.
     fn get_entry(&mut self, address: VirtualAddress) -> Option<PageTableEntryReference> {
         let l1 = self.get_l1(address);
-        l1.map(|l1| PageTableEntryReference { table_reference: l1 })
+        l1.map(|l1| PageTableEntryReference {
+            table_reference: l1
+        })
     }
 
     /// Maps the given page to the given frame with the given flags.
     fn map_page_at(&mut self, page: Page, frame: PageFrame, flags: PageTableEntryFlags) {
         if let Some(entry) = self.get_entry(page.get_address()) {
-            debug_assert!(!entry.flags().contains(PRESENT),
-                          "Trying to double map page {:?}",
-                          page.get_address());
+            debug_assert!(
+                !entry.flags().contains(PRESENT),
+                "Trying to double map page {:?}",
+                page.get_address()
+            );
         }
 
         let target_address = page.get_address();
@@ -184,9 +188,11 @@ pub trait PageTableManager {
     /// Maps the given page to an allocated frame with the given flags.
     fn map_page(&mut self, page: Page, flags: PageTableEntryFlags) {
         if let Some(entry) = self.get_entry(page.get_address()) {
-            debug_assert!(!entry.flags().contains(PRESENT),
-                          "Trying to double map page {:?}",
-                          page.get_address());
+            debug_assert!(
+                !entry.flags().contains(PRESENT),
+                "Trying to double map page {:?}",
+                page.get_address()
+            );
         }
 
         let frame = FRAME_ALLOCATOR.allocate();

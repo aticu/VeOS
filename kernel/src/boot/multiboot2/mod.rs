@@ -1,6 +1,6 @@
 //! Handles the multiboot2 information structure.
-mod framebuffer_info;
 mod boot_loader_name;
+mod framebuffer_info;
 
 pub use self::boot_loader_name::get_bootloader_name;
 pub use self::framebuffer_info::get_vga_info;
@@ -20,7 +20,11 @@ struct BasicTagIterator {
 impl BasicTagIterator {
     /// Returns a new iterator for the tags.
     fn new() -> BasicTagIterator {
-        unsafe { BasicTagIterator { current_address: STRUCT_BASE_ADDRESS + 8 } }
+        unsafe {
+            BasicTagIterator {
+                current_address: STRUCT_BASE_ADDRESS + 8
+            }
+        }
     }
 }
 

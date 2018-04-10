@@ -19,7 +19,15 @@ pub fn sleep(ms: u64) {
 /// Creates a new thread passing it the given arguments.
 pub fn new_thread(function: fn(u64, u64, u64, u64), arg1: u64, arg2: u64, arg3: u64, arg4: u64) {
     unsafe {
-        syscall!(NEW_THREAD_SYSCALL_NUM, new_thread_creator as u64, function as u64, arg1, arg2, arg3, arg4);
+        syscall!(
+            NEW_THREAD_SYSCALL_NUM,
+            new_thread_creator as u64,
+            function as u64,
+            arg1,
+            arg2,
+            arg3,
+            arg4
+        );
     }
 }
 
@@ -31,7 +39,13 @@ pub fn kill_thread() {
 }
 
 /// Used internally to create and exit new threads.
-extern "C" fn new_thread_creator(function: fn(u64, u64, u64, u64), arg1: u64, arg2: u64, arg3: u64, arg4: u64) {
+extern "C" fn new_thread_creator(
+    function: fn(u64, u64, u64, u64),
+    arg1: u64,
+    arg2: u64,
+    arg3: u64,
+    arg4: u64,
+) {
     function(arg1, arg2, arg3, arg4);
 
     kill_thread();

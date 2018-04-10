@@ -2,30 +2,23 @@
 
 use alloc::boxed::Box;
 use arch::get_initramfs_area;
-use core::{ptr, slice, str};
 use core::mem::size_of;
+use core::{ptr, slice, str};
 use file_handle::{FileError, FileHandle, Result, SeekFrom};
-use memory::VirtualAddress;
+use memory::{MemoryArea, VirtualAddress};
 
 /// The magic number that identifies a VeOS initramfs.
-const MAGIC: [u8; 8] = ['V' as u8,
-                        'e' as u8,
-                        'O' as u8,
-                        'S' as u8,
-                        'i' as u8,
-                        'r' as u8,
-                        'f' as u8,
-                        's' as u8];
+const MAGIC: [u8; 8] = [
+    'V' as u8, 'e' as u8, 'O' as u8, 'S' as u8, 'i' as u8, 'r' as u8, 'f' as u8, 's' as u8,
+];
 
 /// The size of a single metadata object within the initramfs.
 const FILE_METADATA_SIZE: usize = size_of::<u64>() * 4;
 
 /// Represents a file in the initramfs.
 pub struct FileDescriptor {
-    /// The start address of the file.
-    start: VirtualAddress,
-    /// The length of the file.
-    length: usize,
+    /// The area of the file in memory.
+    memory_area: MemoryArea<VirtualAddress>,
     /// The current offset within the file.
     current_offset: u64
 }
@@ -34,7 +27,7 @@ impl FileHandle for FileDescriptor {
     fn seek(&mut self, position: SeekFrom) -> Result<u64> {
         match position {
             SeekFrom::Start(offset) => {
-                if offset > self.length as u64 {
+                if offset > self.memory_area.length() as u64 {
                     Err(FileError::SeekPastEnd)
                 } else {
                     self.current_offset = offset;
@@ -53,7 +46,9 @@ impl FileHandle for FileDescriptor {
                         Ok(self.current_offset)
                     }
                 } else if offset > 0 {
-                    if self.current_offset.saturating_add(offset as u64) > self.length as u64 {
+                    if self.current_offset.saturating_add(offset as u64)
+                        > self.memory_area.length() as u64
+                    {
                         Err(FileError::SeekPastEnd)
                     } else {
                         self.current_offset = self.current_offset.saturating_add(offset as u64);
@@ -71,29 +66,34 @@ impl FileHandle for FileDescriptor {
                     // The minimum value cannot be inverted, making it a special case.
                     let offset = (-(offset + 1)) as u64 + 1;
 
-                    if offset > self.length as u64 {
+                    if offset > self.memory_area.length() as u64 {
                         Err(FileError::SeekBeforeStart)
                     } else {
-                        self.current_offset = self.length as u64 - offset;
+                        self.current_offset = self.memory_area.length() as u64 - offset;
                         Ok(self.current_offset)
                     }
                 } else if offset > 0 {
                     Err(FileError::SeekPastEnd)
-                } else if ((-offset) as usize) > self.length {
+                } else if ((-offset) as usize) > self.memory_area.length() {
                     Err(FileError::SeekBeforeStart)
                 } else {
-                    self.current_offset = (self.length as u64).saturating_sub((-offset) as u64);
+                    self.current_offset =
+                        (self.memory_area.length() as u64).saturating_sub((-offset) as u64);
                     Ok(self.current_offset)
                 }
-            },
+            }
         }
     }
 
     fn read(&mut self, buffer: &mut [u8]) -> Result<()> {
-        if self.current_offset.saturating_add(buffer.len() as u64) > self.length as u64 {
+        if self.current_offset.saturating_add(buffer.len() as u64)
+            > self.memory_area.length() as u64
+        {
             Err(FileError::SeekPastEnd)
         } else {
-            let source = unsafe { &*((self.start + self.current_offset as usize).as_ptr()) };
+            let source = unsafe {
+                &*((self.memory_area.start_address() + self.current_offset as usize).as_ptr())
+            };
             unsafe {
                 ptr::copy_nonoverlapping(source, buffer.as_mut_ptr(), buffer.len());
             }
@@ -130,24 +130,35 @@ impl Iterator for FileIterator {
 
         loop {
             if self.current_file_metadata_address < self.max_address {
-                let name_offset = unsafe { read_u64_big_endian(self.current_file_metadata_address) };
+                let name_offset =
+                    unsafe { read_u64_big_endian(self.current_file_metadata_address) };
 
                 self.current_file_metadata_address += size_of::<u64>();
 
-                let name_length = unsafe { read_u64_big_endian(self.current_file_metadata_address) };
+                let name_length =
+                    unsafe { read_u64_big_endian(self.current_file_metadata_address) };
 
                 self.current_file_metadata_address += size_of::<u64>();
 
-                let content_offset = unsafe { read_u64_big_endian(self.current_file_metadata_address) };
+                let content_offset =
+                    unsafe { read_u64_big_endian(self.current_file_metadata_address) };
 
                 self.current_file_metadata_address += size_of::<u64>();
 
-                let content_length = unsafe { read_u64_big_endian(self.current_file_metadata_address) };
+                let content_length =
+                    unsafe { read_u64_big_endian(self.current_file_metadata_address) };
 
                 self.current_file_metadata_address += size_of::<u64>();
 
-                if name_offset + name_length <= length as u64 && content_offset + content_length <= length as u64 {
-                    let name_slice = unsafe { slice::from_raw_parts((start + name_offset as usize).as_ptr(), name_length as usize) };
+                if name_offset + name_length <= length as u64
+                    && content_offset + content_length <= length as u64
+                {
+                    let name_slice = unsafe {
+                        slice::from_raw_parts(
+                            (start + name_offset as usize).as_ptr(),
+                            name_length as usize
+                        )
+                    };
                     let name = str::from_utf8(name_slice);
 
                     if name.is_err() {
@@ -212,7 +223,10 @@ fn initramfs_valid() -> bool {
 
         let amount_of_files = unsafe { read_u64_big_endian(start + size_of::<[u8; 8]>()) };
 
-        magic_in_file == MAGIC && length >= size_of::<[u8; 8]>() + size_of::<u64>() + FILE_METADATA_SIZE * amount_of_files as usize
+        magic_in_file == MAGIC
+            && length
+                >= size_of::<[u8; 8]>() + size_of::<u64>()
+                    + FILE_METADATA_SIZE * amount_of_files as usize
     }
 }
 
@@ -220,7 +234,10 @@ fn initramfs_valid() -> bool {
 pub fn open(name: &str) -> Result<Box<FileHandle>> {
     for file in get_file_iterator()? {
         if file.name == name {
-            return Ok(Box::new(FileDescriptor { start: file.start, length: file.length, current_offset: 0 }));
+            return Ok(Box::new(FileDescriptor {
+                memory_area: MemoryArea::new(file.start, file.length),
+                current_offset: 0
+            }));
         }
     }
 

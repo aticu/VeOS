@@ -1,9 +1,9 @@
 //! Handles the allocation of physical page frames.
 
-use super::{PAGE_SIZE, PageFrame};
-use super::free_list::{FREE_LIST, FreeListIterator};
+use super::free_list::{FreeListIterator, FREE_LIST};
+use super::{PageFrame, PAGE_SIZE};
 use core::cell::Cell;
-use memory::{MemoryArea, oom};
+use memory::{oom, MemoryArea};
 
 /// Used to allocate page frames.
 pub struct FrameAllocator {
@@ -29,7 +29,6 @@ lazy_static! {
         }
     };
 }
-
 
 impl FrameAllocator {
     /// Allocates a page frame.

@@ -2,24 +2,24 @@
 //!
 //! This module does all the architecture specific things for x86_64.
 
-pub mod vga_buffer;
+pub mod context;
+mod gdt;
+mod interrupts;
 pub mod memory;
 pub mod sync;
-mod interrupts;
-pub mod context;
 mod syscalls;
-mod gdt;
+pub mod vga_buffer;
 
 pub use self::context::Context;
 use self::gdt::{GDT, TSS};
-use self::interrupts::SCHEDULE_INTERRUPT_NUM;
 use self::interrupts::issue_self_interrupt;
+use self::interrupts::SCHEDULE_INTERRUPT_NUM;
 use memory::Address;
-use multitasking::{CURRENT_THREAD, StackType};
+use multitasking::{StackType, CURRENT_THREAD};
 use raw_cpuid::CpuId;
-use x86_64::VirtualAddress;
 use x86_64::instructions::{rdmsr, wrmsr};
 use x86_64::registers::*;
+use x86_64::VirtualAddress;
 
 /// The stack type used for the x86_64 architecture.
 pub const STACK_TYPE: StackType = StackType::FullDescending;

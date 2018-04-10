@@ -1,9 +1,9 @@
 //! Deals with configuring the I/O APIC.
 
-use super::IRQ_INTERRUPT_NUMS;
 use super::super::memory::map_page_at;
+use super::IRQ_INTERRUPT_NUMS;
 use core::fmt;
-use memory::{Address, NO_CACHE, PhysicalAddress, READABLE, VirtualAddress, WRITABLE};
+use memory::{PhysicalAddress, VirtualAddress, NO_CACHE, READABLE, WRITABLE};
 use x86_64::instructions::port::outb;
 
 /// The physical base address of the memory mapped I/O APIC.
@@ -13,9 +13,11 @@ const IO_APIC_BASE: PhysicalAddress = PhysicalAddress::from_const(0xfec00000);
 pub fn init() {
     assert_has_not_been_called!("The I/O APIC should only be initialized once.");
 
-    map_page_at(get_ioapic_base(),
-                IO_APIC_BASE,
-                READABLE | WRITABLE | NO_CACHE);
+    map_page_at(
+        get_ioapic_base(),
+        IO_APIC_BASE,
+        READABLE | WRITABLE | NO_CACHE
+    );
 
     // Disable the 8259 PIC.
     unsafe {
@@ -132,7 +134,10 @@ impl IORedirectionEntry {
         register.set_polarity(HIGH_ACTIVE_PIN_POLARITY);
         // 0xff sends the interrupt to all processors.
         // TODO: Don't use this ID here.
-        register.set_destination(PHYSICAL_DESTINATION_MODE, ::multitasking::get_cpu_id() as u8);
+        register.set_destination(
+            PHYSICAL_DESTINATION_MODE,
+            ::multitasking::get_cpu_id() as u8
+        );
 
         register
     }
@@ -185,6 +190,11 @@ impl IORedirectionEntry {
 
 impl fmt::Debug for IORedirectionEntry {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Vector: {:x}, Active: {}", self.0 & VECTOR.bits(), self.0 & MASK.bits() == 0)
+        write!(
+            f,
+            "Vector: {:x}, Active: {}",
+            self.0 & VECTOR.bits(),
+            self.0 & MASK.bits() == 0
+        )
     }
 }

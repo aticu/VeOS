@@ -1,11 +1,11 @@
 //! Handles page table entries.
 
-use super::PageFrame;
 use super::frame_allocator::FRAME_ALLOCATOR;
+use super::PageFrame;
 use core::fmt;
 use core::sync::atomic::{AtomicU64, Ordering};
 use memory::{Address, PhysicalAddress};
-use sync::{PreemptionState, cpu_relax, disable_preemption, restore_preemption_state};
+use sync::{cpu_relax, disable_preemption, restore_preemption_state, PreemptionState};
 
 /// Serves as a mask for the physical address in a page table entry.
 const PHYSICAL_ADDRESS_MASK: usize = 0xffffffffff << 12;
@@ -62,7 +62,9 @@ impl PageTableEntry {
     /// Returns the address this entry points to.
     pub fn points_to(&self) -> Option<PhysicalAddress> {
         if self.flags().contains(PRESENT) {
-            Some(PhysicalAddress::from_usize(self.0 as usize & PHYSICAL_ADDRESS_MASK))
+            Some(PhysicalAddress::from_usize(
+                self.0 as usize & PHYSICAL_ADDRESS_MASK
+            ))
         } else {
             None
         }
@@ -95,8 +97,7 @@ impl PageTableEntry {
 
     /// Unmaps and deallocates the frame this entry points to.
     pub fn unmap(&mut self) {
-        let address = self.points_to()
-            .expect("Trying to unmap an unmapped page.");
+        let address = self.points_to().expect("Trying to unmap an unmapped page.");
         unsafe { FRAME_ALLOCATOR.deallocate(PageFrame::from_address(address)) };
         self.0 = 0;
     }
@@ -113,8 +114,8 @@ impl PageTableEntry {
             unsafe {
                 preemption_state = disable_preemption();
             }
-            let lock_switch = atomic_lock.fetch_or(ENTRY_LOCK.bits(), Ordering::Acquire) &
-                              ENTRY_LOCK.bits() == 0;
+            let lock_switch =
+                atomic_lock.fetch_or(ENTRY_LOCK.bits(), Ordering::Acquire) & ENTRY_LOCK.bits() == 0;
             if lock_switch {
                 break;
             } else {
@@ -150,10 +151,12 @@ impl PageTableEntry {
 impl fmt::Debug for PageTableEntry {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if self.flags().contains(PRESENT) {
-            write!(f,
-                   "Entry(Address={:?}, Flags={:?})",
-                   self.points_to().unwrap(),
-                   self.flags())
+            write!(
+                f,
+                "Entry(Address={:?}, Flags={:?})",
+                self.points_to().unwrap(),
+                self.flags()
+            )
         } else {
             write!(f, "Entry(Address=invalid, Flags={:?})", self.flags())
         }
@@ -217,7 +220,9 @@ mod tests {
         let flags = PRESENT | DIRTY | USER_ACCESSIBLE | WRITABLE | NO_EXECUTE;
         entry.set_flags(flags);
         entry.set_address(0xdeadb000);
-        assert_eq!(entry.0,
-                   0xdeadb000 | (1 << 0) | (1 << 6) | (1 << 2) | (1 << 1) | (1 << 63));
+        assert_eq!(
+            entry.0,
+            0xdeadb000 | (1 << 0) | (1 << 6) | (1 << 2) | (1 << 1) | (1 << 63)
+        );
     }
 }

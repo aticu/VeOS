@@ -2,8 +2,8 @@
 
 use memory::{Address, MemoryArea, PageFlags, PhysicalAddress, VirtualAddress};
 
-mod paging;
 mod address_space_manager;
+mod paging;
 
 pub use self::address_space_manager::idle_address_space_manager;
 pub use self::address_space_manager::new_address_space_manager;
@@ -19,7 +19,8 @@ const VIRTUAL_HIGH_MIN_ADDRESS: VirtualAddress = VirtualAddress::from_const(0xff
 pub const FINAL_STACK_TOP: VirtualAddress = VirtualAddress::from_const(0xfffffe8000000000);
 
 /// The start address for the double fault stack area.
-pub const DOUBLE_FAULT_STACK_AREA_BASE: VirtualAddress = VirtualAddress::from_const(0xfffffd0000000000);
+pub const DOUBLE_FAULT_STACK_AREA_BASE: VirtualAddress =
+    VirtualAddress::from_const(0xfffffd0000000000);
 
 /// The distance between two double fault stack tops.
 pub const DOUBLE_FAULT_STACK_OFFSET: usize = 0x2000;
@@ -57,7 +58,8 @@ pub const HEAP_MAX_SIZE: usize = PAGE_SIZE * 512 * 512 * 512;
 pub const PAGE_SIZE: usize = 0x1000;
 
 /// The area where the initramfs will be mapped.
-const INITRAMFS_MAP_AREA_START: VirtualAddress = VirtualAddress::from_const(0xffff800000000000 + 512 * 512 * 512);
+const INITRAMFS_MAP_AREA_START: VirtualAddress =
+    VirtualAddress::from_const(0xffff800000000000 + 512 * 512 * 512);
 
 /// The run-time memory area of the initramfs.
 static mut INITRAMFS_AREA: MemoryArea<VirtualAddress> = MemoryArea::const_default();
@@ -105,7 +107,7 @@ pub fn init() {
     assert_has_not_been_called!("The x86_64 memory initialization should only be called once.");
 
     let physical_initramfs_area = ::boot::get_initramfs_area();
-    
+
     paging::init(physical_initramfs_area);
 
     let start = INITRAMFS_MAP_AREA_START + physical_initramfs_area.start_address().offset_in_page();
@@ -125,9 +127,7 @@ pub fn map_page(page_address: VirtualAddress, flags: PageFlags) {
 }
 
 /// Maps the given page to the given frame using the given flags.
-pub fn map_page_at(page_address: VirtualAddress,
-                   frame_address: PhysicalAddress,
-                   flags: PageFlags) {
+pub fn map_page_at(page_address: VirtualAddress, frame_address: PhysicalAddress, flags: PageFlags) {
     paging::map_page_at(page_address, frame_address, flags);
 }
 

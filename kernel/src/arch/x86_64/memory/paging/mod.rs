@@ -1,10 +1,10 @@
 //! Deals with the page tables.
+mod current_page_table;
+mod frame_allocator;
+mod free_list;
+pub mod inactive_page_table;
 mod page_table;
 pub mod page_table_entry;
-mod current_page_table;
-pub mod inactive_page_table;
-mod free_list;
-mod frame_allocator;
 pub mod page_table_manager;
 
 pub use self::current_page_table::CURRENT_PAGE_TABLE;
@@ -89,11 +89,11 @@ pub fn get_free_memory_size() -> usize {
 
 /// Maps the given page to the given frame using the given flags.
 pub fn map_page_at(page_address: VirtualAddress, frame_address: PhysicalAddress, flags: PageFlags) {
-    CURRENT_PAGE_TABLE
-        .lock()
-        .map_page_at(Page::from_address(page_address),
-                     PageFrame::from_address(frame_address),
-                     convert_flags(flags));
+    CURRENT_PAGE_TABLE.lock().map_page_at(
+        Page::from_address(page_address),
+        PageFrame::from_address(frame_address),
+        convert_flags(flags)
+    );
 }
 
 /// Maps the given page using the given flags.
@@ -143,12 +143,15 @@ unsafe fn remap_kernel() {
 
     {
         // Map a section.
-        let mut map_section = |size: usize, start: PhysicalAddress, flags: PageTableEntryFlags| for i in
-            0..size / PAGE_SIZE {
-            let address = start + i * PAGE_SIZE;
-            new_page_table.map_page_at(Page::from_address(address.to_virtual()),
-                                       PageFrame::from_address(address),
-                                       flags);
+        let mut map_section = |size: usize, start: PhysicalAddress, flags: PageTableEntryFlags| {
+            for i in 0..size / PAGE_SIZE {
+                let address = start + i * PAGE_SIZE;
+                new_page_table.map_page_at(
+                    Page::from_address(address.to_virtual()),
+                    PageFrame::from_address(address),
+                    flags
+                );
+            }
         };
 
         // Map the text section.
@@ -158,30 +161,38 @@ unsafe fn remap_kernel() {
         map_section(DATA_START - RODATA_START, RODATA_START, GLOBAL | NO_EXECUTE);
 
         // Map the data section.
-        map_section(BSS_START - DATA_START,
-                    DATA_START,
-                    WRITABLE | GLOBAL | NO_EXECUTE);
+        map_section(
+            BSS_START - DATA_START,
+            DATA_START,
+            WRITABLE | GLOBAL | NO_EXECUTE
+        );
 
         // Map the bss section
-        map_section(BSS_END - BSS_START,
-                    BSS_START,
-                    WRITABLE | GLOBAL | NO_EXECUTE);
+        map_section(
+            BSS_END - BSS_START,
+            BSS_START,
+            WRITABLE | GLOBAL | NO_EXECUTE
+        );
     }
 
     // Map the VGA buffer.
     // TODO: Allow for a different address to be used here.
-    new_page_table.map_page_at(Page::from_address(VirtualAddress::from_usize(to_virtual!(0xb8000))),
-                               PageFrame::from_address(PhysicalAddress::from_usize(0xb8000)),
-                               WRITABLE | GLOBAL | NO_EXECUTE);
+    new_page_table.map_page_at(
+        Page::from_address(VirtualAddress::from_usize(to_virtual!(0xb8000))),
+        PageFrame::from_address(PhysicalAddress::from_usize(0xb8000)),
+        WRITABLE | GLOBAL | NO_EXECUTE
+    );
 
     // Map the stack pages.
     let stack_size = STACK_TOP - STACK_BOTTOM;
     for i in 0..stack_size / PAGE_SIZE {
         let physical_address = STACK_BOTTOM + i * PAGE_SIZE;
         let virtual_address = FINAL_STACK_TOP - stack_size + i * PAGE_SIZE;
-        new_page_table.map_page_at(Page::from_address(virtual_address),
-                                   PageFrame::from_address(physical_address),
-                                   WRITABLE | GLOBAL | NO_EXECUTE);
+        new_page_table.map_page_at(
+            Page::from_address(virtual_address),
+            PageFrame::from_address(physical_address),
+            WRITABLE | GLOBAL | NO_EXECUTE
+        );
     }
 
     CURRENT_PAGE_TABLE.lock().switch(new_page_table).unmap();
@@ -201,7 +212,9 @@ pub struct Page(VirtualAddress);
 impl Page {
     /// Returns the page that contains the given virtual address.
     pub fn from_address(address: VirtualAddress) -> Page {
-        Page(VirtualAddress::from_usize(address.as_usize() & !(PAGE_SIZE - 1)))
+        Page(VirtualAddress::from_usize(
+            address.as_usize() & !(PAGE_SIZE - 1)
+        ))
     }
 
     /// Returns the virtual address of this page.
@@ -222,7 +235,9 @@ pub struct PageFrame(PhysicalAddress);
 impl PageFrame {
     /// Returns the page frame that contains the given physical address.
     pub fn from_address(address: PhysicalAddress) -> PageFrame {
-        PageFrame(PhysicalAddress::from_usize(address.as_usize() & !(PAGE_SIZE - 1)))
+        PageFrame(PhysicalAddress::from_usize(
+            address.as_usize() & !(PAGE_SIZE - 1)
+        ))
     }
 
     /// Returns the physical address of this page frame.

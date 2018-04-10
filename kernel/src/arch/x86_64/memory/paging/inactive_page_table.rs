@@ -1,12 +1,12 @@
 //! Handles the managment of an inactive page table.
 
-use super::PageFrame;
+use super::super::TEMPORARY_MAP_TABLE;
 use super::current_page_table::CURRENT_PAGE_TABLE;
 use super::frame_allocator::FRAME_ALLOCATOR;
 use super::page_table::{Level4, PageTable};
 use super::page_table_entry::*;
 use super::page_table_manager::PageTableManager;
-use super::super::TEMPORARY_MAP_TABLE;
+use super::PageFrame;
 use core::ptr::Unique;
 use memory::{Address, PhysicalAddress};
 use sync::PreemptionState;
@@ -39,7 +39,7 @@ impl Drop for InactivePageTable {
     fn drop(&mut self) {
         match self.preemption_state {
             Some(_) => self.unmap(),
-            None => (),
+            None => ()
         }
     }
 }
@@ -95,9 +95,7 @@ impl InactivePageTable {
             .set_address(frame.get_address())
             .set_flags(PRESENT | WRITABLE | NO_EXECUTE);
 
-        CURRENT_PAGE_TABLE
-            .lock()
-            .unmap_inactive(&preemption_state);
+        CURRENT_PAGE_TABLE.lock().unmap_inactive(&preemption_state);
 
         InactivePageTable {
             l4_table: unsafe { Unique::new_unchecked(L4_TABLE) },
@@ -115,12 +113,12 @@ impl InactivePageTable {
             l4_table: unsafe { Unique::new_unchecked(L4_TABLE) },
             l4_frame: frame,
             preemption_state: Some(unsafe {
-                                       old_table
-                                           .preemption_state
-                                           .as_ref()
-                                           .expect("The old table was not mapped.")
-                                           .copy()
-                                   })
+                old_table
+                    .preemption_state
+                    .as_ref()
+                    .expect("The old table was not mapped.")
+                    .copy()
+            })
         }
     }
 
@@ -151,6 +149,7 @@ impl InactivePageTable {
 
     /// Unmaps the currently loaded inactive page table.
     pub fn unmap(&mut self) {
+        // TODO: Find something better than unmapping manually after every use.
         if !self.preemption_state.is_none() {
             CURRENT_PAGE_TABLE
                 .lock()

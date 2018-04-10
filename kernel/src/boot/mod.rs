@@ -1,11 +1,11 @@
 //! Provides information about the initial status of the system.
-mod multiboot2;
-mod multiboot;
 mod freestanding;
+mod multiboot;
+mod multiboot2;
 
 #[cfg(target_arch = "x86_64")]
 use arch::vga_buffer;
-use memory::{Address, MemoryArea, PAGE_SIZE, PhysicalAddress, get_kernel_area};
+use memory::{get_kernel_area, Address, MemoryArea, PhysicalAddress, PAGE_SIZE};
 
 /// Lists possiblities for boot sources.
 enum BootMethod {
@@ -80,56 +80,59 @@ impl Iterator for MemoryMapIterator {
 
         let get_next_entry = |iterator: &mut MemoryMapIterator| match *get_boot_method() {
             BootMethod::Multiboot => iterator.multiboot_iterator.next(),
-            _ => unimplemented!(),
+            _ => unimplemented!()
         };
 
         loop {
             return if let Some(current_entry) = self.current_entry {
-                       if self.exclude_index >= self.to_exclude.len() {
-                           // If all the exclude areas were handled.
+                if self.exclude_index >= self.to_exclude.len() {
+                    // If all the exclude areas were handled.
 
-                           self.current_entry = get_next_entry(self);
+                    self.current_entry = get_next_entry(self);
 
-                           Some(current_entry)
-                       } else {
-                           // Handle the exclude areas.
+                    Some(current_entry)
+                } else {
+                    // Handle the exclude areas.
 
+                    if self.to_exclude[self.exclude_index].is_contained_in(current_entry) {
+                        // The area to exclude is contained in the current free entry.
+                        let (entry_before, entry_after) = {
+                            let exclude_area = &self.to_exclude[self.exclude_index];
 
-                           if self.to_exclude[self.exclude_index].is_contained_in(current_entry) {
-                               // The area to exclude is contained in the current free entry.
-                               let (entry_before, entry_after) = {
-                                   let exclude_area = &self.to_exclude[self.exclude_index];
+                            (
+                                MemoryArea::new(
+                                    current_entry.start_address(),
+                                    exclude_area.start_address() - current_entry.start_address()
+                                ),
+                                MemoryArea::new(
+                                    exclude_area.end_address(),
+                                    current_entry.end_address() - exclude_area.end_address()
+                                )
+                            )
+                        };
 
-                                   (MemoryArea::new(current_entry.start_address(),
-                                                        exclude_area.start_address() -
-                                                        current_entry.start_address()),
-                                    MemoryArea::new(exclude_area.end_address(),
-                                                        current_entry.end_address() -
-                                                        exclude_area.end_address()))
-                               };
+                        self.exclude_index += 1;
 
-                               self.exclude_index += 1;
+                        if entry_after.end_address() == entry_after.start_address() {
+                            self.current_entry = get_next_entry(self);
+                        } else {
+                            self.current_entry = Some(entry_after);
+                        }
 
-                               if entry_after.end_address() == entry_after.start_address() {
-                                   self.current_entry = get_next_entry(self);
-                               } else {
-                                   self.current_entry = Some(entry_after);
-                               }
+                        if entry_before.end_address() == entry_before.start_address() {
+                            continue;
+                        } else {
+                            Some(entry_before)
+                        }
+                    } else {
+                        self.current_entry = get_next_entry(self);
 
-                               if entry_before.end_address() == entry_before.start_address() {
-                                   continue;
-                               } else {
-                                   Some(entry_before)
-                               }
-                           } else {
-                               self.current_entry = get_next_entry(self);
-
-                               Some(current_entry)
-                           }
-                       }
-                   } else {
-                       None
-                   };
+                        Some(current_entry)
+                    }
+                }
+            } else {
+                None
+            };
         }
     }
 }
@@ -148,7 +151,7 @@ pub fn init(magic_number: u32, information_structure_address: usize) {
     match *get_boot_method() {
         BootMethod::Multiboot2 => multiboot2::init(information_structure_address),
         BootMethod::Multiboot => multiboot::init(information_structure_address),
-        _ => freestanding::init(),
+        _ => freestanding::init()
     };
 }
 
@@ -158,7 +161,7 @@ fn set_boot_method(magic_number: u32) {
         BOOT_METHOD = match magic_number {
             0x36d76289 => BootMethod::Multiboot2,
             0x2badb002 => BootMethod::Multiboot,
-            _ => BootMethod::Unknown,
+            _ => BootMethod::Unknown
         }
     }
 }
@@ -173,7 +176,7 @@ fn get_boot_method() -> &'static BootMethod {
 pub fn get_vga_info() -> vga_buffer::Info {
     match *get_boot_method() {
         BootMethod::Multiboot2 => multiboot2::get_vga_info(),
-        _ => freestanding::get_vga_info(),
+        _ => freestanding::get_vga_info()
     }
 }
 
@@ -182,7 +185,7 @@ pub fn get_bootloader_name() -> &'static str {
     match *get_boot_method() {
         BootMethod::Multiboot2 => multiboot2::get_bootloader_name(),
         BootMethod::Multiboot => multiboot::get_bootloader_name(),
-        _ => "no boot loader",
+        _ => "no boot loader"
     }
 }
 
@@ -190,7 +193,7 @@ pub fn get_bootloader_name() -> &'static str {
 pub fn get_initramfs_area() -> MemoryArea<PhysicalAddress> {
     match *get_boot_method() {
         BootMethod::Multiboot => multiboot::get_initramfs_area(),
-        _ => unimplemented!(),
+        _ => unimplemented!()
     }
 }
 

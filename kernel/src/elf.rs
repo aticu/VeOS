@@ -6,9 +6,9 @@ use core::mem;
 use core::mem::size_of;
 use file_handle::FileHandle;
 use initramfs;
-use memory::{Address, MemoryArea, PAGE_SIZE, PhysicalAddress, VirtualAddress};
 use memory::address_space;
 use memory::address_space::{AddressSpace, Segment};
+use memory::{Address, MemoryArea, PhysicalAddress, VirtualAddress, PAGE_SIZE};
 use multitasking::{create_process, ProcessID};
 
 /// Represents an ELF file.
@@ -27,11 +27,11 @@ impl ElfFile {
                 let file_size = file_handle.len();
 
                 // Check if the program header is fully contained in the file.
-                if file_size <
-                   (header.program_header_offset as u64)
-                       .saturating_add((header.program_header_entry_num as u64)
-                                           .saturating_mul(header.program_header_entry_size as
-                                                           u64)) {
+                if file_size
+                    < (header.program_header_offset as u64).saturating_add(
+                        (header.program_header_entry_num as u64)
+                            .saturating_mul(header.program_header_entry_size as u64)
+                    ) {
                     return Err(ElfError::InvalidFile);
                 }
 
@@ -53,9 +53,9 @@ impl ElfFile {
                 }
 
                 Ok(ElfFile {
-                       file_handle,
-                       header
-                   })
+                    file_handle,
+                    header
+                })
             })
         } else {
             Err(ElfError::FileNotExistant)
@@ -145,7 +145,7 @@ impl ELFClass {
 
 /// The different types of ELF files.
 #[repr(u16)]
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 #[allow(dead_code)]
 enum ElfType {
     /// No file type is specified.
@@ -162,7 +162,7 @@ enum ElfType {
 
 /// The instruction set of the executable file.
 #[repr(u16)]
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 #[allow(dead_code)]
 enum InstructionSet {
     /// No instruction set was given.
@@ -239,25 +239,27 @@ impl fmt::Debug for Header {
         if !self.is_valid() {
             write!(f, "Invalid ELF header.")
         } else {
-            write!(f,
-                   "Magic: ['\\x{:x}', '{}', '{}', '{}'],
+            write!(
+                f,
+                "Magic: ['\\x{:x}', '{}', '{}', '{}'],
 {}: {:?}, {}: {:?}, {}: {}, {}: {:?}, {}: {}, {}: {:?}",
-                   self.magic[0],
-                   self.magic[1] as char,
-                   self.magic[2] as char,
-                   self.magic[3] as char,
-                   "ELFClass",
-                   self.elf_class,
-                   "Endianness",
-                   self.endianness,
-                   "ABI",
-                   self.abi,
-                   "Type",
-                   self.elf_type,
-                   "Version",
-                   self.elf_version,
-                   "Entry address",
-                   self.program_entry)
+                self.magic[0],
+                self.magic[1] as char,
+                self.magic[2] as char,
+                self.magic[3] as char,
+                "ELFClass",
+                self.elf_class,
+                "Endianness",
+                self.endianness,
+                "ABI",
+                self.abi,
+                "Type",
+                { self.elf_type },
+                "Version",
+                { self.elf_version },
+                "Entry address",
+                { self.program_entry }
+            )
         }
     }
 }
@@ -301,10 +303,9 @@ impl Header {
 
     /// Returns true if the file can be executed.
     fn is_executable(&self) -> bool {
-        self.endianness.is_native() && self.instruction_set.is_native() && self.abi == 0 &&
-        self.abi_version == 0 &&
-        self.elf_type == ElfType::Executable && self.program_header_offset != 0 &&
-        self.elf_class.is_native()
+        self.endianness.is_native() && { self.instruction_set }.is_native() && self.abi == 0
+            && self.abi_version == 0 && { self.elf_type } == ElfType::Executable
+            && self.program_header_offset != 0 && self.elf_class.is_native()
     }
 }
 
@@ -339,7 +340,6 @@ bitflags! {
 
 /// Represents the program header of an ELF file.
 #[repr(C, packed)]
-#[derive(Debug)]
 struct ProgramHeader {
     /// The type of the segment.
     segment_type: SegmentType,
@@ -364,7 +364,8 @@ struct ProgramHeader {
 
 impl ProgramHeader {
     fn is_fully_contained(&self, file_size: u64) -> bool {
-        file_size >= (self.offset as u64).saturating_add(self.size_in_file as u64) || self.size_in_file == 0
+        file_size >= (self.offset as u64).saturating_add(self.size_in_file as u64)
+            || self.size_in_file == 0
     }
 }
 
@@ -394,9 +395,11 @@ impl<'a> Iterator for ProgramHeaderIterator<'a> {
                     mem::uninitialized();
 
                 self.file_handle
-                    .read_at(&mut program_header_buffer,
-                             self.header_offset +
-                             self.header_size as u64 * self.current_header_index as u64)
+                    .read_at(
+                        &mut program_header_buffer,
+                        self.header_offset
+                            + self.header_size as u64 * self.current_header_index as u64
+                    )
                     .unwrap();
 
                 mem::transmute(program_header_buffer)
@@ -423,29 +426,34 @@ fn process_from_elf_file(mut file: ElfFile) -> Result<ProcessID, ElfError> {
 
         // For each segment.
         while let Some(program_header) = iterator.next() {
-            if program_header.segment_type != SegmentType::Load {
+            if { program_header.segment_type } != SegmentType::Load {
                 continue;
             }
 
             // Convert the flags to page flags.
             let mut flags = ::memory::USER_ACCESSIBLE;
+            let header_flags = program_header.flags;
 
-            if program_header.flags.contains(READABLE) {
+            if header_flags.contains(READABLE) {
                 flags |= ::memory::READABLE;
             }
 
-            if program_header.flags.contains(WRITABLE) {
+            if header_flags.contains(WRITABLE) {
                 flags |= ::memory::WRITABLE;
             }
 
-            if program_header.flags.contains(EXECUTABLE) {
+            if header_flags.contains(EXECUTABLE) {
                 flags |= ::memory::EXECUTABLE;
             }
 
-            let segment = Segment::new(MemoryArea::new(program_header.virtual_address,
-                                       program_header.size_in_memory),
-                                       flags,
-                                       address_space::SegmentType::FromFile);
+            let segment = Segment::new(
+                MemoryArea::new(
+                    program_header.virtual_address,
+                    program_header.size_in_memory
+                ),
+                flags,
+                address_space::SegmentType::FromFile
+            );
 
             if !address_space.add_segment(segment) {
                 return Err(ElfError::OverlappingSegments);
@@ -475,12 +483,16 @@ fn process_from_elf_file(mut file: ElfFile) -> Result<ProcessID, ElfError> {
                     return Err(ElfError::InvalidFile);
                 }
 
-                address_space.write_to(segment_data,
-                                       program_header.virtual_address + i * PAGE_SIZE);
+                address_space
+                    .write_to(segment_data, program_header.virtual_address + i * PAGE_SIZE);
             }
 
-            let last_mapped_page = (program_header.virtual_address + program_header.size_in_file - 1).as_usize() / PAGE_SIZE + 1;
-            let last_page_to_map = (program_header.virtual_address + program_header.size_in_memory - 1).as_usize() / PAGE_SIZE + 1;
+            let last_mapped_page = (program_header.virtual_address + program_header.size_in_file
+                - 1)
+                .as_usize() / PAGE_SIZE + 1;
+            let last_page_to_map = (program_header.virtual_address + program_header.size_in_memory
+                - 1)
+                .as_usize() / PAGE_SIZE + 1;
             let page_aligned_start_address = program_header.virtual_address.page_align_down();
 
             for i in 0..last_page_to_map - last_mapped_page {
@@ -488,7 +500,11 @@ fn process_from_elf_file(mut file: ElfFile) -> Result<ProcessID, ElfError> {
             }
 
             if program_header.size_in_file < program_header.size_in_memory {
-                address_space.zero_mapped_area(program_header.virtual_address + program_header.size_in_file, program_header.size_in_memory - program_header.size_in_file);
+                let area_to_zero = MemoryArea::new(
+                    program_header.virtual_address + program_header.size_in_file,
+                    program_header.size_in_memory - program_header.size_in_file
+                );
+                address_space.zero_mapped_area(area_to_zero);
             }
         }
     }

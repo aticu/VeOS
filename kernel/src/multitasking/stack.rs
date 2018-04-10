@@ -4,8 +4,8 @@ use arch::STACK_TYPE;
 use core::cmp::{max, min};
 use core::fmt;
 use core::mem::size_of;
-use memory::{MemoryArea, READABLE, USER_ACCESSIBLE, VirtualAddress, WRITABLE, map_page, unmap_page};
 use memory::address_space::{AddressSpace, Segment, SegmentType};
+use memory::{map_page, unmap_page, MemoryArea, VirtualAddress, READABLE, USER_ACCESSIBLE, WRITABLE};
 
 // NOTE: For now only full descending stacks are supported.
 /// Represents the different types of stacks that exist.
@@ -45,11 +45,11 @@ pub struct Stack {
 
 impl fmt::Debug for Stack {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f,
-               "Bottom: {:?}, Top: {:?}, Max size: {:x}",
-               self.bottom_address,
-               self.top_address,
-               self.max_size)
+        write!(
+            f,
+            "Bottom: {:?}, Top: {:?}, Max size: {:x}",
+            self.bottom_address, self.top_address, self.max_size
+        )
     }
 }
 
@@ -63,36 +63,37 @@ impl Drop for Stack {
 impl Stack {
     /// Pushes the given value to the stack pointed to in the given address
     /// space.
-    pub fn push_in<T>(address_space: &mut AddressSpace,
-                      stack_pointer: &mut VirtualAddress,
-                      value: T) {
+    pub fn push_in<T>(
+        address_space: &mut AddressSpace,
+        stack_pointer: &mut VirtualAddress,
+        value: T
+    ) {
         match STACK_TYPE {
             StackType::FullDescending => {
                 *stack_pointer -= size_of::<T>();
                 unsafe {
                     address_space.write_val(value, *stack_pointer);
                 }
-            },
+            }
         }
     }
 
     /// Creates a new stack of size zero with the given start address.
-    pub fn new(initial_size: usize,
-               max_size: usize,
-               start_address: VirtualAddress,
-               access_type: AccessType,
-               mut address_space: Option<&mut AddressSpace>)
-               -> Stack {
+    pub fn new(
+        initial_size: usize,
+        max_size: usize,
+        start_address: VirtualAddress,
+        access_type: AccessType,
+        mut address_space: Option<&mut AddressSpace>
+    ) -> Stack {
         let mut stack = match STACK_TYPE {
-            StackType::FullDescending => {
-                Stack {
-                    top_address: start_address + max_size,
-                    bottom_address: start_address + max_size,
-                    max_size,
-                    base_stack_pointer: start_address + max_size,
-                    access_type
-                }
-            },
+            StackType::FullDescending => Stack {
+                top_address: start_address + max_size,
+                bottom_address: start_address + max_size,
+                max_size,
+                base_stack_pointer: start_address + max_size,
+                access_type
+            }
         };
 
         if let Some(ref mut address_space) = address_space {
@@ -104,7 +105,10 @@ impl Stack {
 
             let area = MemoryArea::new(start_address, max_size);
 
-            assert!(address_space.add_segment(Segment::new(area, flags, SegmentType::MemoryOnly)), "Could not add stack segment.");
+            assert!(
+                address_space.add_segment(Segment::new(area, flags, SegmentType::MemoryOnly)),
+                "Could not add stack segment."
+            );
         }
 
         stack.resize(initial_size, address_space);
@@ -116,8 +120,10 @@ impl Stack {
     pub fn grow(&mut self, amount: usize, mut address_space: Option<&mut AddressSpace>) {
         match STACK_TYPE {
             StackType::FullDescending => {
-                let new_bottom = max(self.top_address - self.max_size,
-                                     self.bottom_address - amount);
+                let new_bottom = max(
+                    self.top_address - self.max_size,
+                    self.bottom_address - amount
+                );
 
                 let mut flags = READABLE | WRITABLE;
 
@@ -133,7 +139,7 @@ impl Stack {
                 // TODO: flags shouldn't be passed, it should be segment checked instead.
                 let mut map_fn = |page_address, flags| match address_space {
                     Some(ref mut address_space) => address_space.map_page(page_address),
-                    None => map_page(page_address, flags),
+                    None => map_page(page_address, flags)
                 };
 
                 for page_num in first_page_to_map..last_page_to_map {
@@ -141,7 +147,7 @@ impl Stack {
                 }
 
                 self.bottom_address = new_bottom;
-            },
+            }
         }
     }
 
@@ -159,7 +165,7 @@ impl Stack {
                 let mut unmap_fn = |page_address| unsafe {
                     match address_space {
                         Some(ref mut address_space) => address_space.unmap_page(page_address),
-                        None => unmap_page(page_address),
+                        None => unmap_page(page_address)
                     }
                 };
 
@@ -168,7 +174,7 @@ impl Stack {
                 }
 
                 self.bottom_address = new_bottom;
-            },
+            }
         }
     }
 

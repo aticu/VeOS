@@ -14,8 +14,8 @@ unsafe impl<'a> Alloc for &'a Allocator {
     // TODO: Read more on this trait and possibly make it more efficient.
     unsafe fn alloc(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
         Ok(ALLOCATOR
-               .lock()
-               .allocate_first_fit(layout.size(), layout.align()))
+            .lock()
+            .allocate_first_fit(layout.size(), layout.align()))
     }
 
     unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {

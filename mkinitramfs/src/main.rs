@@ -4,12 +4,12 @@
 
 extern crate byteorder;
 
+use std::env::args;
 use std::fmt::Display;
 use std::fs::File;
-use std::env::args;
 use std::io;
 use std::io::prelude::*;
-use std::io::{SeekFrom, ErrorKind};
+use std::io::{ErrorKind, SeekFrom};
 use std::mem::{size_of, size_of_val};
 use std::path::{Path, PathBuf};
 use std::process::exit;
@@ -23,14 +23,9 @@ const FORCE: bool = false;
 const OVERWRITE: bool = true;
 
 /// The magic number at the beginning of the output file.
-const MAGIC: [u8; 8] = ['V' as u8,
-                        'e' as u8,
-                        'O' as u8,
-                        'S' as u8,
-                        'i' as u8,
-                        'r' as u8,
-                        'f' as u8,
-                        's' as u8];
+const MAGIC: [u8; 8] = [
+    'V' as u8, 'e' as u8, 'O' as u8, 'S' as u8, 'i' as u8, 'r' as u8, 'f' as u8, 's' as u8,
+];
 
 /// The offset at which the file metadata begins.
 const FILE_METADATA_OFFSET: usize = size_of::<[u8; 8]>() + size_of::<u64>();
@@ -75,7 +70,7 @@ fn main() {
     } else {
         "/".to_string()
     };
-    
+
     let content = get_content(&config_path).unwrap_or_exit("Error opening config file");
 
     let file_list = get_file_list(&base_path, &content);
@@ -83,7 +78,6 @@ fn main() {
     let mut file = File::create(out_path).unwrap_or_exit("Could not create target file");
 
     write_file_header(&mut file, &file_list).unwrap_or_exit(COULD_NOT_WRITE_TO_TARGET);
-
 
     for (file_num, &(ref original_path, ref actual_path)) in file_list.iter().enumerate() {
         write_file(&mut file, file_num, original_path, actual_path);
@@ -97,38 +91,51 @@ fn write_file(file: &mut File, file_num: usize, file_name: &str, file_path: &Pat
     let file_metadata_start = FILE_METADATA_OFFSET + file_num * FILE_METADATA_SIZE;
 
     // Write file name.
-    let name_position = file.seek(SeekFrom::End(0)).unwrap_or_exit(COULD_NOT_SEEK_TARGET);
-    file.write(file_name.as_bytes()).unwrap_or_exit(COULD_NOT_WRITE_TO_TARGET);
+    let name_position = file.seek(SeekFrom::End(0))
+        .unwrap_or_exit(COULD_NOT_SEEK_TARGET);
+    file.write(file_name.as_bytes())
+        .unwrap_or_exit(COULD_NOT_WRITE_TO_TARGET);
 
     // Write file name metadata.
-    file.seek(SeekFrom::Start(file_metadata_start as u64)).unwrap_or_exit(COULD_NOT_SEEK_TARGET);
-    file.write_u64::<BigEndian>(name_position).unwrap_or_exit(COULD_NOT_WRITE_TO_TARGET);
-    file.write_u64::<BigEndian>(file_name.len() as u64).unwrap_or_exit(COULD_NOT_WRITE_TO_TARGET);
+    file.seek(SeekFrom::Start(file_metadata_start as u64))
+        .unwrap_or_exit(COULD_NOT_SEEK_TARGET);
+    file.write_u64::<BigEndian>(name_position)
+        .unwrap_or_exit(COULD_NOT_WRITE_TO_TARGET);
+    file.write_u64::<BigEndian>(file_name.len() as u64)
+        .unwrap_or_exit(COULD_NOT_WRITE_TO_TARGET);
 
     // Write file content.
-    let content_position = file.seek(SeekFrom::End(0)).unwrap_or_exit(COULD_NOT_SEEK_TARGET);
-    let mut source_file = File::open(file_path).unwrap_or_exit(&format!("Could not open {}", file_path.display()));
+    let content_position = file.seek(SeekFrom::End(0))
+        .unwrap_or_exit(COULD_NOT_SEEK_TARGET);
+    let mut source_file =
+        File::open(file_path).unwrap_or_exit(&format!("Could not open {}", file_path.display()));
 
     let mut buffer = [0u8; 1024]; // Read a KiB at a time.
     loop {
         match source_file.read(&mut buffer) {
             Ok(0) => break,
             Ok(num) => {
-                file.write_all(&buffer[0..num]).unwrap_or_exit(COULD_NOT_WRITE_TO_TARGET);
-            },
-            Err(error) => {
-                match error.kind() {
-                    ErrorKind::Interrupted => (),
-                    _ => exit_with_error(&format!("Could not read {}", file_path.display()), error)
-                }
+                file.write_all(&buffer[0..num])
+                    .unwrap_or_exit(COULD_NOT_WRITE_TO_TARGET);
             }
+            Err(error) => match error.kind() {
+                ErrorKind::Interrupted => (),
+                _ => exit_with_error(&format!("Could not read {}", file_path.display()), error),
+            },
         }
     }
 
     // Write file content metadata.
-    file.seek(SeekFrom::Start((file_metadata_start + size_of::<u64>() * 2) as u64)).unwrap_or_exit(COULD_NOT_SEEK_TARGET);
-    file.write_u64::<BigEndian>(content_position). unwrap_or_exit(COULD_NOT_WRITE_TO_TARGET);
-    file.write_u64::<BigEndian>(source_file.metadata().unwrap_or_exit(&format!("Could not read length of {}", file_path.display())).len() as u64).unwrap_or_exit(COULD_NOT_WRITE_TO_TARGET);
+    file.seek(SeekFrom::Start(
+        (file_metadata_start + size_of::<u64>() * 2) as u64,
+    )).unwrap_or_exit(COULD_NOT_SEEK_TARGET);
+    file.write_u64::<BigEndian>(content_position)
+        .unwrap_or_exit(COULD_NOT_WRITE_TO_TARGET);
+    file.write_u64::<BigEndian>(source_file
+        .metadata()
+        .unwrap_or_exit(&format!("Could not read length of {}", file_path.display()))
+        .len() as u64)
+        .unwrap_or_exit(COULD_NOT_WRITE_TO_TARGET);
 }
 
 /// Writes the header information to the file.
@@ -160,21 +167,22 @@ fn write_file_header(file: &mut File, file_list: &Vec<(&str, PathBuf)>) -> io::R
 /// Gets a list of all the valid files in the config file.
 fn get_file_list<'a>(base_path: &String, content: &'a String) -> Vec<(&'a str, PathBuf)> {
     let base_path = Path::new(base_path);
-    content.lines()
-           .map(|line| (line, line.trim_matches('/')))
-           .map(|(original_line, line)| (original_line, base_path.join(line)))
-           .filter(|&(_, ref path)| {
-               if !path.is_file() {
-                   eprintln!("File {} not found.", path.display());
-                   if !FORCE {
-                       exit(1);
-                   } else {
-                       return false;
-                   }
-               }
-               true
-           })
-           .collect()
+    content
+        .lines()
+        .map(|line| (line, line.trim_matches('/')))
+        .map(|(original_line, line)| (original_line, base_path.join(line)))
+        .filter(|&(_, ref path)| {
+            if !path.is_file() {
+                eprintln!("File {} not found.", path.display());
+                if !FORCE {
+                    exit(1);
+                } else {
+                    return false;
+                }
+            }
+            true
+        })
+        .collect()
 }
 
 /// Reads the file into a string.
@@ -200,7 +208,7 @@ impl<T, E: Display> ExitOnError for std::result::Result<T, E> {
     fn unwrap_or_exit(self, message: &str) -> T {
         match self {
             Ok(result) => result,
-            Err(error) => exit_with_error(message, error)
+            Err(error) => exit_with_error(message, error),
         }
     }
 }

@@ -44,4 +44,3 @@ fn print_char(character: char) {
         syscall!(PRINT_CHAR_SYSCALL, character as u64);
     }
 }
-

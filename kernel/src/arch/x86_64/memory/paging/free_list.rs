@@ -1,11 +1,11 @@
 //! Handles the list of free physical memory areas.
 
-use super::PAGE_SIZE;
 use super::current_page_table::CURRENT_PAGE_TABLE;
+use super::PAGE_SIZE;
 use boot;
 use memory::{MemoryArea, PhysicalAddress};
-use sync::Mutex;
 use sync::mutex::MutexGuard;
+use sync::Mutex;
 
 /// The list of free page frames.
 ///
@@ -75,8 +75,9 @@ impl FreeList {
             let mut entry_address = self.first_entry.unwrap();
             let mut entry: FreeListEntry = current_page_table.read_from_physical(entry_address);
 
-            while !entry.next_entry.is_none() &&
-                  entry.next_entry.unwrap() < mem_area.start_address() {
+            while !entry.next_entry.is_none()
+                && entry.next_entry.unwrap() < mem_area.start_address()
+            {
                 entry_address = entry.next_entry.unwrap();
                 entry = current_page_table.read_from_physical(entry_address);
             }
@@ -93,18 +94,18 @@ impl FreeList {
             let back_merge = !next_entry.is_none() && mem_area.end_address() == next_entry.unwrap();
 
             if front_merge && back_merge {
-                let next_entry = current_page_table
-                    .read_from_physical::<FreeListEntry>(next_entry.unwrap());
+                let next_entry =
+                    current_page_table.read_from_physical::<FreeListEntry>(next_entry.unwrap());
 
                 entry.next_entry = next_entry.next_entry;
                 entry.length += mem_area.length() + next_entry.length;
             } else if front_merge {
                 entry.length += mem_area.length();
             } else if back_merge {
-                let next_entry = current_page_table
-                    .read_from_physical::<FreeListEntry>(next_entry.unwrap());
-                let new_entry = FreeListEntry::new(length + next_entry.length,
-                                                   next_entry.next_entry);
+                let next_entry =
+                    current_page_table.read_from_physical::<FreeListEntry>(next_entry.unwrap());
+                let new_entry =
+                    FreeListEntry::new(length + next_entry.length, next_entry.next_entry);
 
                 entry.next_entry = Some(mem_area.start_address());
 
@@ -132,8 +133,9 @@ impl FreeList {
             // If the first entry is to be removed.
             self.first_entry = entry.next_entry;
         } else {
-            while !entry.next_entry.is_none() &&
-                  entry.next_entry.unwrap() < mem_area.start_address() {
+            while !entry.next_entry.is_none()
+                && entry.next_entry.unwrap() < mem_area.start_address()
+            {
                 entry_address = entry.next_entry.unwrap();
                 entry = current_page_table.read_from_physical(entry_address);
             }
@@ -141,8 +143,8 @@ impl FreeList {
 
             let next_entry = entry.next_entry;
             if !next_entry.is_none() && next_entry.unwrap() == mem_area.start_address() {
-                let current_entry: FreeListEntry = current_page_table
-                    .read_from_physical(mem_area.start_address());
+                let current_entry: FreeListEntry =
+                    current_page_table.read_from_physical(mem_area.start_address());
 
                 if current_entry.length == mem_area.length() {
                     // At this point we are sure that we found the correct entry.

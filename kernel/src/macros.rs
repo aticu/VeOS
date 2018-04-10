@@ -1,4 +1,5 @@
-//! This module holds some macros that should be usable everywhere within the kernel.
+//! This module holds some macros that should be usable everywhere within the
+//! kernel.
 
 /// Creates a `&'static str` from a c string.
 ///
@@ -8,24 +9,22 @@
 /// it.
 #[macro_export]
 macro_rules! from_c_str {
-    ($address: expr, $length: expr) => {{
-        use core::str;
+    ($address:expr, $length:expr) => {{
         use core::slice;
+        use core::str;
         unsafe {
             let null_value: u8 = *($address + $length).as_ptr();
             assert_eq!(null_value, 0);
         }
         if $length > 0 {
-            let bytes: &[u8] = unsafe {
-                                       slice::from_raw_parts($address
-                                           .as_ptr(), $length as usize)
-                               };
+            let bytes: &[u8] =
+                unsafe { slice::from_raw_parts($address.as_ptr(), $length as usize) };
             str::from_utf8(bytes)
         } else {
             Ok("")
         }
     }};
-    ($address: expr) => {{
+    ($address:expr) => {{
         let mut address: VirtualAddress = $address;
         unsafe {
             while *(address.as_ptr::<u8>()) != 0 {
@@ -39,14 +38,12 @@ macro_rules! from_c_str {
 /// Creates a `&'static str` from a pointer to a raw string and it's length.
 #[macro_export]
 macro_rules! from_raw_str {
-    ($address: expr, $length: expr) => {{
-        use core::str;
+    ($address:expr, $length:expr) => {{
         use core::slice;
+        use core::str;
         if $length > 0 {
             let ptr: *const u8 = $address.as_ptr();
-            let bytes: &[u8] = unsafe {
-                                       slice::from_raw_parts(ptr, $length as usize)
-                               };
+            let bytes: &[u8] = unsafe { slice::from_raw_parts(ptr, $length as usize) };
             str::from_utf8(bytes)
         } else {
             Ok("")
@@ -62,7 +59,7 @@ macro_rules! from_raw_str {
 #[macro_export]
 #[cfg(target_arch = "x86_64")]
 macro_rules! to_virtual {
-    ($address: expr) => {{
+    ($address:expr) => {{
         const KERNEL_OFFSET: usize = 0xffff800000000000;
         $address as usize + KERNEL_OFFSET
     }};
@@ -71,9 +68,9 @@ macro_rules! to_virtual {
 /// Returns true for a valid virtual address.
 #[macro_export]
 macro_rules! valid_address {
-    ($address: expr) => {{
+    ($address:expr) => {{
         if cfg!(arch = "x86_64") {
-            use arch::x86_64::memory::{VIRTUAL_LOW_MAX_ADDRESS, VIRTUAL_HIGH_MIN_ADDRESS};
+            use arch::x86_64::memory::{VIRTUAL_HIGH_MIN_ADDRESS, VIRTUAL_LOW_MAX_ADDRESS};
             (VIRTUAL_LOW_MAX_ADDRESS >= $address || $address >= VIRTUAL_HIGH_MIN_ADDRESS)
         } else {
             true

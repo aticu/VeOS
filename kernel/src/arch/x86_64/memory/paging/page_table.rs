@@ -77,7 +77,9 @@ impl<T: ReducablePageTableLevel> PageTable<T> {
         let flags = self[index].flags();
         debug_assert!(!flags.contains(HUGE_PAGE));
         if flags.contains(PRESENT) {
-            Some(VirtualAddress::from_usize((self as *const _ as usize | index << 3) << 9))
+            Some(VirtualAddress::from_usize(
+                (self as *const _ as usize | index << 3) << 9
+            ))
         } else {
             None
         }
@@ -119,9 +121,10 @@ impl<T: ReducablePageTableLevel> PageTable<T> {
     }
 
     /// Returns a mutable reference to next page table of there is one.
-    pub fn get_next_level_mut(&mut self,
-                              address: VirtualAddress)
-                              -> Option<&mut PageTable<T::NextLevel>> {
+    pub fn get_next_level_mut(
+        &mut self,
+        address: VirtualAddress
+    ) -> Option<&mut PageTable<T::NextLevel>> {
         let index = PageTable::<T>::table_index(address);
         self.get_next_level_address(index)
             .map(|address| unsafe { &mut *address.as_mut_ptr() })

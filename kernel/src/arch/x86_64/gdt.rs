@@ -1,16 +1,17 @@
 //! Provides the global descriptor table used by the operating system.
 
-use super::memory::{FINAL_STACK_TOP, DOUBLE_FAULT_STACK_AREA_BASE, DOUBLE_FAULT_STACK_MAX_SIZE, DOUBLE_FAULT_STACK_OFFSET};
+use super::memory::{DOUBLE_FAULT_STACK_AREA_BASE, DOUBLE_FAULT_STACK_MAX_SIZE,
+                    DOUBLE_FAULT_STACK_OFFSET, FINAL_STACK_TOP};
 use core::mem::size_of;
 use memory::Address;
-use multitasking::Stack;
 use multitasking::stack::AccessType;
-use x86_64::PrivilegeLevel;
-use x86_64::VirtualAddress;
+use multitasking::Stack;
 use x86_64::instructions::segmentation::set_cs;
-use x86_64::instructions::tables::{DescriptorTablePointer, lgdt, load_tss};
+use x86_64::instructions::tables::{lgdt, load_tss, DescriptorTablePointer};
 use x86_64::structures::gdt::SegmentSelector;
 use x86_64::structures::tss::TaskStateSegment;
+use x86_64::PrivilegeLevel;
+use x86_64::VirtualAddress;
 
 /// The amount of entries the GDT has.
 const GDT_ENTRY_NUM: usize = 8;
@@ -102,7 +103,7 @@ impl Gdt {
                 self.entries[self.next_entry] = values[0];
                 self.entries[self.next_entry + 1] = values[1];
                 self.next_entry += 2;
-            },
+            }
         }
     }
 
