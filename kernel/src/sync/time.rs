@@ -2,47 +2,25 @@
 
 use arch::get_current_timestamp;
 use core::fmt;
-
-/// Represents a unit of time.
-pub enum Time {
-    /// A microsecond (µ-second) is 1/1,000,000 of a second.
-    Microseconds(i64),
-    /// A millisecond is 1/1,000 of a second.
-    Milliseconds(i64)
-}
-
-/// The number of µ-seconds in a millisecond.
-const MILLISECOND_MULTIPLIER: i64 = 1000;
-
-impl Time {
-    /// Returns the µ-second representation of the time.
-    pub fn as_microseconds(self) -> Time {
-        match self {
-            Time::Microseconds(time) => Time::Microseconds(time),
-            Time::Milliseconds(time) => {
-                Time::Microseconds(time.saturating_mul(MILLISECOND_MULTIPLIER))
-            },
-        }
-    }
-}
+use core::time::Duration;
 
 /// Represents a timestamp within the kernel.
 ///
-/// Currently that is roughly the number of µ-seconds since boot.
+/// Currently that is the `Duration` since boot.
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
-pub struct Timestamp(u64);
+pub struct Timestamp(Duration);
 
 impl fmt::Debug for Timestamp {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "<{}ms after boot>", self.0 / 1000)
+        write!(f, "{:>6}.{:06}", self.0.as_secs(), self.0.subsec_micros())
     }
 }
 
 impl Timestamp {
     /// Returns a new time stamp with the offset of the given amount of
-    /// microseconds.
-    pub fn from_microseconds(time: u64) -> Timestamp {
-        Timestamp(time)
+    /// milliseconds.
+    pub fn from_milliseconds(time: u64) -> Timestamp {
+        Timestamp(Duration::from_millis(time))
     }
 
     /// Returns the current time stamp.
@@ -51,15 +29,9 @@ impl Timestamp {
     }
 
     /// Offsets the time stamp by the given amount.
-    pub fn offset(&mut self, time: Time) {
-        if let Time::Microseconds(microseconds) = time.as_microseconds() {
-            let signed_stamp = self.0 as i64;
-
-            assert!(signed_stamp >= 0);
-
-            self.0 = (signed_stamp.saturating_add(microseconds)) as u64;
-        } else {
-            unreachable!();
-        }
+    pub fn offset(self, duration: Duration) -> Option<Timestamp> {
+        self.0
+            .checked_add(duration)
+            .map(|new_duration| Timestamp(new_duration))
     }
 }

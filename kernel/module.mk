@@ -1,5 +1,6 @@
 TARGET_FILES += $(TARGET_DIR)/boot/grub/grub.cfg $(TARGET_DIR)/boot/kernel.bin
 BUILD_DIRS += kernel/target
+FMT_DIRS += kernel
 
 LINKER_SCRIPT := kernel/src/arch/$(ARCH)/linker.ld
 
@@ -31,7 +32,7 @@ $(TARGET_DIR)/boot/kernel.bin: $(KERNEL_BINARY)
 $(KERNEL_BINARY): $(ASSEMBLY_OBJECT_FILES) $(KERNEL_LINKER_SCRIPT) $(KERNEL_LIB)
 	$(LINKER) $(KERNEL_LINKER_FLAGS) -o $@ $(ASSEMBLY_OBJECT_FILES) $(KERNEL_LIB)
 
-$(KERNEL_LIB): $(shell find kernel/src -name "*.rs")
+$(KERNEL_LIB): $(shell find kernel/src -name "*.rs") kernel/Cargo.toml kernel/Xargo.toml
 	cd kernel && $(RUST_COMPILER) build $(KERNEL_RUST_COMPILER_FLAGS)
 
 $(ASSEMBLY_OBJECT_FILES): kernel/target/$(KERNEL_BUILD_TARGET)/build/%.o : kernel/src/%.asm

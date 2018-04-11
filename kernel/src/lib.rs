@@ -1,16 +1,12 @@
 #![feature(lang_items)]
 #![feature(const_fn)]
-#![feature(const_size_of)]
-#![feature(const_unsafe_cell_new)]
-#![feature(const_unique_new)]
 #![feature(ptr_internals)]
 #![feature(repr_transparent)]
-#![feature(unique)]
+#![feature(duration_extras)]
 #![feature(asm)]
 #![feature(integer_atomics)]
 #![feature(alloc)]
 #![feature(naked_functions)]
-#![feature(use_extern_macros)]
 #![feature(allocator_internals)]
 #![feature(allocator_api)]
 #![feature(global_allocator)]
@@ -55,9 +51,10 @@ mod sync;
 mod syscalls;
 
 /// The name of the operating system.
-static OS_NAME: &str = "VeOS";
+static OS_NAME: &'static str = "VeOS";
 
 use memory::allocator::Allocator;
+
 /// The global kernel allocator.
 #[global_allocator]
 static ALLOCATOR: Allocator = Allocator;
@@ -117,6 +114,7 @@ pub extern "C" fn main(magic_number: u32, information_structure_address: usize) 
 #[lang = "panic_fmt"]
 #[no_mangle]
 pub extern "C" fn panic_fmt(fmt: core::fmt::Arguments, file: &'static str, line: u32) -> ! {
+    print!("[{:?}] ", sync::time::Timestamp::get_current());
     println!("PANIC! in file '{}' at line {}:", file, line);
     println!("{}", fmt);
     unsafe {

@@ -1,11 +1,12 @@
 //! This module handles system calls.
 
 use arch::schedule;
+use core::time::Duration;
 use elf;
 use memory::{Address, MemoryArea, VirtualAddress};
 use multitasking::scheduler::READY_LIST;
 use multitasking::{get_current_process, CURRENT_THREAD, TCB};
-use sync::time::{Time, Timestamp};
+use sync::time::Timestamp;
 
 /// This function accepts the syscalls and calls the corresponding handlers.
 pub fn syscall_handler(
@@ -127,10 +128,15 @@ fn kill_thread() -> i64 {
 }
 
 fn sleep(ms: u64) -> i64 {
-    let mut wake_time = Timestamp::get_current();
-
-    // TODO: Handle the case of overflow.
-    wake_time.offset(Time::Milliseconds(ms as i64));
+    // TODO: Switch to a duration based interface with usermode (u64 seconds and
+    // u32 nanoseconds)
+    let wake_time = if let Some(time) = Timestamp::get_current().offset(Duration::from_millis(ms)) {
+        time
+    } else {
+        // The wake time overflowed
+        // TODO: handle this in a more useful way
+        get_current_process().kill_immediately();
+    };
 
     CURRENT_THREAD.lock().state = ::multitasking::ThreadState::Sleeping(wake_time);
     schedule();
@@ -141,6 +147,7 @@ fn unknown_syscall(num: u64) -> ! {
     if cfg!(debug) {
         panic!("The syscall {} is not known.", num);
     } else {
+        // TODO: Handle this better
         get_current_process().kill_immediately();
     }
 }

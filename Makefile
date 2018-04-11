@@ -9,6 +9,7 @@ export RUST_TARGET_PATH=$(PWD)/targets
 TARGET_FILES := $(TARGET_DIR)/conf/mkinitramfs $(TARGET_DIR)/boot/initramfs
 BUILD_DIRS := $(TARGET_DIR)
 INITRAMFS_FILES :=
+FMT_DIRS := std
 
 .PHONY: all
 all: target_files
@@ -33,6 +34,10 @@ run_debug: $(ISO)
 .PHONY: gdb
 gdb:
 	gdb $(KERNEL_BINARY) -ex "target remote :1234"
+
+.PHONY: fmt
+fmt:
+	$(foreach fmt_dir,$(FMT_DIRS),cd $(fmt_dir) && cargo +nightly fmt && cd - >/dev/null &&) true
 
 $(ISO): all
 	grub-mkrescue -o $(ISO) $(TARGET_DIR) 2>/dev/null

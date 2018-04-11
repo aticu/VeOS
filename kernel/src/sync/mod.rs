@@ -15,7 +15,7 @@ pub struct PreemptionState {
 
 impl PreemptionState {
     /// Reads the current state of preemptability.
-    fn new() -> PreemptionState {
+    fn current() -> PreemptionState {
         PreemptionState {
             interrupts_enabled: arch::interrupts_enabled()
         }
@@ -30,6 +30,7 @@ impl PreemptionState {
 
     /// Restores the saved preemption state.
     unsafe fn restore(&self) {
+        // TODO: Do this on a drop?
         arch::set_interrupt_state(self.interrupts_enabled);
     }
 
@@ -64,7 +65,7 @@ pub unsafe fn cpu_halt() {
 /// # Safety
 /// - The returned `PreemptionState` must be restored.
 pub unsafe fn disable_preemption() -> PreemptionState {
-    let state = PreemptionState::new();
+    let state = PreemptionState::current();
 
     arch::disable_interrupts();
 
@@ -75,8 +76,7 @@ pub unsafe fn disable_preemption() -> PreemptionState {
 ///
 /// # Safety
 /// This should only be done during initialization. Otherwise the preemption
-/// state that
-/// was returned by the disable function should be restored.
+/// state that was returned by the disable function should be restored.
 pub unsafe fn enable_preemption() {
     arch::enable_interrupts();
 }

@@ -56,5 +56,5 @@ pub fn interrupts_enabled() -> bool {
 
 /// Returns the current timestamp.
 pub fn get_current_timestamp() -> Timestamp {
-    Timestamp::from_microseconds(unsafe { CLOCK * 1000 })
+    Timestamp::from_milliseconds(unsafe { CLOCK })
 }
