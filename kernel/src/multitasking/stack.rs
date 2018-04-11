@@ -9,15 +9,16 @@ use memory::{map_page, unmap_page, MemoryArea, VirtualAddress, READABLE, USER_AC
 
 // NOTE: For now only full descending stacks are supported.
 /// Represents the different types of stacks that exist.
+#[allow(dead_code)]
 pub enum StackType {
     /// The value currently pointed to is used and the stack grows downward.
-    FullDescending /* // The value currently pointed to is not used and the stack grows
-                    * downward.
-                    * EmptyDescending,
-                    * // The value currently pointed to is used and the stack grows upward.
-                    * FullAscending,
-                    * // The value currently pointed to is not used and the stack grows upward.
-                    * EmptyAscending */
+    FullDescending,
+    /// The value currently pointed to is not used and the stack grows downward.
+    EmptyDescending,
+    /// The value currently pointed to is used and the stack grows upward.
+    FullAscending,
+    /// The value currently pointed to is not used and the stack grows upward.
+    EmptyAscending
 }
 
 /// Determines the type of accesses possible for this stack.
@@ -74,7 +75,8 @@ impl Stack {
                 unsafe {
                     address_space.write_val(value, *stack_pointer);
                 }
-            }
+            },
+            _ => unimplemented!("Currently only Full Descending stacks are implemented")
         }
     }
 
@@ -93,7 +95,8 @@ impl Stack {
                 max_size,
                 base_stack_pointer: start_address + max_size,
                 access_type
-            }
+            },
+            _ => unimplemented!("Currently only Full Descending stacks are implemented")
         };
 
         if let Some(ref mut address_space) = address_space {
@@ -147,7 +150,8 @@ impl Stack {
                 }
 
                 self.bottom_address = new_bottom;
-            }
+            },
+            _ => unimplemented!("Currently only Full Descending stacks are implemented")
         }
     }
 
@@ -174,7 +178,8 @@ impl Stack {
                 }
 
                 self.bottom_address = new_bottom;
-            }
+            },
+            _ => unimplemented!("Currently only Full Descending stacks are implemented")
         }
     }
 

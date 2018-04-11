@@ -6,7 +6,6 @@
 use memory::{MemoryArea, PageFlags, PhysicalAddress, VirtualAddress};
 use multitasking::stack::StackType;
 use sync::time::Timestamp;
-use sync::PreemptionState;
 
 trait Architecture {
     /// This type is supposed to manage address spaces for the architecture.
@@ -55,8 +54,11 @@ trait Architecture {
     /// This function enters user mode for the first time.
     ///
     /// It's job is to transition from the system initialization to normal
-    /// operation. This function should only be called once (per CPU).
-    fn enter_first_thread();
+    /// operation.
+    ///
+    /// # Safety
+    /// - This function should only be called once (per CPU).
+    unsafe fn enter_first_thread();
 
     /// This function saves power while waiting for resources.
     fn cpu_relax();
@@ -71,8 +73,8 @@ trait Architecture {
     /// interrupts are enabled when calling this function.
     unsafe fn cpu_halt();
 
-    /// Returns the current state of preemption.
-    fn get_preemption_state() -> PreemptionState;
+    /// Returns true if interrupts are enabled and false otherwise.
+    fn get_interrupt_state() -> bool;
 
     /// Disables all interrupts.
     ///
@@ -90,6 +92,9 @@ trait Architecture {
     /// instead of using this directly.
     unsafe fn enable_interrupts();
 
+    /// Returns the current timestamp.
+    fn get_current_timestamp() -> Timestamp;
+
     /// Switches the execution context and saves the current one.
     ///
     /// `old_context` is where the current context is saved to and
@@ -100,9 +105,6 @@ trait Architecture {
     /// the context, this should only be called by the scheduler.
     /// - Make sure preemption is disabled while calling this.
     unsafe fn switch_context(old_context: &mut Context, new_context: &Context);
-
-    /// Returns the current timestamp.
-    fn get_current_timestamp() -> Timestamp;
 
     /// Maps the page that contains the given address and the given flags.
     // TODO: Move this into the AddressSpaceManager?
@@ -115,7 +117,7 @@ trait Architecture {
     fn get_kernel_area() -> MemoryArea<PhysicalAddress>;
 
     /// Returns the physical memory area where the initramfs is loaded.
-    fn get_initramfs_area() -> MemoryArea<PhysicalAddress>;
+    fn get_initramfs_area() -> MemoryArea<VirtualAddress>;
 
     /// Returns the page flags for the page containing the given address.
     fn get_page_flags(page_address: VirtualAddress) -> PageFlags;
@@ -196,6 +198,9 @@ macro_rules! export_arch {
         pub use self::$name::context::switch_context;
     };
 }
+
+#[cfg(target_arch = "x86_64")]
+const CURRENT_ARCH: x86_64::X86_64 = x86_64::X86_64;
 
 #[cfg(target_arch = "x86_64")]
 export_arch!(x86_64);

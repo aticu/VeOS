@@ -204,7 +204,7 @@ pub struct MemoryArea<AddressType: Address> {
 
 impl<AddressType: Address> MemoryArea<AddressType> {
     /// Creates a new MemoryArea.
-    pub fn new(start_address: AddressType, length: usize) -> MemoryArea<AddressType> {
+    pub const fn new(start_address: AddressType, length: usize) -> MemoryArea<AddressType> {
         MemoryArea {
             start_address,
             length

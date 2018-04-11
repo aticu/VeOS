@@ -10,7 +10,7 @@ use core::ptr;
 use memory::address_space;
 use memory::{Address, PageFlags, PhysicalAddress, VirtualAddress};
 
-struct AddressSpaceManager {
+pub struct AddressSpaceManager {
     table: InactivePageTable
 }
 

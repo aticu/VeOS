@@ -2,7 +2,7 @@
 
 use memory::{Address, MemoryArea, PageFlags, PhysicalAddress, VirtualAddress};
 
-mod address_space_manager;
+pub mod address_space_manager;
 mod paging;
 
 pub use self::address_space_manager::idle_address_space_manager;
