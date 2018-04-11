@@ -6,6 +6,7 @@ use memory::{Address, MemoryArea, PhysicalAddress, VirtualAddress};
 /// Represents the multiboot information structure.
 #[repr(C)]
 struct MultibootInformation {
+    // DOCME
     flags: u32,
     mem_lower: u32,
     mem_upper: u32,

@@ -1,5 +1,7 @@
 //! Handles thread related syscalls.
 
+use core::time::Duration;
+
 /// The number of the exit syscall.
 const SLEEP_SYSCALL_NUM: u64 = 4;
 
@@ -10,9 +12,13 @@ const NEW_THREAD_SYSCALL_NUM: u64 = 5;
 const KILL_THREAD_SYSCALL_NUM: u64 = 6;
 
 /// Lets the current thread sleep for `ms` milliseconds.
-pub fn sleep(ms: u64) {
+pub fn sleep(duration: Duration) {
     unsafe {
-        syscall!(SLEEP_SYSCALL_NUM, ms);
+        syscall!(
+            SLEEP_SYSCALL_NUM,
+            duration.as_secs(),
+            duration.subsec_nanos()
+        );
     }
 }
 

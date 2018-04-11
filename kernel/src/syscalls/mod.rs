@@ -23,7 +23,7 @@ pub fn syscall_handler(
         1 => kill_process(),
         2 => return_pid(),
         3 => exec(VirtualAddress::from_usize(arg1 as usize), arg2 as usize),
-        4 => sleep(arg1),
+        4 => sleep(arg1, arg2 as u32),
         5 => create_thread(
             VirtualAddress::from_usize(arg1 as usize),
             arg2,
@@ -127,10 +127,21 @@ fn kill_thread() -> i64 {
     0
 }
 
-fn sleep(ms: u64) -> i64 {
-    // TODO: Switch to a duration based interface with usermode (u64 seconds and
-    // u32 nanoseconds)
-    let wake_time = if let Some(time) = Timestamp::get_current().offset(Duration::from_millis(ms)) {
+fn sleep(seconds: u64, nanoseconds: u32) -> i64 {
+    // Check if the duration is valid
+    let duration = if seconds
+        .checked_add((nanoseconds / 1000_000_000).into())
+        .is_none()
+    {
+        // The wake time overflowed
+        // TODO: handle this in a more useful way
+        get_current_process().kill_immediately();
+    } else {
+        // If the duration was valid, return it
+        Duration::new(seconds, nanoseconds)
+    };
+
+    let wake_time = if let Some(time) = Timestamp::get_current().offset(duration) {
         time
     } else {
         // The wake time overflowed

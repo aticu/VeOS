@@ -10,5 +10,5 @@ $(TARGET_DIR)/bin/test: test/target/$(BUILD_TARGET)/$(BUILD_TYPE)/test
 test/target/$(BUILD_TARGET)/$(BUILD_TYPE)/test: test/target/$(BUILD_TARGET)/$(BUILD_TYPE)/libtest.a
 	$(LINKER) $(LINKER_FLAGS) $< -o $@
 
-test/target/$(BUILD_TARGET)/$(BUILD_TYPE)/libtest.a: $(shell find test/src -name "*.rs") test/Cargo.toml
+test/target/$(BUILD_TARGET)/$(BUILD_TYPE)/libtest.a: $(shell find test/src -name "*.rs") test/Cargo.toml $(STD_FILES)
 	cd test && $(RUST_COMPILER) build $(RUST_COMPILER_FLAGS)

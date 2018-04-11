@@ -14,6 +14,7 @@ FMT_DIRS := std
 .PHONY: all
 all: target_files
 
+include std/module.mk
 include $(patsubst %,%/module.mk,$(MODULES))
 
 .PHONY: target_files

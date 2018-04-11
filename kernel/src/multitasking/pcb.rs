@@ -59,6 +59,7 @@ impl PCB {
 
     /// Finds an ID for a new thread in this process.
     pub fn find_thread_id(&self) -> Option<ThreadID> {
+        // UNOPTIMIZED
         self.highest_thread_id.checked_add(1)
     }
 
