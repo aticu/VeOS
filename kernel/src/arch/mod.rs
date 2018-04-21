@@ -12,7 +12,7 @@ trait Architecture {
     ///
     /// For more details see the `::memory::address_space::AddressSpaceManager`
     /// trait.
-    type AddressSpaceManager: ::memory::address_space::AddressSpaceManager;
+    type AddressSpaceManager: ::memory::address_space_manager::AddressSpaceManager;
 
     /// This type represents the architecture specific part of an execution
     /// context.
@@ -163,9 +163,11 @@ macro_rules! export_arch {
         pub use self::$name::get_cpu_id;
         pub use self::$name::get_cpu_num;
         pub use self::$name::init;
+        pub use self::$name::init_io;
         pub use self::$name::schedule;
         pub use self::$name::Context;
         pub use self::$name::STACK_TYPE;
+        pub use self::$name::KERNEL_LOGGER;
 
         pub use self::$name::sync::cpu_halt;
         pub use self::$name::sync::cpu_relax;

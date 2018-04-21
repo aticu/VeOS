@@ -26,7 +26,7 @@ pub fn init() {
 /// The entry point for all syscalls.
 #[naked]
 extern "C" fn syscall_entry() {
-    extern "C" fn syscall_inner() -> i64 {
+    extern "C" fn syscall_inner() -> isize {
         let num;
         let arg1;
         let arg2;
@@ -81,6 +81,6 @@ extern "C" fn syscall_entry() {
               cli
               mov rsp, r12
               sysret"
-              : : "i"(syscall_inner as extern "C" fn() -> i64) : : "intel", "volatile");
+              : : "i"(syscall_inner as extern "C" fn() -> isize) : : "intel", "volatile");
     }
 }

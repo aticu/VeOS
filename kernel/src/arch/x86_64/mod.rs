@@ -9,17 +9,22 @@ pub mod memory;
 pub mod sync;
 mod syscalls;
 pub mod vga_buffer;
+#[macro_use]
+mod serial;
 
 pub use self::context::Context;
 use self::gdt::{GDT, TSS};
 use self::interrupts::issue_self_interrupt;
 use self::interrupts::SCHEDULE_INTERRUPT_NUM;
+use self::serial::SerialPort;
 use super::Architecture;
 use core::fmt;
 use core::fmt::Write;
+use log::{Log, Level, Metadata, Record};
 use memory::{Address, MemoryArea, PageFlags, PhysicalAddress, VirtualAddress};
 use multitasking::{StackType, CURRENT_THREAD};
 use raw_cpuid::CpuId;
+use sync::mutex::Mutex;
 use sync::time::Timestamp;
 use x86_64::instructions::{rdmsr, wrmsr};
 use x86_64::registers::*;
@@ -194,6 +199,9 @@ impl Architecture for X86_64 {
 /// The stack type used for the x86_64 architecture.
 pub const STACK_TYPE: StackType = StackType::FullDescending;
 
+/// The COM1 serial port.
+pub static COM1: Mutex<SerialPort> = Mutex::new(SerialPort::new(0x3f8));
+
 /// Initializes the machine state for the x86_64 architecture to a bare minimum.
 pub fn early_init() {
     assert_has_not_been_called!("Early x86_64 specific initialization should only be called once.");
@@ -237,12 +245,22 @@ pub fn early_init() {
 pub fn init() {
     assert_has_not_been_called!("x86_64 specific initialization code should only be called once.");
 
+    debug!("Initializing the GTD...");
     unsafe {
         GDT.load();
     }
 
+    debug!("Initializing the syscall interface...");
     syscalls::init();
+
+    debug!("Initializing interrupts...");
     interrupts::init();
+}
+
+/// Initializes the IO of the x86_64 architecture.
+pub fn init_io() {
+    vga_buffer::init();
+    COM1.lock().init();
 }
 
 /// Returns the ID of the currently running CPU.
@@ -280,4 +298,45 @@ pub unsafe fn enter_first_thread() -> ! {
 /// This function starts a scheduling operation.
 pub fn schedule() {
     issue_self_interrupt(SCHEDULE_INTERRUPT_NUM);
+}
+
+/// The type of the logger for the kernel.
+pub struct KernelLogger;
+
+/// The kernel logger.
+pub static KERNEL_LOGGER: KernelLogger = KernelLogger;
+
+impl Log for KernelLogger {
+    fn enabled(&self, _metadata: &Metadata) -> bool {
+        true
+    }
+
+    fn log(&self, record: &Record) {
+        let reset = "\x1b[0m";
+        let red = "\x1b[31m";
+        let yellow = "\x1b[33m";
+        let time = Timestamp::get_current();
+        match record.metadata().level() {
+            Level::Error => {
+                println!("{}: {}", record.level(), record.args());
+                serial_println!("{} {}{}{}: {}", time, red, record.level(), reset, record.args());
+            },
+            Level::Warn => {
+                println!("{}: {}", record.level(), record.args());
+                serial_println!("{} {}{}{}: {}", time, yellow, record.level(), reset, record.args());
+            },
+            Level::Info => {
+                println!("{}", record.args());
+                serial_println!("{} {}", time, record.args());
+            },
+            Level::Debug => {
+                serial_println!("{} {}: {}", time, record.level(), record.args());
+            },
+            Level::Trace => {
+                serial_println!("{} {}: {}", time, record.level(), record.args());
+            }
+        }
+    }
+
+    fn flush(&self) {}
 }

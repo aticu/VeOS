@@ -7,26 +7,25 @@ use super::paging::{convert_flags, Page, PageFrame, CURRENT_PAGE_TABLE};
 use super::PAGE_SIZE;
 use alloc::boxed::Box;
 use core::ptr;
-use memory::address_space;
-use memory::{Address, PageFlags, PhysicalAddress, VirtualAddress};
+use memory::{Address, address_space_manager, PageFlags, PhysicalAddress, VirtualAddress};
 
 pub struct AddressSpaceManager {
     table: InactivePageTable
 }
 
-pub fn new_address_space_manager() -> Box<address_space::AddressSpaceManager> {
+pub fn new_address_space_manager() -> Box<address_space_manager::AddressSpaceManager> {
     Box::new(AddressSpaceManager {
         table: InactivePageTable::copy_from_current()
     })
 }
 
-pub fn idle_address_space_manager() -> Box<address_space::AddressSpaceManager> {
+pub fn idle_address_space_manager() -> Box<address_space_manager::AddressSpaceManager> {
     Box::new(AddressSpaceManager {
         table: InactivePageTable::from_current_table()
     })
 }
 
-impl address_space::AddressSpaceManager for AddressSpaceManager {
+impl address_space_manager::AddressSpaceManager for AddressSpaceManager {
     fn write_to(&mut self, buffer: &[u8], address: VirtualAddress, flags: PageFlags) {
         let flags = convert_flags(flags);
 

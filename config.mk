@@ -14,4 +14,4 @@ RUST_COMPILER := xargo
 LINKER := ld
 LINKER_FLAGS := --gc-sections
 
-QEMU_FLAGS := --no-reboot -smp cores=4 -s
+QEMU_FLAGS := --no-reboot -smp cores=4 -s -serial stdio

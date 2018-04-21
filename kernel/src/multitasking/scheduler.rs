@@ -58,6 +58,8 @@ pub unsafe fn schedule_next_thread() {
         // Make sure no locks are held when switching.
         drop(ready_list);
 
+        trace!("Switching from {:?} to {:?}", **CURRENT_THREAD, **OLD_THREAD);
+
         // Now swap the references.
         swap(
             &mut *CURRENT_THREAD.lock(),

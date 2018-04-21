@@ -16,6 +16,7 @@ volatile = "0.2"
 bitflags = "0.8"
 once = "0.3"
 raw-cpuid = "3"
+log = "0.4"
 
 [dependencies.lazy_static]
 version = "0.2"

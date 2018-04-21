@@ -107,11 +107,11 @@ impl TCB {
         id: ThreadID,
         pc: VirtualAddress,
         pcb: &mut PCB,
-        arg1: u64,
-        arg2: u64,
-        arg3: u64,
-        arg4: u64,
-        arg5: u64
+        arg1: usize,
+        arg2: usize,
+        arg3: usize,
+        arg4: usize,
+        arg5: usize
     ) -> TCB {
         let kernel_stack = Stack::new(
             0x4000,

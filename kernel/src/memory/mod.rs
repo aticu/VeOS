@@ -1,6 +1,7 @@
 //! Handles all memory related things.
 
 pub mod address_space;
+pub mod address_space_manager;
 pub mod allocator;
 
 pub use arch::get_kernel_area;

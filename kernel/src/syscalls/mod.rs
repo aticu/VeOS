@@ -10,22 +10,22 @@ use sync::time::Timestamp;
 
 /// This function accepts the syscalls and calls the corresponding handlers.
 pub fn syscall_handler(
-    num: u64,
-    arg1: u64,
-    arg2: u64,
-    arg3: u64,
-    arg4: u64,
-    arg5: u64,
-    arg6: u64
-) -> i64 {
+    num: u16,
+    arg1: usize,
+    arg2: usize,
+    arg3: usize,
+    arg4: usize,
+    arg5: usize,
+    arg6: usize
+) -> isize {
     match num {
         0 => print_char(arg1 as u8 as char),
         1 => kill_process(),
         2 => return_pid(),
-        3 => exec(VirtualAddress::from_usize(arg1 as usize), arg2 as usize),
-        4 => sleep(arg1, arg2 as u32),
+        3 => exec(VirtualAddress::from_usize(arg1), arg2),
+        4 => sleep(arg1, arg2),
         5 => create_thread(
-            VirtualAddress::from_usize(arg1 as usize),
+            VirtualAddress::from_usize(arg1),
             arg2,
             arg3,
             arg4,
@@ -37,24 +37,24 @@ pub fn syscall_handler(
     }
 }
 
-fn print_char(character: char) -> i64 {
+fn print_char(character: char) -> isize {
     print!("{}", character);
     0
 }
 
-fn kill_process() -> i64 {
+fn kill_process() -> isize {
     get_current_process().kill();
 
     schedule();
     0
 }
 
-fn return_pid() -> i64 {
+fn return_pid() -> isize {
     let pid = CURRENT_THREAD.lock().pid;
-    pid as i64
+    pid as isize
 }
 
-fn exec(name_ptr: VirtualAddress, name_length: usize) -> i64 {
+fn exec(name_ptr: VirtualAddress, name_length: usize) -> isize {
     let name_ptr_valid = {
         let pcb = get_current_process();
 
@@ -69,9 +69,9 @@ fn exec(name_ptr: VirtualAddress, name_length: usize) -> i64 {
             let process_id = elf::process_from_initramfs_file(name);
 
             if let Ok(process_id) = process_id {
-                assert!(process_id as i64 > 0, "Process ID too large.");
+                assert!(process_id as isize > 0, "Process ID too large.");
 
-                process_id as i64
+                process_id as isize
             } else {
                 -1
             }
@@ -85,12 +85,12 @@ fn exec(name_ptr: VirtualAddress, name_length: usize) -> i64 {
 
 fn create_thread(
     start_address: VirtualAddress,
-    arg1: u64,
-    arg2: u64,
-    arg3: u64,
-    arg4: u64,
-    arg5: u64
-) -> i64 {
+    arg1: usize,
+    arg2: usize,
+    arg3: usize,
+    arg4: usize,
+    arg5: usize
+) -> isize {
     let pid = CURRENT_THREAD.lock().pid;
     let mut pcb = get_current_process();
     let id = pcb.find_thread_id();
@@ -113,13 +113,13 @@ fn create_thread(
 
             READY_LIST.lock().push(thread);
 
-            id as i64
+            id as isize
         },
         None => -1
     }
 }
 
-fn kill_thread() -> i64 {
+fn kill_thread() -> isize {
     CURRENT_THREAD.lock().kill();
 
     schedule();
@@ -127,8 +127,10 @@ fn kill_thread() -> i64 {
     0
 }
 
-fn sleep(seconds: u64, nanoseconds: u32) -> i64 {
+fn sleep(seconds: usize, nanoseconds: usize) -> isize {
     // Check if the duration is valid
+    let seconds = seconds as u64;
+    let nanoseconds = nanoseconds as u32;
     let duration = if seconds
         .checked_add((nanoseconds / 1000_000_000).into())
         .is_none()
@@ -154,7 +156,7 @@ fn sleep(seconds: u64, nanoseconds: u32) -> i64 {
     0
 }
 
-fn unknown_syscall(num: u64) -> ! {
+fn unknown_syscall(num: u16) -> ! {
     if cfg!(debug) {
         panic!("The syscall {} is not known.", num);
     } else {

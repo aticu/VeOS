@@ -12,7 +12,13 @@ pub struct Timestamp(Duration);
 
 impl fmt::Debug for Timestamp {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:>6}.{:06}", self.0.as_secs(), self.0.subsec_micros())
+        write!(f, "{}.{:06}", self.0.as_secs(), self.0.subsec_micros())
+    }
+}
+
+impl fmt::Display for Timestamp {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "[{:>6}.{:06}]", self.0.as_secs(), self.0.subsec_micros())
     }
 }
 

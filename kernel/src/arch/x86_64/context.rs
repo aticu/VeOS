@@ -26,11 +26,11 @@ impl Context {
         stack_pointer: VirtualAddress,
         mut kernel_stack_pointer: VirtualAddress,
         address_space: &mut AddressSpace,
-        arg1: u64,
-        arg2: u64,
-        arg3: u64,
-        arg4: u64,
-        arg5: u64
+        arg1: usize,
+        arg2: usize,
+        arg3: usize,
+        arg4: usize,
+        arg5: usize
     ) -> Context {
         use x86_64::registers::flags::Flags;
 
@@ -117,11 +117,11 @@ unsafe fn set_initial_stack(
     stack_pointer: &mut VirtualAddress,
     stack_frame: ExceptionStackFrame,
     address_space: &mut AddressSpace,
-    arg1: u64,
-    arg2: u64,
-    arg3: u64,
-    arg4: u64,
-    arg5: u64
+    arg1: usize,
+    arg2: usize,
+    arg3: usize,
+    arg4: usize,
+    arg5: usize
 ) {
     Stack::push_in(address_space, stack_pointer, stack_frame);
     Stack::push_in(address_space, stack_pointer, arg5);

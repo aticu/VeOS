@@ -34,6 +34,8 @@ extern crate once;
 #[cfg(not(test))]
 extern crate alloc;
 extern crate raw_cpuid;
+#[macro_use]
+extern crate log;
 
 #[macro_use]
 mod macros;
@@ -55,6 +57,9 @@ static OS_NAME: &'static str = "VeOS";
 
 use memory::allocator::Allocator;
 
+/// Sets the current log level for the kernel.
+const LOG_LEVEL: log::LevelFilter = log::LevelFilter::Trace;
+
 /// The global kernel allocator.
 #[global_allocator]
 static ALLOCATOR: Allocator = Allocator;
@@ -74,10 +79,14 @@ pub extern "C" fn main(magic_number: u32, information_structure_address: usize) 
         sync::disable_preemption();
     }
 
+    // Ignore the result. If the logger fails to be initialized, logging won't work.
+    match log::set_logger(&arch::KERNEL_LOGGER) { _ => () }
+    log::set_max_level(LOG_LEVEL);
+
     arch::early_init();
     boot::init(magic_number, information_structure_address);
     io::init();
-    println!(
+    info!(
         "Booted {} using {}...",
         OS_NAME,
         boot::get_bootloader_name()
@@ -87,11 +96,11 @@ pub extern "C" fn main(magic_number: u32, information_structure_address: usize) 
 
     let extended_info = raw_cpuid::CpuId::new().get_extended_function_info();
     let unwrapped_info = extended_info.unwrap();
-    println!(
+    info!(
         "The processor is a {}",
         unwrapped_info.processor_brand_string().unwrap()
     );
-    println!(
+    info!(
         "The available amount of memory is {}MiB.",
         arch::get_free_memory_size() / 1024 / 1024
     );
