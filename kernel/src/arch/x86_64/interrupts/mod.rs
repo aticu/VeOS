@@ -103,15 +103,15 @@ macro_rules! irq_interrupt {
 
 /// The divide by zero exception handler of the kernel.
 extern "x86-interrupt" fn divide_by_zero_handler(stack_frame: &mut ExceptionStackFrame) {
-    println!("Divide by zero exception.");
-    println!("{:?}", stack_frame);
+    error!("Divide by zero exception.");
+    error!("{:?}", stack_frame);
     loop {}
 }
 
 /// The breakpoint exception handler of the kernel.
 extern "x86-interrupt" fn breakpoint_handler(stack_frame: &mut ExceptionStackFrame) {
-    println!("Breakpoint exception.");
-    println!("{:?}", stack_frame);
+    error!("Breakpoint exception.");
+    error!("{:?}", stack_frame);
     loop {}
 }
 
@@ -120,12 +120,12 @@ extern "x86-interrupt" fn double_fault_handler(
     stack_frame: &mut ExceptionStackFrame,
     error_code: u64
 ) {
-    println!("DOUBLE FAULT!");
-    println!("{:?}", stack_frame);
-    println!("Error code: 0x{:x}", error_code);
+    error!("DOUBLE FAULT!");
+    error!("{:?}", stack_frame);
+    error!("Error code: 0x{:x}", error_code);
     use multitasking::{CURRENT_THREAD, TCB};
     let tcb: &::sync::Mutex<TCB> = &CURRENT_THREAD;
-    println!("Running thread: {:?}", tcb);
+    error!("Running thread: {:?}", tcb);
     loop {}
 }
 
