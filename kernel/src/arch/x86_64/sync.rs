@@ -1,11 +1,12 @@
 //! Handles architecture specific synchronization.
 
+use core::time::Duration;
 use sync::time::Timestamp;
 use x86_64::instructions::interrupts;
 use x86_64::registers::flags::*;
 
 /// The number of milliseconds since boot.
-pub static mut CLOCK: u64 = 0;
+pub static mut CLOCK: Duration = Duration::from_secs(0);
 
 /// Called while spinning (name borrowed from Linux). Can be implemented to call
 /// a platform-specific method of lightening CPU load in spinlocks.
@@ -56,5 +57,5 @@ pub fn interrupts_enabled() -> bool {
 
 /// Returns the current timestamp.
 pub fn get_current_timestamp() -> Timestamp {
-    Timestamp::from_milliseconds(unsafe { CLOCK })
+    Timestamp::from_duration(unsafe { CLOCK })
 }

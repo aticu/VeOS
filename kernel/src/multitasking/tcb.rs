@@ -5,6 +5,7 @@ use super::{ProcessID, Stack, ThreadID, PCB, PROCESS_LIST};
 use arch::Context;
 use core::cmp::Ordering;
 use core::fmt;
+use core::time::Duration;
 use memory::{VirtualAddress, KERNEL_STACK_AREA_BASE, KERNEL_STACK_MAX_SIZE, KERNEL_STACK_OFFSET,
              USER_STACK_AREA_BASE, USER_STACK_MAX_SIZE, USER_STACK_OFFSET};
 use sync::time::Timestamp;
@@ -17,6 +18,8 @@ pub enum ThreadState {
     /// The thread is ready to run.
     Ready,
     /// The thread is sleeping for a specified amount of time.
+    /// 
+    /// The timestamp corresponds to the time the thread should wake up.
     Sleeping(Timestamp),
     /// The thread is dead.
     Dead
@@ -220,6 +223,11 @@ impl TCB {
     pub fn kill(&mut self) {
         self.state = ThreadState::Dead;
     }
+
+    /// Returns the time quantum this process should run.
+    pub fn get_quantum(&self) -> Duration {
+        Duration::from_millis(150)
+    }
 }
 
 /// A TCB that is sorted by its sleep time (shortest first).
@@ -227,7 +235,7 @@ pub struct SleepTimeSortedTCB(pub TCB);
 
 impl SleepTimeSortedTCB {
     /// Returns the sleep time for this TCB.
-    pub fn get_sleep_time(&self) -> Timestamp {
+    pub fn get_wake_time(&self) -> Timestamp {
         match self.0.state {
             ThreadState::Sleeping(time) => time,
             _ => unreachable!()
@@ -237,7 +245,7 @@ impl SleepTimeSortedTCB {
 
 impl PartialEq for SleepTimeSortedTCB {
     fn eq(&self, other: &SleepTimeSortedTCB) -> bool {
-        self.get_sleep_time() == other.get_sleep_time()
+        self.get_wake_time() == other.get_wake_time()
     }
 }
 
@@ -245,7 +253,7 @@ impl Eq for SleepTimeSortedTCB {}
 
 impl Ord for SleepTimeSortedTCB {
     fn cmp(&self, other: &SleepTimeSortedTCB) -> Ordering {
-        other.get_sleep_time().cmp(&self.get_sleep_time())
+        other.get_wake_time().cmp(&self.get_wake_time())
     }
 }
 

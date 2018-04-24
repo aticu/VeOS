@@ -5,6 +5,7 @@ pub mod lapic;
 
 pub use self::lapic::issue_self_interrupt;
 use super::sync::CLOCK;
+use core::time::Duration;
 use memory::{Address, VirtualAddress};
 use multitasking::scheduler::schedule_next_thread;
 use sync::Mutex;
@@ -76,8 +77,6 @@ pub fn init() {
     ioapic::init();
 
     lapic::calibrate_timer();
-
-    lapic::set_periodic_timer(150);
 }
 
 macro_rules! irq_interrupt {
@@ -157,9 +156,6 @@ extern "x86-interrupt" fn empty_handler(_: &mut ExceptionStackFrame) {}
 irq_interrupt!(
 /// The handler for the lapic timer interrupt.
 fn timer_handler {
-    unsafe {
-        CLOCK += 150;
-    }
     ::interrupts::timer_interrupt();
 });
 
@@ -168,6 +164,8 @@ irq_interrupt!(
 fn irq8_handler {
     unsafe {
         *IRQ8_INTERRUPT_TICKS.lock() += 1;
+        // TODO: Find a better time source, that isn't relying on interrupts.
+        CLOCK += Duration::new(0, 1_000_000_000 / 1024);
 
         // Read status register c of the RTC to signal the end of an interrupt.
         let nmi_bit = inb(0x70) & 0x80;

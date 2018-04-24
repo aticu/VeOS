@@ -168,6 +168,7 @@ macro_rules! export_arch {
         pub use self::$name::Context;
         pub use self::$name::STACK_TYPE;
         pub use self::$name::KERNEL_LOGGER;
+        pub use self::$name::interrupt_in;
 
         pub use self::$name::sync::cpu_halt;
         pub use self::$name::sync::cpu_relax;

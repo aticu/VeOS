@@ -90,7 +90,7 @@ pub fn init() {
     lint1_register.set_trigger_mode(EDGE_SENSITIVE);
 
     let mut timer_register = LVTRegister::new();
-    timer_register.set_timer_mode(PERIODIC_TIMER_MODE);
+    timer_register.set_timer_mode(ONE_SHOT_TIMER_MODE);
     timer_register.set_vector(TIMER_INTERRUPT_HANDLER_NUM);
 
     unsafe {
@@ -170,10 +170,6 @@ pub fn calibrate_timer() {
 
         TICKS_PER_MS = timer_ticks_passed / measure_accuracy_in_ms as u32;
 
-        // Disable RTC interrupts after we're done.
-        outb(0x70, 0x8b);
-        outb(0x71, previous_b);
-
         // Restore the NMI state.
         outb(0x70, nmi_bit);
     }
@@ -187,7 +183,7 @@ pub fn signal_eoi() {
 }
 
 /// Sets the periodic lapic timer to the specified delay in milliseconds.
-pub fn set_periodic_timer(delay: u32) {
+pub fn set_timer(delay: u32) {
     unsafe {
         set_register(TIMER_INITIAL_COUNT, delay * TICKS_PER_MS);
     }

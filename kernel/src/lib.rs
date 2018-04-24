@@ -123,8 +123,8 @@ pub extern "C" fn main(magic_number: u32, information_structure_address: usize) 
 #[lang = "panic_fmt"]
 #[no_mangle]
 pub extern "C" fn panic_fmt(fmt: core::fmt::Arguments, file: &'static str, line: u32) -> ! {
-    error!("PANIC! in file '{}' at line {}:", file, line);
     error!("{}", fmt);
+    info!("Panic in file '{}:{}'.", file, line);
     unsafe {
         sync::disable_preemption();
     }

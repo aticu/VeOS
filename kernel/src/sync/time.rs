@@ -2,6 +2,7 @@
 
 use arch::get_current_timestamp;
 use core::fmt;
+use core::ops;
 use core::time::Duration;
 
 /// Represents a timestamp within the kernel.
@@ -22,11 +23,18 @@ impl fmt::Display for Timestamp {
     }
 }
 
+impl ops::Sub for Timestamp {
+    type Output = Duration;
+
+    fn sub(self, rhs: Timestamp) -> Self::Output {
+        self.0 - rhs.0
+    }
+}
+
 impl Timestamp {
-    /// Returns a new time stamp with the offset of the given amount of
-    /// milliseconds.
-    pub fn from_milliseconds(time: u64) -> Timestamp {
-        Timestamp(Duration::from_millis(time))
+    /// Returns a new `Timestamp` corresponding to the `duration` since boot.
+    pub fn from_duration(duration: Duration) -> Timestamp {
+        Timestamp(duration)
     }
 
     /// Returns the current time stamp.
@@ -39,5 +47,10 @@ impl Timestamp {
         self.0
             .checked_add(duration)
             .map(|new_duration| Timestamp(new_duration))
+    }
+
+    /// Tries to perform a subtraction and returns the result if successful.
+    pub fn checked_sub(self, other: Timestamp) -> Option<Duration> {
+        self.0.checked_sub(other.0)
     }
 }

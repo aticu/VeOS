@@ -20,6 +20,7 @@ use self::serial::SerialPort;
 use super::Architecture;
 use core::fmt;
 use core::fmt::Write;
+use core::time::Duration;
 use log::{Log, Level, Metadata, Record};
 use memory::{Address, MemoryArea, PageFlags, PhysicalAddress, VirtualAddress};
 use multitasking::{StackType, CURRENT_THREAD};
@@ -293,6 +294,15 @@ pub unsafe fn enter_first_thread() -> ! {
           ret"
           : : "r"(stack_pointer) : : "intel", "volatile");
     unreachable!();
+}
+
+/// Sets an interrupt for the specified offset from now.
+pub fn interrupt_in(duration: Duration) {
+    let mut sleep_duration = duration.subsec_millis();
+    let second_part = duration.as_secs().saturating_mul(1000);
+    sleep_duration = sleep_duration.saturating_add(second_part as u32);
+
+    interrupts::lapic::set_timer(sleep_duration);
 }
 
 /// This function starts a scheduling operation.
