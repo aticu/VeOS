@@ -1,10 +1,10 @@
 //! Provides an interface for a linked list allocator.
 
 use super::align;
-use arch::PAGE_SIZE;
+use arch::{self, Architecture};
 use core::fmt;
 use core::mem::{align_of, size_of};
-use memory::{map_page, unmap_page, Address, VirtualAddress, READABLE, WRITABLE};
+use memory::{Address, MemoryArea, VirtualAddress, PAGE_SIZE, READABLE, WRITABLE};
 
 /// The linked list allocator interface.
 pub struct LinkedListAllocator {
@@ -111,7 +111,7 @@ impl Node {
 
         // Map all the necessary pages.
         while next_node_start + size_of::<Node>() > *end_address {
-            map_page(*end_address, READABLE | WRITABLE);
+            arch::Current::map_page(*end_address, READABLE | WRITABLE);
             *end_address = (*end_address) + PAGE_SIZE;
         }
 
@@ -170,7 +170,7 @@ impl Node {
                 while (*end_address) - PAGE_SIZE > last_address {
                     *end_address -= PAGE_SIZE;
                     unsafe {
-                        unmap_page(*end_address);
+                        arch::Current::unmap_page(*end_address);
                     }
                 }
             }
@@ -225,19 +225,19 @@ impl<'a> IntoIterator for &'a mut LinkedListAllocator {
 
 impl LinkedListAllocator {
     /// Creates a new linked list allocator.
-    pub fn new(start_address: VirtualAddress, max_address: VirtualAddress) -> LinkedListAllocator {
+    pub fn new(managed_area: MemoryArea<VirtualAddress>) -> LinkedListAllocator {
         assert_has_not_been_called!("There should only be one linked list allocator.");
-        map_page(start_address, READABLE | WRITABLE);
+        arch::Current::map_page(managed_area.start_address(), READABLE | WRITABLE);
 
-        let first_node: &mut Node = unsafe { &mut *(start_address.as_mut_ptr()) };
+        let first_node: &mut Node = unsafe { &mut *(managed_area.start_address().as_mut_ptr()) };
 
         first_node.used = false;
         first_node.next_node = None;
 
         LinkedListAllocator {
-            max_address,
+            max_address: managed_area.end_address(),
             first_node,
-            end_address: start_address + PAGE_SIZE
+            end_address: managed_area.start_address() + PAGE_SIZE
         }
     }
 

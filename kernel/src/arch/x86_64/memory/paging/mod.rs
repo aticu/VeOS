@@ -20,10 +20,13 @@ use memory::{Address, PageFlags, PhysicalAddress, VirtualAddress};
 pub fn init(initramfs_area: MemoryArea<PhysicalAddress>) {
     assert_has_not_been_called!("The x86_64 paging module should only be initialized once.");
 
+    debug!("Initializing the free list...");
     free_list::init();
 
+    debug!("Remapping the kernel...");
     unsafe { remap_kernel() };
 
+    debug!("Mapping the initramfs...");
     unsafe { map_initramfs(initramfs_area) };
 }
 

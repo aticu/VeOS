@@ -4,12 +4,9 @@
 //! They should instead
 //! be called by the architecture specific interrupt handlers.
 
-use arch::schedule;
-use core::time::Duration;
+use arch::{self, Architecture, schedule};
 use memory::VirtualAddress;
-use multitasking::scheduler::{READY_LIST, SLEEPING_LIST};
 use multitasking::CURRENT_THREAD;
-use sync::time::Timestamp;
 
 /// The timer interrupt handler for the system.
 pub fn timer_interrupt() {
@@ -35,6 +32,6 @@ pub fn page_fault_handler(address: VirtualAddress, program_counter: VirtualAddre
         current_thread.pid, current_thread.id, address, program_counter
     );
 
-    error!("Page flags: {:?}", ::memory::get_page_flags(address));
+    error!("Page flags: {:?}", arch::Current::get_page_flags(address));
     loop {}
 }

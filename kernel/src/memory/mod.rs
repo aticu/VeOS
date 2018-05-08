@@ -4,21 +4,19 @@ pub mod address_space;
 pub mod address_space_manager;
 pub mod allocator;
 
-pub use arch::get_kernel_area;
-pub use arch::get_page_flags;
-pub use arch::is_userspace_address;
-pub use arch::map_page;
-pub use arch::unmap_page;
 pub use arch::KERNEL_STACK_AREA_BASE;
 pub use arch::KERNEL_STACK_MAX_SIZE;
 pub use arch::KERNEL_STACK_OFFSET;
-pub use arch::PAGE_SIZE;
 pub use arch::USER_STACK_AREA_BASE;
 pub use arch::USER_STACK_MAX_SIZE;
 pub use arch::USER_STACK_OFFSET;
 
+use arch::{self, Architecture};
 use core::fmt;
 use core::ops::{Add, AddAssign, Sub, SubAssign};
+
+/// Represents the current page size.
+pub const PAGE_SIZE: usize = arch::Current::PAGE_SIZE;
 
 /// Represents something that can act like an address.
 pub trait Address: PartialOrd + Ord + Add<usize, Output = Self> + Sized + Clone + Copy {
@@ -321,7 +319,7 @@ bitflags! {
 pub fn init() {
     assert_has_not_been_called!("Memory state should only be initialized once.");
 
-    ::arch::memory_init();
+    arch::Current::memory_init();
 }
 
 /// This function gets called when the system is out of memory.

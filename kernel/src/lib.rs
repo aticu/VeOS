@@ -55,6 +55,7 @@ mod syscalls;
 /// The name of the operating system.
 static OS_NAME: &'static str = "VeOS";
 
+use arch::Architecture;
 use memory::allocator::Allocator;
 
 /// Sets the current log level for the kernel.
@@ -79,11 +80,10 @@ pub extern "C" fn main(magic_number: u32, information_structure_address: usize) 
         sync::disable_preemption();
     }
 
-    // Ignore the result. If the logger fails to be initialized, logging won't work.
-    match log::set_logger(&arch::KERNEL_LOGGER) { _ => () }
+    arch::Current::init_logger();
     log::set_max_level(LOG_LEVEL);
 
-    arch::early_init();
+    arch::Current::early_init();
     boot::init(magic_number, information_structure_address);
     io::init();
     info!(
@@ -92,7 +92,7 @@ pub extern "C" fn main(magic_number: u32, information_structure_address: usize) 
         boot::get_bootloader_name()
     );
     memory::init();
-    arch::init();
+    arch::Current::init();
 
     let extended_info = raw_cpuid::CpuId::new().get_extended_function_info();
     let unwrapped_info = extended_info.unwrap();
@@ -102,13 +102,13 @@ pub extern "C" fn main(magic_number: u32, information_structure_address: usize) 
     );
     info!(
         "The available amount of memory is {}MiB.",
-        arch::get_free_memory_size() / 1024 / 1024
+        arch::Current::get_free_memory_size() / 1024 / 1024
     );
 
     elf::process_from_initramfs_file("/bin/init").expect("Initprocess could not be loaded");
 
     unsafe {
-        arch::enter_first_thread();
+        arch::Current::enter_first_thread();
     }
 }
 
@@ -133,4 +133,11 @@ pub extern "C" fn panic_fmt(fmt: core::fmt::Arguments, file: &'static str, line:
             sync::cpu_halt();
         }
     }
+}
+
+/// This is the required out of memory handler.
+#[lang = "oom"]
+#[no_mangle]
+pub extern "C" fn __rust_oom(_err: *const u8) -> ! {
+    unimplemented!()
 }

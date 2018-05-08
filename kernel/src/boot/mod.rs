@@ -4,8 +4,8 @@ mod multiboot;
 mod multiboot2;
 
 #[cfg(target_arch = "x86_64")]
-use arch::vga_buffer;
-use memory::{get_kernel_area, Address, MemoryArea, PhysicalAddress, PAGE_SIZE};
+use arch::{self, Architecture, vga_buffer};
+use memory::{Address, MemoryArea, PhysicalAddress, PAGE_SIZE};
 
 /// Lists possiblities for boot sources.
 enum BootMethod {
@@ -44,7 +44,7 @@ pub struct MemoryMapIterator {
 impl MemoryMapIterator {
     /// Creates a new memory map iterator.
     fn new() -> MemoryMapIterator {
-        let kernel_area = get_kernel_area();
+        let kernel_area = arch::Current::get_kernel_area();
         let initramfs_area = initramfs();
 
         let to_exclude = if kernel_area.start_address() <= initramfs_area.start_address() {

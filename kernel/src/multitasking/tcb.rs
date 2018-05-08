@@ -2,7 +2,7 @@
 
 use super::stack::AccessType;
 use super::{ProcessID, Stack, ThreadID, PCB, PROCESS_LIST};
-use arch::Context;
+use arch::{self, Architecture};
 use core::cmp::Ordering;
 use core::fmt;
 use core::time::Duration;
@@ -40,7 +40,7 @@ pub struct TCB {
     /// The priority of the thread.
     pub priority: i32,
     /// The architecture specific context of this thread.
-    pub context: Context
+    pub context: <arch::Current as Architecture>::Context
 }
 
 impl fmt::Debug for TCB {
@@ -142,7 +142,7 @@ impl TCB {
             user_stack,
             state: ThreadState::Ready,
             priority: 1,
-            context: Context::new(
+            context: <<arch::Current as Architecture>::Context as arch::Context>::new(
                 pc,
                 stack_pointer,
                 kernel_stack_pointer,
@@ -184,7 +184,7 @@ impl TCB {
             ),
             state: ThreadState::Ready,
             priority: i32::min_value(),
-            context: Context::idle_context(stack_pointer)
+            context: <<arch::Current as Architecture>::Context as arch::Context>::idle(stack_pointer)
         }
     }
 

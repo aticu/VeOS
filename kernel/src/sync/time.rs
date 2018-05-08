@@ -1,6 +1,6 @@
 //! Handles time related functionality.
 
-use arch::get_current_timestamp;
+use arch::{self, Architecture};
 use core::fmt;
 use core::ops;
 use core::time::Duration;
@@ -39,7 +39,7 @@ impl Timestamp {
 
     /// Returns the current time stamp.
     pub fn get_current() -> Timestamp {
-        get_current_timestamp()
+        arch::Current::get_current_timestamp()
     }
 
     /// Offsets the time stamp by the given amount.

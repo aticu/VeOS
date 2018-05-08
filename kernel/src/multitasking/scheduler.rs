@@ -3,9 +3,7 @@
 use super::tcb::SleepTimeSortedTCB;
 use super::{ThreadState, TCB};
 use alloc::binary_heap::BinaryHeap;
-use arch::schedule;
-use arch::switch_context;
-use arch::interrupt_in;
+use arch::{self, Architecture, schedule};
 use core::mem::swap;
 use sync::Mutex;
 use sync::{disable_preemption, enable_preemption, restore_preemption_state};
@@ -80,7 +78,7 @@ pub unsafe fn schedule_next_thread() {
         CURRENT_THREAD.lock().set_running();
 
         // This is where the actual switch happens.
-        switch_context(
+        arch::Current::switch_context(
             &mut OLD_THREAD.as_mut().as_mut().unwrap().context,
             &CURRENT_THREAD.without_locking().context
         );
@@ -108,7 +106,7 @@ pub fn after_context_switch() {
             return_old_thread_to_queue(old_thread);
         }
     }
-    interrupt_in(CURRENT_THREAD.lock().get_quantum());
+    arch::Current::interrupt_in(CURRENT_THREAD.lock().get_quantum());
 }
 
 /// Returns the old thread to the corresponding queue after switching the
@@ -164,7 +162,7 @@ pub fn idle() -> ! {
                     let current_time = Timestamp::get_current();
                     let wake_time = next_wake_thread.get_wake_time();
                     if let Some(sleep_duration) = wake_time.checked_sub(current_time) {
-                        interrupt_in(sleep_duration);
+                        arch::Current::interrupt_in(sleep_duration);
                     } else {
                         schedule();
                     }

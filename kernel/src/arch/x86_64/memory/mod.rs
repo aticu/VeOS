@@ -5,8 +5,6 @@ use memory::{Address, MemoryArea, PageFlags, PhysicalAddress, VirtualAddress};
 pub mod address_space_manager;
 mod paging;
 
-pub use self::address_space_manager::idle_address_space_manager;
-pub use self::address_space_manager::new_address_space_manager;
 pub use self::paging::get_free_memory_size;
 
 /// The maximum address of the lower part of the virtual address space.

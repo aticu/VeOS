@@ -12,7 +12,7 @@ pub use self::scheduler::CURRENT_THREAD;
 pub use self::stack::{Stack, StackType};
 pub use self::tcb::{ThreadState, TCB};
 use alloc::btree_map::BTreeMap;
-pub use arch::{get_cpu_id, get_cpu_num};
+use arch::{self, Architecture};
 use memory::address_space::AddressSpace;
 use memory::VirtualAddress;
 use sync::mutex::MutexGuard;
@@ -62,4 +62,14 @@ pub fn create_process(address_space: AddressSpace, entry_address: VirtualAddress
     );
 
     id
+}
+
+/// Returns the id of the current cpu.
+pub fn get_cpu_id() -> usize {
+    arch::Current::get_cpu_id()
+}
+
+/// Returns the number of available cpus.
+pub fn get_cpu_num() -> usize {
+    arch::Current::get_cpu_num()
 }

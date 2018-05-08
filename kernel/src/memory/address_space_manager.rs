@@ -5,6 +5,12 @@ use super::{MemoryArea, PAGE_SIZE, PageFlags, PhysicalAddress, VirtualAddress};
 /// This trait should be implemented by any architecture specific address space
 /// manager.
 pub trait AddressSpaceManager: Send {
+    /// Creates a new address space manager.
+    fn new() -> Self;
+
+    /// Creates a new address space manager for the idle process.
+    fn idle() -> Self;
+
     /// Writes the data in `buffer` to the `address` in the target address
     /// space setting the given flags.
     fn write_to(&mut self, buffer: &[u8], address: VirtualAddress, flags: PageFlags);

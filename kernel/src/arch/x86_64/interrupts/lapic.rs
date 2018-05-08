@@ -131,6 +131,8 @@ pub fn init() {
 pub fn calibrate_timer() {
     let measure_accuracy_in_ms = 125;
 
+    debug!("Calibrating the LAPIC timer for {}ms...", measure_accuracy_in_ms);
+
     // Use the RTC to calibrate the LAPIC timer.
     unsafe {
         // Save the NMI enable state to restore it later.
@@ -172,6 +174,8 @@ pub fn calibrate_timer() {
 
         // Restore the NMI state.
         outb(0x70, nmi_bit);
+
+        debug!("Timer calibrated to have {} ticks per ms.", TICKS_PER_MS);
     }
 }
 

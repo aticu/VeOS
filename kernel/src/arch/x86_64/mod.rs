@@ -21,7 +21,7 @@ use super::Architecture;
 use core::fmt;
 use core::fmt::Write;
 use core::time::Duration;
-use log::{Log, Level, Metadata, Record};
+use log::{Log, Level, Metadata, Record, set_logger};
 use memory::{Address, MemoryArea, PageFlags, PhysicalAddress, VirtualAddress};
 use multitasking::{StackType, CURRENT_THREAD};
 use raw_cpuid::CpuId;
@@ -83,16 +83,28 @@ impl Architecture for X86_64 {
     }
 
     fn init() {
-        assert_has_not_been_called!(
-            "x86_64 specific initialization code should only be called once."
-        );
+        assert_has_not_been_called!("x86_64 specific initialization code should only be called once.");
 
+        debug!("Initializing the GTD...");
         unsafe {
             GDT.load();
         }
 
+        debug!("Initializing the syscall interface...");
         syscalls::init();
+
+        debug!("Initializing interrupts...");
         interrupts::init();
+    }
+
+    fn init_io() {
+        vga_buffer::init();
+        COM1.lock().init();
+    }
+
+    fn init_logger() {
+        // Ignore the result. If the logger fails to be initialized, logging won't work.
+        match set_logger(&KERNEL_LOGGER) { _ => () }
     }
 
     fn get_cpu_num() -> usize {
@@ -109,11 +121,11 @@ impl Architecture for X86_64 {
             .initial_local_apic_id() as usize
     }
 
-    fn schedule() {
+    fn invoke_scheduler() {
         issue_self_interrupt(SCHEDULE_INTERRUPT_NUM);
     }
 
-    unsafe fn enter_first_thread() {
+    unsafe fn enter_first_thread() -> ! {
         let stack_pointer = CURRENT_THREAD
             .without_locking()
             .context
@@ -135,6 +147,7 @@ impl Architecture for X86_64 {
         sync::cpu_halt()
     }
 
+    #[inline(always)]
     fn get_interrupt_state() -> bool {
         sync::interrupts_enabled()
     }
@@ -153,8 +166,24 @@ impl Architecture for X86_64 {
         sync::get_current_timestamp()
     }
 
+    fn interrupt_in(duration: Duration) {
+        // TODO: allow more fine grained sleeps than milliseconds
+        let mut sleep_duration = duration.subsec_millis();
+        let second_part = duration.as_secs().saturating_mul(1000);
+        sleep_duration = sleep_duration.saturating_add(second_part as u32);
+
+        // FIXME: This doesn't work, as long as the clock source is relying on interrupts.
+
+        interrupts::lapic::set_timer(sleep_duration);
+    }
+
+    #[inline(always)]
     unsafe fn switch_context(old_context: &mut Context, new_context: &Context) {
         context::switch_context(old_context, new_context)
+    }
+
+    fn get_free_memory_size() -> usize {
+        memory::get_free_memory_size()
     }
 
     fn map_page(page_address: VirtualAddress, flags: PageFlags) {
@@ -197,118 +226,8 @@ impl Architecture for X86_64 {
     }
 }
 
-/// The stack type used for the x86_64 architecture.
-pub const STACK_TYPE: StackType = StackType::FullDescending;
-
 /// The COM1 serial port.
 pub static COM1: Mutex<SerialPort> = Mutex::new(SerialPort::new(0x3f8));
-
-/// Initializes the machine state for the x86_64 architecture to a bare minimum.
-pub fn early_init() {
-    assert_has_not_been_called!("Early x86_64 specific initialization should only be called once.");
-
-    let cpuid = CpuId::new();
-    let mut supported = true;
-
-    if let Some(features) = cpuid.get_feature_info() {
-        supported &= features.has_apic();
-    } else {
-        supported = false;
-    }
-
-    if let Some(function_info) = cpuid.get_extended_function_info() {
-        supported &= function_info.has_syscall_sysret();
-        supported &= function_info.has_execute_disable();
-    } else {
-        supported = false;
-    }
-
-    if !supported {
-        panic!("Your hardware unfortunately does not supported VeOS.");
-    }
-
-    unsafe {
-        // Enable syscall/sysret instructions and the NXE bit in the page table.
-        wrmsr(msr::IA32_EFER, rdmsr(msr::IA32_EFER) | 1 << 11 | 1);
-
-        // Enable global pages.
-        let cr4_flags = control_regs::cr4() | control_regs::Cr4::ENABLE_GLOBAL_PAGES;
-        control_regs::cr4_write(cr4_flags);
-
-        // Enable read only pages.
-        let cr0_flags = control_regs::cr0() | control_regs::Cr0::WRITE_PROTECT;
-        control_regs::cr0_write(cr0_flags);
-    }
-}
-
-/// Initializes the machine state for the x86_64 architecture to the final
-/// state.
-pub fn init() {
-    assert_has_not_been_called!("x86_64 specific initialization code should only be called once.");
-
-    debug!("Initializing the GTD...");
-    unsafe {
-        GDT.load();
-    }
-
-    debug!("Initializing the syscall interface...");
-    syscalls::init();
-
-    debug!("Initializing interrupts...");
-    interrupts::init();
-}
-
-/// Initializes the IO of the x86_64 architecture.
-pub fn init_io() {
-    vga_buffer::init();
-    COM1.lock().init();
-}
-
-/// Returns the ID of the currently running CPU.
-pub fn get_cpu_id() -> usize {
-    CpuId::new()
-        .get_feature_info()
-        .unwrap()
-        .initial_local_apic_id() as usize
-}
-
-/// Returns the number of addressable CPUs.
-pub fn get_cpu_num() -> usize {
-    CpuId::new()
-        .get_feature_info()
-        .unwrap()
-        .max_logical_processor_ids() as usize
-}
-
-/// This is called once per processor to enter the first user mode thread.
-///
-/// # Safety
-/// - This should only be called once.
-pub unsafe fn enter_first_thread() -> ! {
-    let stack_pointer = CURRENT_THREAD
-        .without_locking()
-        .context
-        .kernel_stack_pointer;
-    TSS.as_mut().privilege_stack_table[0] = ::x86_64::VirtualAddress(stack_pointer.as_usize());
-    asm!("mov rsp, $0
-          ret"
-          : : "r"(stack_pointer) : : "intel", "volatile");
-    unreachable!();
-}
-
-/// Sets an interrupt for the specified offset from now.
-pub fn interrupt_in(duration: Duration) {
-    let mut sleep_duration = duration.subsec_millis();
-    let second_part = duration.as_secs().saturating_mul(1000);
-    sleep_duration = sleep_duration.saturating_add(second_part as u32);
-
-    interrupts::lapic::set_timer(sleep_duration);
-}
-
-/// This function starts a scheduling operation.
-pub fn schedule() {
-    issue_self_interrupt(SCHEDULE_INTERRUPT_NUM);
-}
 
 /// The type of the logger for the kernel.
 pub struct KernelLogger;

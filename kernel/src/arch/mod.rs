@@ -3,11 +3,13 @@
 //! The job of this module is to have submodules for each architecture and to
 //! provide interfaces to them.
 
+use core::time::Duration;
 use memory::{MemoryArea, PageFlags, PhysicalAddress, VirtualAddress};
+use memory::address_space::AddressSpace;
 use multitasking::stack::StackType;
 use sync::time::Timestamp;
 
-trait Architecture {
+pub trait Architecture {
     /// This type is supposed to manage address spaces for the architecture.
     ///
     /// For more details see the `::memory::address_space::AddressSpaceManager`
@@ -36,6 +38,12 @@ trait Architecture {
     /// memory.
     fn init();
 
+    /// This initializes the IO on the target architecture.
+    fn init_io();
+
+    /// This initializes the kernel logger.
+    fn init_logger();
+
     /// Returns the number of CPUs available.
     ///
     /// A CPU is anything that can run processes.
@@ -49,7 +57,7 @@ trait Architecture {
     /// This function changes the currently running thread on the current CPU
     /// to the thread that should be run next on said CPU (which could be the
     /// same).
-    fn schedule();
+    fn invoke_scheduler();
 
     /// This function enters user mode for the first time.
     ///
@@ -58,7 +66,7 @@ trait Architecture {
     ///
     /// # Safety
     /// - This function should only be called once (per CPU).
-    unsafe fn enter_first_thread();
+    unsafe fn enter_first_thread() -> !;
 
     /// This function saves power while waiting for resources.
     fn cpu_relax();
@@ -95,6 +103,9 @@ trait Architecture {
     /// Returns the current timestamp.
     fn get_current_timestamp() -> Timestamp;
 
+    /// Sets a timer to enable an interrupt in the given amount of time.
+    fn interrupt_in(Duration);
+
     /// Switches the execution context and saves the current one.
     ///
     /// `old_context` is where the current context is saved to and
@@ -104,7 +115,10 @@ trait Architecture {
     /// - To make sure that everything is properly cleaned up after switching
     /// the context, this should only be called by the scheduler.
     /// - Make sure preemption is disabled while calling this.
-    unsafe fn switch_context(old_context: &mut Context, new_context: &Context);
+    unsafe fn switch_context(old_context: &mut Self::Context, new_context: &Self::Context);
+
+    /// Returns the size of usable free memory in bytes.
+    fn get_free_memory_size() -> usize;
 
     /// Maps the page that contains the given address and the given flags.
     // TODO: Move this into the AddressSpaceManager?
@@ -131,12 +145,6 @@ trait Architecture {
     /// The memory area where the heap is located.
     const HEAP_AREA: MemoryArea<VirtualAddress>;
 
-    //TODO: user stacks
-    //TODO: get memory information
-
-    //pub use self::$name::memory::new_address_space_manager;
-    //pub use self::$name::memory::idle_address_space_manager;
-
     /// Writes the formatted arguments.
     ///
     /// This takes arguments as dictated by `core::fmt` and prints them to the
@@ -149,61 +157,44 @@ trait Architecture {
     /// - Don't use this function directly, rather use the sync module.
     unsafe fn set_interrupt_state(state: bool) {
         if state {
-            enable_interrupts();
+            Self::enable_interrupts();
         } else {
-            disable_interrupts();
+            Self::disable_interrupts();
         }
     }
 }
 
+/// Represents an architecture specific context.
+pub trait Context {
+    /// Creates a new context.
+    fn new(
+        function: VirtualAddress,
+        stack_pointer: VirtualAddress,
+        kernel_stack_pointer: VirtualAddress,
+        address_space: &mut AddressSpace,
+        arg1: usize,
+        arg2: usize,
+        arg3: usize,
+        arg4: usize,
+        arg5: usize) -> Self;
+
+    /// Creates a new context for an idle thread.
+    fn idle(stack_pointer: VirtualAddress) -> Self;
+}
+
 macro_rules! export_arch {
     ($name:ident) => {
-        pub use self::$name::early_init;
-        pub use self::$name::enter_first_thread;
-        pub use self::$name::get_cpu_id;
-        pub use self::$name::get_cpu_num;
-        pub use self::$name::init;
-        pub use self::$name::init_io;
-        pub use self::$name::schedule;
-        pub use self::$name::Context;
-        pub use self::$name::STACK_TYPE;
-        pub use self::$name::KERNEL_LOGGER;
-        pub use self::$name::interrupt_in;
-
-        pub use self::$name::sync::cpu_halt;
-        pub use self::$name::sync::cpu_relax;
-        pub use self::$name::sync::disable_interrupts;
-        pub use self::$name::sync::enable_interrupts;
-        pub use self::$name::sync::get_current_timestamp;
-        pub use self::$name::sync::interrupts_enabled;
-
-        pub use self::$name::memory::get_free_memory_size;
-        pub use self::$name::memory::get_initramfs_area;
-        pub use self::$name::memory::get_kernel_area;
-        pub use self::$name::memory::get_page_flags;
-        pub use self::$name::memory::init as memory_init;
-        pub use self::$name::memory::is_userspace_address;
-        pub use self::$name::memory::map_page;
-        pub use self::$name::memory::unmap_page;
-        pub use self::$name::memory::HEAP_MAX_SIZE;
-        pub use self::$name::memory::HEAP_START;
         pub use self::$name::memory::KERNEL_STACK_AREA_BASE;
         pub use self::$name::memory::KERNEL_STACK_MAX_SIZE;
         pub use self::$name::memory::KERNEL_STACK_OFFSET;
-        pub use self::$name::memory::PAGE_SIZE;
         pub use self::$name::memory::USER_STACK_AREA_BASE;
         pub use self::$name::memory::USER_STACK_MAX_SIZE;
         pub use self::$name::memory::USER_STACK_OFFSET;
-
-        pub use self::$name::memory::idle_address_space_manager;
-        pub use self::$name::memory::new_address_space_manager;
-
-        pub use self::$name::context::switch_context;
     };
 }
 
 #[cfg(target_arch = "x86_64")]
-const CURRENT_ARCH: x86_64::X86_64 = x86_64::X86_64;
+pub type Current = x86_64::X86_64;
 
 #[cfg(target_arch = "x86_64")]
 export_arch!(x86_64);
@@ -215,25 +206,10 @@ use core::fmt;
 #[cfg(target_arch = "x86_64")]
 mod x86_64;
 
-/// Writes the formatted arguments.
-///
-/// This takes arguments as dictated by `core::fmt` and prints the to the
-/// screen using the printing method relevant for the current architecture.
-pub fn write_fmt(args: fmt::Arguments) {
-    if cfg!(target_arch = "x86_64") {
-        use core::fmt::Write;
-        x86_64::vga_buffer::WRITER.lock().write_fmt(args).unwrap();
-    }
-}
-
-/// Sets the state of being interruptable to the given state.
-///
-/// # Safety
-/// - Don't use this function directly, rather use the sync module.
-pub unsafe fn set_interrupt_state(state: bool) {
-    if state {
-        enable_interrupts();
-    } else {
-        disable_interrupts();
-    }
+/// Invokes the scheduler.
+/// 
+/// This does nothing more than calling the current architecture scheduling function.
+/// The only reason this exists is for convenience.
+pub fn schedule() {
+    Current::invoke_scheduler()
 }

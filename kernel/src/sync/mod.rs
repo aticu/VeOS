@@ -4,7 +4,7 @@ pub mod mutex;
 pub mod time;
 
 pub use self::mutex::Mutex;
-use arch;
+use arch::{self, Architecture};
 
 /// Saves the state when disabling preemtion, so it can be restored later.
 #[derive(Default)]
@@ -17,7 +17,7 @@ impl PreemptionState {
     /// Reads the current state of preemptability.
     fn current() -> PreemptionState {
         PreemptionState {
-            interrupts_enabled: arch::interrupts_enabled()
+            interrupts_enabled: arch::Current::get_interrupt_state()
         }
     }
 
@@ -31,7 +31,7 @@ impl PreemptionState {
     /// Restores the saved preemption state.
     unsafe fn restore(&self) {
         // TODO: Do this on a drop?
-        arch::set_interrupt_state(self.interrupts_enabled);
+        arch::Current::set_interrupt_state(self.interrupts_enabled);
     }
 
     /// Copies the preemption state.
@@ -48,7 +48,7 @@ impl PreemptionState {
 /// Lightenes CPU load in spin locks.
 #[inline(always)]
 pub fn cpu_relax() {
-    arch::cpu_relax();
+    arch::Current::cpu_relax();
 }
 
 /// Halts the CPU.
@@ -57,7 +57,7 @@ pub fn cpu_relax() {
 /// - If preemption is disabled, the execution can never be returned.
 #[inline(always)]
 pub unsafe fn cpu_halt() {
-    arch::cpu_halt();
+    arch::Current::cpu_halt();
 }
 
 /// Disables preemption and returns the previous state.
@@ -67,7 +67,7 @@ pub unsafe fn cpu_halt() {
 pub unsafe fn disable_preemption() -> PreemptionState {
     let state = PreemptionState::current();
 
-    arch::disable_interrupts();
+    arch::Current::disable_interrupts();
 
     state
 }
@@ -78,7 +78,7 @@ pub unsafe fn disable_preemption() -> PreemptionState {
 /// This should only be done during initialization. Otherwise the preemption
 /// state that was returned by the disable function should be restored.
 pub unsafe fn enable_preemption() {
-    arch::enable_interrupts();
+    arch::Current::enable_interrupts();
 }
 
 /// Reenables preemption to the saved state.

@@ -2,6 +2,7 @@
 
 use super::gdt::{TSS, USER_CODE_SEGMENT, USER_DATA_SEGMENT};
 use super::interrupts::lapic;
+use arch;
 use core::mem::size_of;
 use memory::address_space::AddressSpace;
 use memory::{Address, PhysicalAddress, VirtualAddress};
@@ -19,9 +20,9 @@ pub struct Context {
     page_table_address: PhysicalAddress
 }
 
-impl Context {
+impl arch::Context for Context {
     /// Creates a new context.
-    pub fn new(
+    fn new(
         function: VirtualAddress,
         stack_pointer: VirtualAddress,
         mut kernel_stack_pointer: VirtualAddress,
@@ -63,7 +64,7 @@ impl Context {
     }
 
     /// Creates a context for an idle thread.
-    pub fn idle_context(mut stack_pointer: VirtualAddress) -> Context {
+    fn idle(mut stack_pointer: VirtualAddress) -> Context {
         unsafe {
             set_idle_stack(&mut stack_pointer);
         }

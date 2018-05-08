@@ -1,7 +1,7 @@
 //! This modules is responsible for reading the initramfs.
 
 use alloc::boxed::Box;
-use arch::get_initramfs_area;
+use arch::{self, Architecture};
 use core::mem::size_of;
 use core::{ptr, slice, str};
 use file_handle::{FileError, FileHandle, Result, SeekFrom};
@@ -124,7 +124,7 @@ impl Iterator for FileIterator {
     type Item = FileMetadata;
 
     fn next(&mut self) -> Option<FileMetadata> {
-        let area = get_initramfs_area();
+        let area = arch::Current::get_initramfs_area();
         let start = area.start_address();
         let length = area.length();
 
@@ -183,7 +183,7 @@ fn get_file_iterator() -> Result<FileIterator> {
     if !initramfs_valid() {
         Err(FileError::InvalidFilesystem)
     } else {
-        let start = get_initramfs_area().start_address();
+        let start = arch::Current::get_initramfs_area().start_address();
 
         let first_metadata = start + size_of::<[u8; 8]>() + size_of::<u64>();
         let amount_of_files = unsafe { read_u64_big_endian(start + size_of::<[u8; 8]>()) } as usize;
@@ -212,7 +212,7 @@ unsafe fn read_u64_big_endian(address: VirtualAddress) -> u64 {
 
 /// Checks whether the initramfs is valid.
 fn initramfs_valid() -> bool {
-    let area = get_initramfs_area();
+    let area = arch::Current::get_initramfs_area();
     let start = area.start_address();
     let length = area.length();
 

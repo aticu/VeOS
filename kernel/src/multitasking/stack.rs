@@ -1,11 +1,11 @@
 //! Provides functionality to manage multiple stacks.
 
-use arch::STACK_TYPE;
+use arch::{self, Architecture};
 use core::cmp::{max, min};
 use core::fmt;
 use core::mem::size_of;
 use memory::address_space::{AddressSpace, Segment, SegmentType};
-use memory::{map_page, unmap_page, MemoryArea, VirtualAddress, READABLE, USER_ACCESSIBLE, WRITABLE};
+use memory::{MemoryArea, VirtualAddress, READABLE, USER_ACCESSIBLE, WRITABLE};
 
 // NOTE: For now only full descending stacks are supported.
 /// Represents the different types of stacks that exist.
@@ -69,7 +69,7 @@ impl Stack {
         stack_pointer: &mut VirtualAddress,
         value: T
     ) {
-        match STACK_TYPE {
+        match arch::Current::STACK_TYPE {
             StackType::FullDescending => {
                 *stack_pointer -= size_of::<T>();
                 unsafe {
@@ -88,7 +88,7 @@ impl Stack {
         access_type: AccessType,
         mut address_space: Option<&mut AddressSpace>
     ) -> Stack {
-        let mut stack = match STACK_TYPE {
+        let mut stack = match arch::Current::STACK_TYPE {
             StackType::FullDescending => Stack {
                 top_address: start_address + max_size,
                 bottom_address: start_address + max_size,
@@ -121,7 +121,7 @@ impl Stack {
 
     /// Grows the stack by the given amount.
     pub fn grow(&mut self, amount: usize, mut address_space: Option<&mut AddressSpace>) {
-        match STACK_TYPE {
+        match arch::Current::STACK_TYPE {
             StackType::FullDescending => {
                 let new_bottom = max(
                     self.top_address - self.max_size,
@@ -142,7 +142,7 @@ impl Stack {
                 // TODO: flags shouldn't be passed, it should be segment checked instead.
                 let mut map_fn = |page_address, flags| match address_space {
                     Some(ref mut address_space) => address_space.map_page(page_address),
-                    None => map_page(page_address, flags)
+                    None => arch::Current::map_page(page_address, flags)
                 };
 
                 for page_num in first_page_to_map..last_page_to_map {
@@ -157,7 +157,7 @@ impl Stack {
 
     /// Shrinks the stack by the given amount.
     pub fn shrink(&mut self, amount: usize, mut address_space: Option<&mut AddressSpace>) {
-        match STACK_TYPE {
+        match arch::Current::STACK_TYPE {
             StackType::FullDescending => {
                 let new_bottom = min(self.top_address, self.bottom_address + amount);
 
@@ -169,7 +169,7 @@ impl Stack {
                 let mut unmap_fn = |page_address| unsafe {
                     match address_space {
                         Some(ref mut address_space) => address_space.unmap_page(page_address),
-                        None => unmap_page(page_address)
+                        None => arch::Current::unmap_page(page_address)
                     }
                 };
 

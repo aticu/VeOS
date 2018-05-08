@@ -3,30 +3,30 @@
 mod linked_list_allocator;
 
 use self::linked_list_allocator::LinkedListAllocator;
-use alloc::allocator::{Alloc, AllocErr, Layout};
-use arch::{HEAP_MAX_SIZE, HEAP_START};
+use alloc::allocator::{GlobalAlloc, Layout, Opaque};
+use arch::{self, Architecture};
 use memory::{Address, VirtualAddress};
 use sync::mutex::Mutex;
 
 pub struct Allocator;
 
-unsafe impl<'a> Alloc for &'a Allocator {
+unsafe impl GlobalAlloc for Allocator {
     // TODO: Read more on this trait and possibly make it more efficient.
-    unsafe fn alloc(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
-        Ok(ALLOCATOR
+    unsafe fn alloc(&self, layout: Layout) -> *mut Opaque {
+        ALLOCATOR
             .lock()
-            .allocate_first_fit(layout.size(), layout.align()))
+            .allocate_first_fit(layout.size(), layout.align()) as *mut Opaque
     }
 
-    unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
-        ALLOCATOR.lock().free(ptr, layout.size(), layout.align());
+    unsafe fn dealloc(&self, ptr: *mut Opaque, layout: Layout) {
+        ALLOCATOR.lock().free(ptr as *mut u8, layout.size(), layout.align());
     }
 }
 
 lazy_static! {
     /// The kernel heap allocator.
     static ref ALLOCATOR: Mutex<LinkedListAllocator> =
-        Mutex::new(LinkedListAllocator::new(HEAP_START, HEAP_START + HEAP_MAX_SIZE));
+        Mutex::new(LinkedListAllocator::new(arch::Current::HEAP_AREA));
 }
 
 /// Aligns the given address to the given alignment.

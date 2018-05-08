@@ -2,19 +2,18 @@
 
 use super::address_space_manager::AddressSpaceManager;
 use super::{PageFlags, PhysicalAddress, VirtualAddress};
-use alloc::boxed::Box;
 use alloc::Vec;
-use arch::{idle_address_space_manager, new_address_space_manager};
+use arch::{self, Architecture};
 use core::mem::size_of_val;
 use core::slice;
-use memory::{is_userspace_address, MemoryArea, PAGE_SIZE, USER_ACCESSIBLE};
+use memory::{MemoryArea, PAGE_SIZE, USER_ACCESSIBLE};
 
 /// Represents an address space
 pub struct AddressSpace {
     /// The segments that are part of the address space.
     segments: Vec<Segment>,
     /// The address space manager.
-    manager: Box<AddressSpaceManager> // TODO: Change to the actual address space manager type
+    manager: <arch::Current as Architecture>::AddressSpaceManager
 }
 
 impl Drop for AddressSpace {
@@ -30,7 +29,7 @@ impl AddressSpace {
     pub fn new() -> AddressSpace {
         AddressSpace {
             segments: Vec::new(),
-            manager: new_address_space_manager()
+            manager: <<arch::Current as Architecture>::AddressSpaceManager as AddressSpaceManager>::new()
         }
     }
 
@@ -38,7 +37,7 @@ impl AddressSpace {
     pub fn idle_address_space() -> AddressSpace {
         AddressSpace {
             segments: Vec::new(),
-            manager: idle_address_space_manager()
+            manager: <<arch::Current as Architecture>::AddressSpaceManager as AddressSpaceManager>::idle()
         }
     }
 
@@ -53,8 +52,8 @@ impl AddressSpace {
         }
 
         if segment_to_add.flags.contains(USER_ACCESSIBLE)
-            && !(is_userspace_address(segment_to_add.start_address())
-                && is_userspace_address(segment_to_add.end_address()))
+            && !(arch::Current::is_userspace_address(segment_to_add.start_address())
+                && arch::Current::is_userspace_address(segment_to_add.end_address()))
         {
             false
         } else {
@@ -205,7 +204,7 @@ impl Segment {
     }
 
     /// Unmaps this segment.
-    fn unmap(&self, manager: &mut Box<AddressSpaceManager>) {
+    fn unmap(&self, manager: &mut <arch::Current as Architecture>::AddressSpaceManager) {
         let pages_in_segment = (self.memory_area.length() - 1) / PAGE_SIZE + 1;
         for page_num in 0..pages_in_segment {
             unsafe {
