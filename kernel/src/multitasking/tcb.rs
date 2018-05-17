@@ -6,8 +6,10 @@ use arch::{self, Architecture};
 use core::cmp::Ordering;
 use core::fmt;
 use core::time::Duration;
-use memory::{VirtualAddress, KERNEL_STACK_AREA_BASE, KERNEL_STACK_MAX_SIZE, KERNEL_STACK_OFFSET,
-             USER_STACK_AREA_BASE, USER_STACK_MAX_SIZE, USER_STACK_OFFSET};
+use memory::{
+    VirtualAddress, KERNEL_STACK_AREA_BASE, KERNEL_STACK_MAX_SIZE, KERNEL_STACK_OFFSET,
+    USER_STACK_AREA_BASE, USER_STACK_MAX_SIZE, USER_STACK_OFFSET
+};
 use sync::time::Timestamp;
 
 /// Represents the possible states a thread can have.
@@ -18,7 +20,7 @@ pub enum ThreadState {
     /// The thread is ready to run.
     Ready,
     /// The thread is sleeping for a specified amount of time.
-    /// 
+    ///
     /// The timestamp corresponds to the time the thread should wake up.
     Sleeping(Timestamp),
     /// The thread is dead.
@@ -45,11 +47,15 @@ pub struct TCB {
 
 impl fmt::Debug for TCB {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "Thread <ID: {}, PID: {}> ({:?})",
-            self.id, self.pid, self.state
-        )
+        if self.pid == 0 {
+            write!(f, "Thread <IDLE on CPU {}> ({:?})", self.id, self.state)
+        } else {
+            write!(
+                f,
+                "Thread <ID: {}, PID: {}> ({:?})",
+                self.id, self.pid, self.state
+            )
+        }
     }
 }
 
@@ -184,7 +190,9 @@ impl TCB {
             ),
             state: ThreadState::Ready,
             priority: i32::min_value(),
-            context: <<arch::Current as Architecture>::Context as arch::Context>::idle(stack_pointer)
+            context: <<arch::Current as Architecture>::Context as arch::Context>::idle(
+                stack_pointer
+            )
         }
     }
 

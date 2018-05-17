@@ -6,7 +6,7 @@ use super::paging::page_table_manager::PageTableManager;
 use super::paging::{convert_flags, Page, PageFrame, CURRENT_PAGE_TABLE};
 use super::PAGE_SIZE;
 use core::ptr;
-use memory::{Address, address_space_manager, PageFlags, PhysicalAddress, VirtualAddress};
+use memory::{address_space_manager, Address, PageFlags, PhysicalAddress, VirtualAddress};
 
 pub struct AddressSpaceManager {
     table: InactivePageTable

@@ -4,7 +4,7 @@
 //! They should instead
 //! be called by the architecture specific interrupt handlers.
 
-use arch::{self, Architecture, schedule};
+use arch::{self, schedule, Architecture};
 use memory::VirtualAddress;
 use multitasking::CURRENT_THREAD;
 

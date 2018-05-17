@@ -21,7 +21,6 @@
 //!
 //! The kernel is aiming to be a microkernel.
 
-#[allow(unused_extern_crates)]
 extern crate rlibc;
 extern crate volatile;
 #[macro_use]

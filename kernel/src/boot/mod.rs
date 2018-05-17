@@ -4,7 +4,7 @@ mod multiboot;
 mod multiboot2;
 
 #[cfg(target_arch = "x86_64")]
-use arch::{self, Architecture, vga_buffer};
+use arch::{self, vga_buffer, Architecture};
 use memory::{Address, MemoryArea, PhysicalAddress, PAGE_SIZE};
 
 /// Lists possiblities for boot sources.

@@ -29,7 +29,8 @@ impl AddressSpace {
     pub fn new() -> AddressSpace {
         AddressSpace {
             segments: Vec::new(),
-            manager: <<arch::Current as Architecture>::AddressSpaceManager as AddressSpaceManager>::new()
+            manager:
+                <<arch::Current as Architecture>::AddressSpaceManager as AddressSpaceManager>::new()
         }
     }
 
@@ -37,7 +38,9 @@ impl AddressSpace {
     pub fn idle_address_space() -> AddressSpace {
         AddressSpace {
             segments: Vec::new(),
-            manager: <<arch::Current as Architecture>::AddressSpaceManager as AddressSpaceManager>::idle()
+            manager:
+                <<arch::Current as Architecture>::AddressSpaceManager as AddressSpaceManager>::idle(
+                )
         }
     }
 

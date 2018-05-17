@@ -12,31 +12,27 @@ pub struct SerialPort {
 impl SerialPort {
     /// Creates a new serial port.
     pub const fn new(port: u16) -> SerialPort {
-        SerialPort {
-            port
-        }
+        SerialPort { port }
     }
 
     /// Initializes the serial port.
-    /// 
+    ///
     /// According to the [OS-dev wiki](https://wiki.osdev.org/Serial_ports).
     pub fn init(&mut self) {
         unsafe {
-            outb(self.port + 1, 0x00);    // Disable all interrupts
-            outb(self.port + 3, 0x80);    // Enable DLAB (set baud rate divisor)
-            outb(self.port + 0, 0x03);    // Set divisor to 3 (lo byte) 38400 baud
-            outb(self.port + 1, 0x00);    //                  (hi byte)
-            outb(self.port + 3, 0x03);    // 8 bits, no parity, one stop bit
-            outb(self.port + 2, 0xC7);    // Enable FIFO, clear them, with 14-byte threshold
-            outb(self.port + 4, 0x0B);    // IRQs enabled, RTS/DSR set
+            outb(self.port + 1, 0x00); // Disable all interrupts
+            outb(self.port + 3, 0x80); // Enable DLAB (set baud rate divisor)
+            outb(self.port + 0, 0x03); // Set divisor to 3 (lo byte) 38400 baud
+            outb(self.port + 1, 0x00); //                  (hi byte)
+            outb(self.port + 3, 0x03); // 8 bits, no parity, one stop bit
+            outb(self.port + 2, 0xC7); // Enable FIFO, clear them, with 14-byte threshold
+            outb(self.port + 4, 0x0B); // IRQs enabled, RTS/DSR set
         }
     }
 
     /// Checks if the last trasmission is fully finished.
     fn transmission_ready(&self) -> bool {
-        unsafe {
-            inb(self.port + 5) & 0x20 != 1
-        }
+        unsafe { inb(self.port + 5) & 0x20 != 1 }
     }
 
     /// Transmits a character on the serial port.

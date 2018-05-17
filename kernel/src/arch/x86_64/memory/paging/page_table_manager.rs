@@ -85,7 +85,8 @@ pub trait PageTableManager {
         let preemption_state = {
             let l4 = self.get_l4();
 
-            let l2 = l4.get_next_level_mut(address)
+            let l2 = l4
+                .get_next_level_mut(address)
                 .and_then(|l3| l3.get_next_level_mut(address));
 
             match l2 {
@@ -103,7 +104,8 @@ pub trait PageTableManager {
 
         match preemption_state {
             Some(preemption_state) => Some(Level1TableReference {
-                table: self.get_l4()
+                table: self
+                    .get_l4()
                     .get_next_level_mut(address)
                     .and_then(|l3| l3.get_next_level_mut(address))
                     .unwrap(),
@@ -124,7 +126,8 @@ pub trait PageTableManager {
 
         let table_index = PageTable::<Level2>::table_index(address);
         let preemption_state = {
-            let l2 = self.get_l4()
+            let l2 = self
+                .get_l4()
                 .next_level_and_map(address)
                 .next_level_and_map(address);
             let l2_entry = &mut l2[table_index];
@@ -138,7 +141,8 @@ pub trait PageTableManager {
             .next_level_and_map(address);
 
         Level1TableReference {
-            table: self.get_l4()
+            table: self
+                .get_l4()
                 .next_level_and_map(address)
                 .next_level_and_map(address),
             address,

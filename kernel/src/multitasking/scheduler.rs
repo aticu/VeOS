@@ -3,11 +3,11 @@
 use super::tcb::SleepTimeSortedTCB;
 use super::{ThreadState, TCB};
 use alloc::binary_heap::BinaryHeap;
-use arch::{self, Architecture, schedule};
+use arch::{self, schedule, Architecture};
 use core::mem::swap;
+use sync::time::Timestamp;
 use sync::Mutex;
 use sync::{disable_preemption, enable_preemption, restore_preemption_state};
-use sync::time::Timestamp;
 use x86_64::instructions::halt;
 
 cpu_local! {
@@ -60,7 +60,11 @@ pub unsafe fn schedule_next_thread() {
         // Make sure no locks are held when switching.
         drop(ready_list);
 
-        trace!("Switching from {:?} to {:?}", **CURRENT_THREAD, **OLD_THREAD);
+        trace!(
+            "Switching from {:?} to {:?}",
+            **CURRENT_THREAD,
+            **OLD_THREAD
+        );
 
         // Now swap the references.
         swap(
@@ -127,8 +131,7 @@ fn check_sleeping_processes() {
             let wake_first = {
                 if let Some(first_to_wake) = sleeping_list.peek() {
                     first_to_wake.get_wake_time() <= Timestamp::get_current()
-                }
-                else {
+                } else {
                     false
                 }
             };

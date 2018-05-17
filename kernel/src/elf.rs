@@ -303,9 +303,13 @@ impl Header {
 
     /// Returns true if the file can be executed.
     fn is_executable(&self) -> bool {
-        self.endianness.is_native() && { self.instruction_set }.is_native() && self.abi == 0
-            && self.abi_version == 0 && { self.elf_type } == ElfType::Executable
-            && self.program_header_offset != 0 && self.elf_class.is_native()
+        self.endianness.is_native()
+            && { self.instruction_set }.is_native()
+            && self.abi == 0
+            && self.abi_version == 0
+            && { self.elf_type } == ElfType::Executable
+            && self.program_header_offset != 0
+            && self.elf_class.is_native()
     }
 }
 

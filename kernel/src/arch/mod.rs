@@ -4,8 +4,8 @@
 //! provide interfaces to them.
 
 use core::time::Duration;
-use memory::{MemoryArea, PageFlags, PhysicalAddress, VirtualAddress};
 use memory::address_space::AddressSpace;
+use memory::{MemoryArea, PageFlags, PhysicalAddress, VirtualAddress};
 use multitasking::stack::StackType;
 use sync::time::Timestamp;
 
@@ -176,7 +176,8 @@ pub trait Context {
         arg2: usize,
         arg3: usize,
         arg4: usize,
-        arg5: usize) -> Self;
+        arg5: usize
+    ) -> Self;
 
     /// Creates a new context for an idle thread.
     fn idle(stack_pointer: VirtualAddress) -> Self;
@@ -207,9 +208,9 @@ use core::fmt;
 mod x86_64;
 
 /// Invokes the scheduler.
-/// 
-/// This does nothing more than calling the current architecture scheduling function.
-/// The only reason this exists is for convenience.
+///
+/// This does nothing more than calling the current architecture scheduling
+/// function. The only reason this exists is for convenience.
 pub fn schedule() {
     Current::invoke_scheduler()
 }

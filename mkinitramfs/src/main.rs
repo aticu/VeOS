@@ -91,7 +91,8 @@ fn write_file(file: &mut File, file_num: usize, file_name: &str, file_path: &Pat
     let file_metadata_start = FILE_METADATA_OFFSET + file_num * FILE_METADATA_SIZE;
 
     // Write file name.
-    let name_position = file.seek(SeekFrom::End(0))
+    let name_position = file
+        .seek(SeekFrom::End(0))
         .unwrap_or_exit(COULD_NOT_SEEK_TARGET);
     file.write(file_name.as_bytes())
         .unwrap_or_exit(COULD_NOT_WRITE_TO_TARGET);
@@ -105,7 +106,8 @@ fn write_file(file: &mut File, file_num: usize, file_name: &str, file_path: &Pat
         .unwrap_or_exit(COULD_NOT_WRITE_TO_TARGET);
 
     // Write file content.
-    let content_position = file.seek(SeekFrom::End(0))
+    let content_position = file
+        .seek(SeekFrom::End(0))
         .unwrap_or_exit(COULD_NOT_SEEK_TARGET);
     let mut source_file =
         File::open(file_path).unwrap_or_exit(&format!("Could not open {}", file_path.display()));

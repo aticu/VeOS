@@ -225,7 +225,8 @@ fn initramfs_valid() -> bool {
 
         magic_in_file == MAGIC
             && length
-                >= size_of::<[u8; 8]>() + size_of::<u64>()
+                >= size_of::<[u8; 8]>()
+                    + size_of::<u64>()
                     + FILE_METADATA_SIZE * amount_of_files as usize
     }
 }

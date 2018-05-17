@@ -19,7 +19,9 @@ unsafe impl GlobalAlloc for Allocator {
     }
 
     unsafe fn dealloc(&self, ptr: *mut Opaque, layout: Layout) {
-        ALLOCATOR.lock().free(ptr as *mut u8, layout.size(), layout.align());
+        ALLOCATOR
+            .lock()
+            .free(ptr as *mut u8, layout.size(), layout.align());
     }
 }
 

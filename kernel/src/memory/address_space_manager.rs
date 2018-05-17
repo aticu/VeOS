@@ -1,6 +1,6 @@
 //! This module defines what an address space manager can do.
 
-use super::{MemoryArea, PAGE_SIZE, PageFlags, PhysicalAddress, VirtualAddress};
+use super::{MemoryArea, PageFlags, PhysicalAddress, VirtualAddress, PAGE_SIZE};
 
 /// This trait should be implemented by any architecture specific address space
 /// manager.

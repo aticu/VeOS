@@ -21,7 +21,7 @@ use super::Architecture;
 use core::fmt;
 use core::fmt::Write;
 use core::time::Duration;
-use log::{Log, Level, Metadata, Record, set_logger};
+use log::{set_logger, Level, Log, Metadata, Record};
 use memory::{Address, MemoryArea, PageFlags, PhysicalAddress, VirtualAddress};
 use multitasking::{StackType, CURRENT_THREAD};
 use raw_cpuid::CpuId;
@@ -83,9 +83,11 @@ impl Architecture for X86_64 {
     }
 
     fn init() {
-        assert_has_not_been_called!("x86_64 specific initialization code should only be called once.");
+        assert_has_not_been_called!(
+            "x86_64 specific initialization code should only be called once."
+        );
 
-        debug!("Initializing the GTD...");
+        debug!("Initializing the GDT...");
         unsafe {
             GDT.load();
         }
@@ -104,7 +106,9 @@ impl Architecture for X86_64 {
 
     fn init_logger() {
         // Ignore the result. If the logger fails to be initialized, logging won't work.
-        match set_logger(&KERNEL_LOGGER) { _ => () }
+        match set_logger(&KERNEL_LOGGER) {
+            _ => ()
+        }
     }
 
     fn get_cpu_num() -> usize {
@@ -172,7 +176,8 @@ impl Architecture for X86_64 {
         let second_part = duration.as_secs().saturating_mul(1000);
         sleep_duration = sleep_duration.saturating_add(second_part as u32);
 
-        // FIXME: This doesn't work, as long as the clock source is relying on interrupts.
+        // FIXME: This doesn't work, as long as the clock source is relying on
+        // interrupts.
 
         interrupts::lapic::set_timer(sleep_duration);
     }
@@ -248,11 +253,25 @@ impl Log for KernelLogger {
         match record.metadata().level() {
             Level::Error => {
                 println!("{}: {}", record.level(), record.args());
-                serial_println!("{} {}{}{}: {}", time, red, record.level(), reset, record.args());
+                serial_println!(
+                    "{} {}{}{}: {}",
+                    time,
+                    red,
+                    record.level(),
+                    reset,
+                    record.args()
+                );
             },
             Level::Warn => {
                 println!("{}: {}", record.level(), record.args());
-                serial_println!("{} {}{}{}: {}", time, yellow, record.level(), reset, record.args());
+                serial_println!(
+                    "{} {}{}{}: {}",
+                    time,
+                    yellow,
+                    record.level(),
+                    reset,
+                    record.args()
+                );
             },
             Level::Info => {
                 println!("{}", record.args());

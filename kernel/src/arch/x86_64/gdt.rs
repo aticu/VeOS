@@ -1,7 +1,9 @@
 //! Provides the global descriptor table used by the operating system.
 
-use super::memory::{DOUBLE_FAULT_STACK_AREA_BASE, DOUBLE_FAULT_STACK_MAX_SIZE,
-                    DOUBLE_FAULT_STACK_OFFSET, FINAL_STACK_TOP};
+use super::memory::{
+    DOUBLE_FAULT_STACK_AREA_BASE, DOUBLE_FAULT_STACK_MAX_SIZE, DOUBLE_FAULT_STACK_OFFSET,
+    FINAL_STACK_TOP
+};
 use core::mem::size_of;
 use memory::Address;
 use multitasking::stack::AccessType;

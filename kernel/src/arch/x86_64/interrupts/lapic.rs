@@ -131,7 +131,10 @@ pub fn init() {
 pub fn calibrate_timer() {
     let measure_accuracy_in_ms = 125;
 
-    debug!("Calibrating the LAPIC timer for {}ms...", measure_accuracy_in_ms);
+    debug!(
+        "Calibrating the LAPIC timer for {}ms...",
+        measure_accuracy_in_ms
+    );
 
     // Use the RTC to calibrate the LAPIC timer.
     unsafe {

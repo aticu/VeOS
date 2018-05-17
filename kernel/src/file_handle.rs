@@ -44,10 +44,12 @@ pub trait FileHandle {
 
     /// Returns the size of the file.
     fn len(&mut self) -> u64 {
-        let current_seek = self.seek(SeekFrom::Current(0))
+        let current_seek = self
+            .seek(SeekFrom::Current(0))
             .expect("Seeking at current position failed.");
 
-        let size = self.seek(SeekFrom::End(0))
+        let size = self
+            .seek(SeekFrom::End(0))
             .expect("Seek to end not possible.");
 
         self.seek(SeekFrom::Start(current_seek))
