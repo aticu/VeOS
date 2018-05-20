@@ -6,7 +6,11 @@ use super::paging::page_table_manager::PageTableManager;
 use super::paging::{convert_flags, Page, PageFrame, CURRENT_PAGE_TABLE};
 use super::PAGE_SIZE;
 use core::ptr;
-use memory::{address_space_manager, Address, PageFlags, PhysicalAddress, VirtualAddress};
+use memory::{address_space_manager, Address, AddressSpace, PageFlags, PhysicalAddress, VirtualAddress};
+use super::{KERNEL_STACK_AREA_BASE, KERNEL_STACK_MAX_SIZE, KERNEL_STACK_OFFSET, USER_STACK_AREA_BASE,
+    USER_STACK_MAX_SIZE, USER_STACK_OFFSET};
+use multitasking::{Stack, ThreadID};
+use multitasking::stack::AccessType;
 
 pub struct AddressSpaceManager {
     table: InactivePageTable
@@ -110,5 +114,37 @@ impl address_space_manager::AddressSpaceManager for AddressSpaceManager {
             .unmap_page_unchecked(Page::from_address(start_address));
 
         self.table.unmap();
+    }
+
+    fn create_kernel_stack(id: ThreadID, address_space: &mut AddressSpace) -> Stack {
+        let tid: usize = id.into();
+        Stack::new(
+            0x4000,
+            KERNEL_STACK_MAX_SIZE,
+            KERNEL_STACK_AREA_BASE + KERNEL_STACK_OFFSET * tid,
+            AccessType::KernelOnly,
+            Some(address_space)
+        )
+    }
+
+    fn create_user_stack(id: ThreadID, address_space: &mut AddressSpace) -> Stack {
+        let tid: usize = id.into();
+        Stack::new(
+            0x2000,
+            USER_STACK_MAX_SIZE,
+            USER_STACK_AREA_BASE + USER_STACK_OFFSET * tid,
+            AccessType::UserAccessible,
+            Some(address_space)
+        )
+    }
+
+    fn create_idle_stack(cpu_id: usize) -> Stack {
+        Stack::new(
+            0x3000,
+            KERNEL_STACK_MAX_SIZE,
+            KERNEL_STACK_AREA_BASE + KERNEL_STACK_OFFSET * cpu_id,
+            AccessType::KernelOnly,
+            None
+        )
     }
 }

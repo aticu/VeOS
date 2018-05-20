@@ -4,12 +4,8 @@ pub mod address_space;
 pub mod address_space_manager;
 pub mod allocator;
 
-pub use arch::KERNEL_STACK_AREA_BASE;
-pub use arch::KERNEL_STACK_MAX_SIZE;
-pub use arch::KERNEL_STACK_OFFSET;
-pub use arch::USER_STACK_AREA_BASE;
-pub use arch::USER_STACK_MAX_SIZE;
-pub use arch::USER_STACK_OFFSET;
+pub use self::address_space::AddressSpace;
+pub use self::address_space_manager::AddressSpaceManager;
 
 use arch::{self, Architecture};
 use core::fmt;

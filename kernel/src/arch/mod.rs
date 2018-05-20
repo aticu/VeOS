@@ -183,22 +183,8 @@ pub trait Context {
     fn idle(stack_pointer: VirtualAddress) -> Self;
 }
 
-macro_rules! export_arch {
-    ($name:ident) => {
-        pub use self::$name::memory::KERNEL_STACK_AREA_BASE;
-        pub use self::$name::memory::KERNEL_STACK_MAX_SIZE;
-        pub use self::$name::memory::KERNEL_STACK_OFFSET;
-        pub use self::$name::memory::USER_STACK_AREA_BASE;
-        pub use self::$name::memory::USER_STACK_MAX_SIZE;
-        pub use self::$name::memory::USER_STACK_OFFSET;
-    };
-}
-
 #[cfg(target_arch = "x86_64")]
 pub type Current = x86_64::X86_64;
-
-#[cfg(target_arch = "x86_64")]
-export_arch!(x86_64);
 
 #[cfg(target_arch = "x86_64")]
 pub use self::x86_64::vga_buffer;

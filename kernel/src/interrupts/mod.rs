@@ -28,7 +28,7 @@ pub fn page_fault_handler(address: VirtualAddress, program_counter: VirtualAddre
     let current_thread = CURRENT_THREAD.lock();
 
     error!(
-        "Page fault in process {} (thread {}) at address {:?} (PC: {:?})",
+        "Page fault in {:?} {:?} at address {:?} (PC: {:?})",
         current_thread.pid, current_thread.id, address, program_counter
     );
 

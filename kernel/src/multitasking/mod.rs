@@ -19,16 +19,44 @@ use sync::mutex::MutexGuard;
 use sync::Mutex;
 
 /// The type of a process ID.
-pub type ProcessID = usize;
+#[repr(transparent)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
+pub struct ProcessID(usize);
+
+impl From<usize> for ProcessID {
+    fn from(id: usize) -> ProcessID {
+        ProcessID(id)
+    }
+}
+
+impl From<ProcessID> for usize {
+    fn from(id: ProcessID) -> usize {
+        id.0
+    }
+}
 
 /// The type of a thread ID.
-type ThreadID = u16;
+#[repr(transparent)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
+pub struct ThreadID(usize);
+
+impl From<usize> for ThreadID {
+    fn from(id: usize) -> ThreadID {
+        ThreadID(id)
+    }
+}
+
+impl From<ThreadID> for usize {
+    fn from(id: ThreadID) -> usize {
+        id.0
+    }
+}
 
 lazy_static! {
     /// The list of all the currently running processes.
     static ref PROCESS_LIST: Mutex<BTreeMap<ProcessID, PCB>> = Mutex::new({
         let mut map = BTreeMap::new();
-        map.insert(0, PCB::idle_pcb());
+        map.insert(0.into(), PCB::idle_pcb());
 
         map
     });
@@ -38,10 +66,10 @@ lazy_static! {
 fn find_pid(list: &MutexGuard<BTreeMap<ProcessID, PCB>>) -> ProcessID {
     // UNOPTIMIZED
     let mut pid = 1;
-    while list.contains_key(&pid) {
+    while list.contains_key(&pid.into()) {
         pid += 1;
     }
-    pid
+    pid.into()
 }
 
 /// Creates a new process.
@@ -51,13 +79,13 @@ pub fn create_process(address_space: AddressSpace, entry_address: VirtualAddress
     let mut process_list = PROCESS_LIST.lock();
     let id = find_pid(&process_list);
 
-    let first_tcb = TCB::in_process(id, 0, entry_address, &mut pcb);
+    let first_tcb = TCB::in_process(id, 0.into(), entry_address, &mut pcb);
 
     scheduler::READY_LIST.lock().push(first_tcb);
 
     assert!(
         process_list.insert(id, pcb).is_none(),
-        "Trying to use an already used PID ({}).",
+        "Trying to use an already used {:?}.",
         id
     );
 

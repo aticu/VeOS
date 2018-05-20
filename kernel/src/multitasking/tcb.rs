@@ -6,10 +6,7 @@ use arch::{self, Architecture};
 use core::cmp::Ordering;
 use core::fmt;
 use core::time::Duration;
-use memory::{
-    VirtualAddress, KERNEL_STACK_AREA_BASE, KERNEL_STACK_MAX_SIZE, KERNEL_STACK_OFFSET,
-    USER_STACK_AREA_BASE, USER_STACK_MAX_SIZE, USER_STACK_OFFSET
-};
+use memory::{VirtualAddress, AddressSpaceManager};
 use sync::time::Timestamp;
 
 /// Represents the possible states a thread can have.
@@ -47,12 +44,12 @@ pub struct TCB {
 
 impl fmt::Debug for TCB {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.pid == 0 {
-            write!(f, "Thread <IDLE on CPU {}> ({:?})", self.id, self.state)
+        if self.pid == 0.into() {
+            write!(f, "Thread <IDLE on CPU {}> ({:?})", self.id.0, self.state)
         } else {
             write!(
                 f,
-                "Thread <ID: {}, PID: {}> ({:?})",
+                "Thread <{:?}, {:?}> ({:?})",
                 self.id, self.pid, self.state
             )
         }
@@ -122,21 +119,9 @@ impl TCB {
         arg4: usize,
         arg5: usize
     ) -> TCB {
-        let kernel_stack = Stack::new(
-            0x4000,
-            KERNEL_STACK_MAX_SIZE,
-            KERNEL_STACK_AREA_BASE + KERNEL_STACK_OFFSET * (id as usize),
-            AccessType::KernelOnly,
-            Some(&mut pcb.address_space)
-        );
+        let kernel_stack = pcb.address_space.create_kernel_stack(id);
 
-        let user_stack = Stack::new(
-            0x2000,
-            USER_STACK_MAX_SIZE,
-            USER_STACK_AREA_BASE + USER_STACK_OFFSET * (id as usize),
-            AccessType::UserAccessible,
-            Some(&mut pcb.address_space)
-        );
+        let user_stack = pcb.address_space.create_user_stack(id);
 
         let stack_pointer = user_stack.base_stack_pointer;
         let kernel_stack_pointer = kernel_stack.base_stack_pointer;
@@ -164,22 +149,16 @@ impl TCB {
 
     /// Creates a new TCB for an idle thread.
     pub fn idle_tcb(cpu_id: usize) -> TCB {
-        let id = cpu_id as ThreadID;
+        let id: ThreadID = cpu_id.into();
 
         // NOTE: This assumes that the idle address space is currently active.
-        let kernel_stack = Stack::new(
-            0x3000,
-            KERNEL_STACK_MAX_SIZE,
-            KERNEL_STACK_AREA_BASE + KERNEL_STACK_OFFSET * (id as usize),
-            AccessType::KernelOnly,
-            None
-        );
+        let kernel_stack = <<arch::Current as Architecture>::AddressSpaceManager as AddressSpaceManager>::create_idle_stack(cpu_id);
 
         let stack_pointer = kernel_stack.base_stack_pointer;
 
         TCB {
             id,
-            pid: 0,
+            pid: 0.into(),
             kernel_stack,
             user_stack: Stack::new(
                 0,

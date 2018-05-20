@@ -1,6 +1,8 @@
 //! This module defines what an address space manager can do.
 
 use super::{MemoryArea, PageFlags, PhysicalAddress, VirtualAddress, PAGE_SIZE};
+use multitasking::{Stack, ThreadID};
+use memory::AddressSpace;
 
 /// This trait should be implemented by any architecture specific address space
 /// manager.
@@ -40,12 +42,15 @@ pub trait AddressSpaceManager: Send {
     /// Creates a new kernel stack.
     ///
     /// This assumes that the given thread id is unused.
-    //fn create_kernel_stack(id: ThreadId);
+    fn create_kernel_stack(id: ThreadID, address_space: &mut AddressSpace) -> Stack;
 
     /// Creates a new user mode stack.
     ///
     /// This assumes that the given thread id is unused.
-    //fn create_user_stack(id: ThreadId);
+    fn create_user_stack(id: ThreadID, address_space: &mut AddressSpace) -> Stack;
+
+    /// Creates a new idle process stack.
+    fn create_idle_stack(cpu_id: usize) -> Stack;
 
     /// Zeroes the given area in the managed address space.
     fn zero(&mut self, area: MemoryArea<VirtualAddress>, flags: PageFlags) {

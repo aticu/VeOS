@@ -7,6 +7,7 @@ use arch::{self, Architecture};
 use core::mem::size_of_val;
 use core::slice;
 use memory::{MemoryArea, PAGE_SIZE, USER_ACCESSIBLE};
+use multitasking::{Stack, ThreadID};
 
 /// Represents an address space
 pub struct AddressSpace {
@@ -149,6 +150,16 @@ impl AddressSpace {
     /// - Nothing should reference the unmapped pages.
     pub unsafe fn unmap_page(&mut self, start_address: VirtualAddress) {
         self.manager.unmap_page(start_address);
+    }
+
+    /// Creates a new kernel stack.
+    pub fn create_kernel_stack(&mut self, id: ThreadID) -> Stack {
+        <<arch::Current as Architecture>::AddressSpaceManager as AddressSpaceManager>::create_kernel_stack(id, self)
+    }
+
+    /// Creates a new user stack.
+    pub fn create_user_stack(&mut self, id: ThreadID) -> Stack {
+        <<arch::Current as Architecture>::AddressSpaceManager as AddressSpaceManager>::create_user_stack(id, self)
     }
 }
 

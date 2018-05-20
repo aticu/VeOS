@@ -220,12 +220,6 @@ impl Architecture for X86_64 {
     const HEAP_AREA: MemoryArea<VirtualAddress> =
         MemoryArea::new(memory::HEAP_START, memory::HEAP_MAX_SIZE);
 
-    //TODO: user stacks
-    //TODO: get memory information
-
-    //pub use self::$name::memory::new_address_space_manager;
-    //pub use self::$name::memory::idle_address_space_manager;
-
     fn write_fmt(args: fmt::Arguments) {
         vga_buffer::WRITER.lock().write_fmt(args).unwrap();
     }
@@ -239,6 +233,9 @@ pub struct KernelLogger;
 
 /// The kernel logger.
 pub static KERNEL_LOGGER: KernelLogger = KernelLogger;
+
+/// Determines whether all logging should be to the screen.
+const LOG_TO_SCREEN: bool = false;
 
 impl Log for KernelLogger {
     fn enabled(&self, _metadata: &Metadata) -> bool {
@@ -278,9 +275,15 @@ impl Log for KernelLogger {
                 serial_println!("{} {}", time, record.args());
             },
             Level::Debug => {
+                if LOG_TO_SCREEN {
+                    println!("{}: {}", record.level(), record.args());
+                }
                 serial_println!("{} {}: {}", time, record.level(), record.args());
             },
             Level::Trace => {
+                if LOG_TO_SCREEN {
+                    println!("{}: {}", record.level(), record.args());
+                }
                 serial_println!("{} {}: {}", time, record.level(), record.args());
             }
         }

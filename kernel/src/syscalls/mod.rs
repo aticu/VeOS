@@ -51,6 +51,8 @@ fn kill_process() -> isize {
 
 fn return_pid() -> isize {
     let pid = CURRENT_THREAD.lock().pid;
+    let pid: usize = pid.into();
+
     pid as isize
 }
 
@@ -69,9 +71,11 @@ fn exec(name_ptr: VirtualAddress, name_length: usize) -> isize {
             let process_id = elf::process_from_initramfs_file(name);
 
             if let Ok(process_id) = process_id {
-                assert!(process_id as isize > 0, "Process ID too large.");
+                let pid: usize = process_id.into();
 
-                process_id as isize
+                assert!(pid as isize > 0, "Process ID too large.");
+
+                pid as isize
             } else {
                 -1
             }
@@ -113,7 +117,9 @@ fn create_thread(
 
             READY_LIST.lock().push(thread);
 
-            id as isize
+            let tid: usize = id.into();
+
+            tid as isize
         },
         None => -1
     }

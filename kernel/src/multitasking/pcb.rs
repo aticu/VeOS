@@ -22,7 +22,7 @@ pub struct PCB {
     /// The address space of the process.
     pub address_space: AddressSpace,
     /// The amount of currently existing threads within this process.
-    pub thread_count: u16,
+    pub thread_count: usize,
     /// The state of the process.
     state: ProcessState,
     /// The highest ID of a thread within this process.
@@ -41,7 +41,7 @@ impl PCB {
         PCB {
             address_space,
             thread_count: 1,
-            highest_thread_id: 0,
+            highest_thread_id: 0.into(),
             state: ProcessState::Active
         }
     }
@@ -51,8 +51,8 @@ impl PCB {
         assert_has_not_been_called!("There should only be one idle PCB.");
         PCB {
             address_space: AddressSpace::idle_address_space(),
-            thread_count: get_cpu_num() as u16,
-            highest_thread_id: get_cpu_num() as u16 - 1,
+            thread_count: get_cpu_num(),
+            highest_thread_id: (get_cpu_num() - 1).into(),
             state: ProcessState::Active
         }
     }
@@ -60,7 +60,7 @@ impl PCB {
     /// Finds an ID for a new thread in this process.
     pub fn find_thread_id(&self) -> Option<ThreadID> {
         // UNOPTIMIZED
-        self.highest_thread_id.checked_add(1)
+        self.highest_thread_id.0.checked_add(1).map(|new_id| new_id.into())
     }
 
     /// Adds a thread to the process.
