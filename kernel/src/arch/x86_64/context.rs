@@ -7,7 +7,7 @@ use core::mem::size_of;
 use memory::address_space::AddressSpace;
 use memory::{Address, PhysicalAddress, VirtualAddress};
 use multitasking::thread_management::{after_context_switch, idle};
-use multitasking::Stack;
+use multitasking::{get_current_thread, Stack};
 use x86_64::registers::control_regs::cr3;
 use x86_64::structures::idt::ExceptionStackFrame;
 
@@ -166,10 +166,7 @@ pub unsafe fn switch_context(old_context: &mut Context, new_context: &Context) {
 
     let new_sp = new_context.kernel_stack_pointer;
     let new_bp = new_context.base_pointer;
-    let base_sp = ::multitasking::CURRENT_THREAD
-        .lock()
-        .kernel_stack
-        .base_stack_pointer;
+    let base_sp = get_current_thread().kernel_stack.base_stack_pointer;
     TSS.as_mut().privilege_stack_table[0] = ::x86_64::VirtualAddress(base_sp.as_usize());
 
     switch(

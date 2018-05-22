@@ -5,8 +5,7 @@ use arch::schedule;
 use core::cmp::max;
 use core::ops::{Deref, DerefMut};
 use memory::address_space::AddressSpace;
-use multitasking::{get_cpu_num, ProcessID, ThreadID, PROCESS_LIST};
-use multitasking::thread_management::CURRENT_THREAD;
+use multitasking::{get_cpu_num, get_current_thread, ProcessID, ThreadID, PROCESS_LIST};
 use sync::mutex::MutexGuard;
 
 /// Represents the states a process can have.
@@ -61,7 +60,10 @@ impl PCB {
     /// Finds an ID for a new thread in this process.
     pub fn find_thread_id(&self) -> Option<ThreadID> {
         // UNOPTIMIZED
-        self.highest_thread_id.0.checked_add(1).map(|new_id| new_id.into())
+        self.highest_thread_id
+            .0
+            .checked_add(1)
+            .map(|new_id| new_id.into())
     }
 
     /// Adds a thread to the process.
@@ -126,7 +128,7 @@ impl<'a> DerefMut for ProcessLock<'a> {
 
 /// Returns a lock of the current process.
 pub fn get_current_process<'a>() -> ProcessLock<'a> {
-    let pid = CURRENT_THREAD.lock().pid;
+    let pid = get_current_thread().pid;
     ProcessLock {
         guard: PROCESS_LIST.lock(),
         key: pid

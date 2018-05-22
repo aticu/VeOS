@@ -1,9 +1,9 @@
 //! This module contains functions related to the idle process.
 
 use super::SLEEPING_LIST;
-use arch::{self, Architecture, schedule};
-use sync::{cpu_halt, enable_preemption};
+use arch::{self, schedule, Architecture};
 use sync::time::Timestamp;
+use sync::{cpu_halt, enable_preemption};
 
 /// This function gets executed whenever there is nothing else to execute.
 ///

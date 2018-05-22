@@ -4,8 +4,8 @@ use arch::schedule;
 use core::time::Duration;
 use elf;
 use memory::{Address, MemoryArea, VirtualAddress};
-use multitasking::{get_current_process, TCB};
-use multitasking::thread_management::{CURRENT_THREAD, READY_LIST};
+use multitasking::thread_management::READY_LIST;
+use multitasking::{get_current_process, get_current_thread, TCB};
 use sync::time::Timestamp;
 
 /// This function accepts the syscalls and calls the corresponding handlers.
@@ -50,7 +50,7 @@ fn kill_process() -> isize {
 }
 
 fn return_pid() -> isize {
-    let pid = CURRENT_THREAD.lock().pid;
+    let pid = get_current_thread().pid;
     let pid: usize = pid.into();
 
     pid as isize
@@ -95,7 +95,7 @@ fn create_thread(
     arg4: usize,
     arg5: usize
 ) -> isize {
-    let pid = CURRENT_THREAD.lock().pid;
+    let pid = get_current_thread().pid;
     let mut pcb = get_current_process();
     let id = pcb.find_thread_id();
 
@@ -126,7 +126,7 @@ fn create_thread(
 }
 
 fn kill_thread() -> isize {
-    CURRENT_THREAD.lock().kill();
+    get_current_thread().kill();
 
     schedule();
 
@@ -157,7 +157,7 @@ fn sleep(seconds: usize, nanoseconds: usize) -> isize {
         get_current_process().kill_immediately();
     };
 
-    CURRENT_THREAD.lock().state = ::multitasking::ThreadState::Sleeping(wake_time);
+    get_current_thread().state = ::multitasking::ThreadState::Sleeping(wake_time);
     schedule();
     0
 }

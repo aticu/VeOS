@@ -1,8 +1,8 @@
 //! This module defines what an address space manager can do.
 
 use super::{MemoryArea, PageFlags, PhysicalAddress, VirtualAddress, PAGE_SIZE};
-use multitasking::{Stack, ThreadID};
 use memory::AddressSpace;
+use multitasking::{Stack, ThreadID};
 
 /// This trait should be implemented by any architecture specific address space
 /// manager.

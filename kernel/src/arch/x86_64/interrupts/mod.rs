@@ -5,6 +5,7 @@ pub mod lapic;
 
 pub use self::lapic::issue_self_interrupt;
 use super::sync::CLOCK;
+use core::ops::Deref;
 use core::time::Duration;
 use memory::{Address, VirtualAddress};
 use multitasking::thread_management::schedule_next_thread;
@@ -122,10 +123,8 @@ extern "x86-interrupt" fn double_fault_handler(
     error!("DOUBLE FAULT!");
     error!("{:?}", stack_frame);
     error!("Error code: 0x{:x}", error_code);
-    use multitasking::TCB;
-    use multitasking::thread_management::CURRENT_THREAD;
-    let tcb: &::sync::Mutex<TCB> = &CURRENT_THREAD;
-    error!("Running thread: {:?}", tcb);
+    use multitasking::get_current_thread;
+    error!("Running thread: {:?}", get_current_thread().deref());
     loop {}
 }
 

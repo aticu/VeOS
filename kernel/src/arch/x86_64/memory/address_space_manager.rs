@@ -5,12 +5,16 @@ use super::paging::page_table_entry::*;
 use super::paging::page_table_manager::PageTableManager;
 use super::paging::{convert_flags, Page, PageFrame, CURRENT_PAGE_TABLE};
 use super::PAGE_SIZE;
+use super::{
+    KERNEL_STACK_AREA_BASE, KERNEL_STACK_MAX_SIZE, KERNEL_STACK_OFFSET, USER_STACK_AREA_BASE,
+    USER_STACK_MAX_SIZE, USER_STACK_OFFSET
+};
 use core::ptr;
-use memory::{address_space_manager, Address, AddressSpace, PageFlags, PhysicalAddress, VirtualAddress};
-use super::{KERNEL_STACK_AREA_BASE, KERNEL_STACK_MAX_SIZE, KERNEL_STACK_OFFSET, USER_STACK_AREA_BASE,
-    USER_STACK_MAX_SIZE, USER_STACK_OFFSET};
-use multitasking::{Stack, ThreadID};
+use memory::{
+    address_space_manager, Address, AddressSpace, PageFlags, PhysicalAddress, VirtualAddress
+};
 use multitasking::stack::AccessType;
+use multitasking::{Stack, ThreadID};
 
 pub struct AddressSpaceManager {
     table: InactivePageTable

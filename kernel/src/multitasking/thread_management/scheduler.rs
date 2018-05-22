@@ -1,12 +1,13 @@
-//! This module contains the functions necessary for deciding which process should run next.
+//! This module contains the functions necessary for deciding which process
+//! should run next.
 
-use super::{CURRENT_THREAD, OLD_THREAD, READY_LIST, SLEEPING_LIST};
-use super::super::TCB;
 use super::super::tcb::{SleepTimeSortedTCB, ThreadState};
+use super::super::TCB;
+use super::{CURRENT_THREAD, OLD_THREAD, READY_LIST, SLEEPING_LIST};
 use arch::{self, Architecture};
 use core::mem::swap;
-use sync::{disable_preemption, restore_preemption_state};
 use sync::time::Timestamp;
+use sync::{disable_preemption, restore_preemption_state};
 
 /// Schedules the next thread to run and dispatches it.
 ///

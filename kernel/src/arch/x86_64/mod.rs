@@ -23,8 +23,7 @@ use core::fmt::Write;
 use core::time::Duration;
 use log::{set_logger, Level, Log, Metadata, Record};
 use memory::{Address, MemoryArea, PageFlags, PhysicalAddress, VirtualAddress};
-use multitasking::StackType;
-use multitasking::thread_management::CURRENT_THREAD;
+use multitasking::{get_current_thread, StackType};
 use raw_cpuid::CpuId;
 use sync::mutex::Mutex;
 use sync::time::Timestamp;
@@ -131,10 +130,7 @@ impl Architecture for X86_64 {
     }
 
     unsafe fn enter_first_thread() -> ! {
-        let stack_pointer = CURRENT_THREAD
-            .without_locking()
-            .context
-            .kernel_stack_pointer;
+        let stack_pointer = { get_current_thread().context.kernel_stack_pointer };
         TSS.as_mut().privilege_stack_table[0] = ::x86_64::VirtualAddress(stack_pointer.as_usize());
         asm!("mov rsp, $0
             ret"

@@ -6,7 +6,7 @@ use arch::{self, Architecture};
 use core::cmp::Ordering;
 use core::fmt;
 use core::time::Duration;
-use memory::{VirtualAddress, AddressSpaceManager};
+use memory::{AddressSpaceManager, VirtualAddress};
 use sync::time::Timestamp;
 
 /// Represents the possible states a thread can have.

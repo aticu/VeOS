@@ -6,7 +6,7 @@
 
 use arch::{self, schedule, Architecture};
 use memory::VirtualAddress;
-use multitasking::thread_management::CURRENT_THREAD;
+use multitasking::get_current_thread;
 
 /// The timer interrupt handler for the system.
 pub fn timer_interrupt() {
@@ -25,7 +25,7 @@ pub fn keyboard_interrupt(scancode: u8) {
 /// The page fault handler.
 pub fn page_fault_handler(address: VirtualAddress, program_counter: VirtualAddress) {
     unsafe { ::sync::disable_preemption() };
-    let current_thread = CURRENT_THREAD.lock();
+    let current_thread = get_current_thread();
 
     error!(
         "Page fault in {:?} {:?} at address {:?} (PC: {:?})",

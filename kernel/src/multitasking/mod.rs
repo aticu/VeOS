@@ -2,15 +2,15 @@
 
 mod cpu_local;
 mod pcb;
-pub mod thread_management;
 pub mod stack;
 mod tcb;
+pub mod thread_management;
 
 pub use self::cpu_local::{CPULocal, CPULocalMut};
 pub use self::pcb::{get_current_process, PCB};
-pub use self::thread_management::CURRENT_THREAD;
 pub use self::stack::{Stack, StackType};
 pub use self::tcb::{ThreadState, TCB};
+pub use self::thread_management::get_current_thread;
 use alloc::btree_map::BTreeMap;
 use arch::{self, Architecture};
 use memory::address_space::AddressSpace;
