@@ -4,8 +4,8 @@ use arch::schedule;
 use core::time::Duration;
 use elf;
 use memory::{Address, MemoryArea, VirtualAddress};
-use multitasking::scheduler::READY_LIST;
-use multitasking::{get_current_process, CURRENT_THREAD, TCB};
+use multitasking::{get_current_process, TCB};
+use multitasking::thread_management::{CURRENT_THREAD, READY_LIST};
 use sync::time::Timestamp;
 
 /// This function accepts the syscalls and calls the corresponding handlers.

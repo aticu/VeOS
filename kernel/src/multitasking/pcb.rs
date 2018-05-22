@@ -5,7 +5,8 @@ use arch::schedule;
 use core::cmp::max;
 use core::ops::{Deref, DerefMut};
 use memory::address_space::AddressSpace;
-use multitasking::{get_cpu_num, ProcessID, ThreadID, CURRENT_THREAD, PROCESS_LIST};
+use multitasking::{get_cpu_num, ProcessID, ThreadID, PROCESS_LIST};
+use multitasking::thread_management::CURRENT_THREAD;
 use sync::mutex::MutexGuard;
 
 /// Represents the states a process can have.

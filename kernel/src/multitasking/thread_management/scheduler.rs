@@ -1,33 +1,12 @@
-//! This module implements a scheduler.
+//! This module contains the functions necessary for deciding which process should run next.
 
-use super::tcb::SleepTimeSortedTCB;
-use super::{ThreadState, TCB};
-use alloc::binary_heap::BinaryHeap;
-use arch::{self, schedule, Architecture};
+use super::{CURRENT_THREAD, OLD_THREAD, READY_LIST, SLEEPING_LIST};
+use super::super::TCB;
+use super::super::tcb::{SleepTimeSortedTCB, ThreadState};
+use arch::{self, Architecture};
 use core::mem::swap;
+use sync::{disable_preemption, restore_preemption_state};
 use sync::time::Timestamp;
-use sync::Mutex;
-use sync::{disable_preemption, enable_preemption, restore_preemption_state};
-use x86_64::instructions::halt;
-
-cpu_local! {
-    pub static ref READY_LIST: Mutex<BinaryHeap<TCB>> = |_| Mutex::new(BinaryHeap::new());
-}
-
-lazy_static! {
-    pub static ref SLEEPING_LIST: Mutex<BinaryHeap<SleepTimeSortedTCB>> =
-        Mutex::new(BinaryHeap::new());
-}
-
-cpu_local! {
-    /// Holds the TCB of the currently running thread.
-    pub static ref CURRENT_THREAD: Mutex<TCB> = |cpu_id| Mutex::new(TCB::idle_tcb(cpu_id));
-}
-
-cpu_local! {
-    /// Holds the TCB of the previously running thread during context switches.
-    static mut ref OLD_THREAD: Option<TCB> = |_| None;
-}
 
 /// Schedules the next thread to run and dispatches it.
 ///
@@ -96,23 +75,6 @@ pub unsafe fn schedule_next_thread() {
     restore_preemption_state(&preemption_state);
 }
 
-/// This function should get called after calling `context_switch` to perform
-/// clean up.
-pub fn after_context_switch() {
-    if OLD_THREAD.is_some() {
-        if OLD_THREAD.as_ref().unwrap().is_dead() {
-            unsafe {
-                // Drop the old thread.
-                OLD_THREAD.as_mut().take();
-            }
-        } else {
-            let old_thread = unsafe { OLD_THREAD.as_mut().take().unwrap() };
-            return_old_thread_to_queue(old_thread);
-        }
-    }
-    arch::Current::interrupt_in(CURRENT_THREAD.lock().get_quantum());
-}
-
 /// Returns the old thread to the corresponding queue after switching the
 /// context.
 fn return_old_thread_to_queue(thread: TCB) {
@@ -144,34 +106,19 @@ fn check_sleeping_processes() {
     }
 }
 
-/// This function gets executed whenever there is nothing else to execute.
-///
-/// It can perform various tasks, such as cleaning up unused resources.
-///
-/// Once it's done performing it's initial cleanup, it sleeps in a loop,
-/// performing periodic cleanup. It should also be interruptable as often as
-/// possible.
-pub fn idle() -> ! {
-    // TODO: Peform initial cleanup here.
-    unsafe {
-        enable_preemption();
-        schedule();
-    }
-    loop {
-        // TODO: Perform periodic cleanup here.
-        unsafe {
-            {
-                if let Some(next_wake_thread) = SLEEPING_LIST.lock().peek() {
-                    let current_time = Timestamp::get_current();
-                    let wake_time = next_wake_thread.get_wake_time();
-                    if let Some(sleep_duration) = wake_time.checked_sub(current_time) {
-                        arch::Current::interrupt_in(sleep_duration);
-                    } else {
-                        schedule();
-                    }
-                }
+/// This function should get called after calling `context_switch` to perform
+/// clean up.
+pub fn after_context_switch() {
+    if OLD_THREAD.is_some() {
+        if OLD_THREAD.as_ref().unwrap().is_dead() {
+            unsafe {
+                // Drop the old thread.
+                OLD_THREAD.as_mut().take();
             }
-            halt();
+        } else {
+            let old_thread = unsafe { OLD_THREAD.as_mut().take().unwrap() };
+            return_old_thread_to_queue(old_thread);
         }
     }
+    arch::Current::interrupt_in(CURRENT_THREAD.lock().get_quantum());
 }

@@ -6,7 +6,7 @@ use arch;
 use core::mem::size_of;
 use memory::address_space::AddressSpace;
 use memory::{Address, PhysicalAddress, VirtualAddress};
-use multitasking::scheduler::{after_context_switch, idle};
+use multitasking::thread_management::{after_context_switch, idle};
 use multitasking::Stack;
 use x86_64::registers::control_regs::cr3;
 use x86_64::structures::idt::ExceptionStackFrame;

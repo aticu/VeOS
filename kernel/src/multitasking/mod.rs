@@ -2,13 +2,13 @@
 
 mod cpu_local;
 mod pcb;
-pub mod scheduler;
+pub mod thread_management;
 pub mod stack;
 mod tcb;
 
 pub use self::cpu_local::{CPULocal, CPULocalMut};
 pub use self::pcb::{get_current_process, PCB};
-pub use self::scheduler::CURRENT_THREAD;
+pub use self::thread_management::CURRENT_THREAD;
 pub use self::stack::{Stack, StackType};
 pub use self::tcb::{ThreadState, TCB};
 use alloc::btree_map::BTreeMap;
@@ -81,7 +81,7 @@ pub fn create_process(address_space: AddressSpace, entry_address: VirtualAddress
 
     let first_tcb = TCB::in_process(id, 0.into(), entry_address, &mut pcb);
 
-    scheduler::READY_LIST.lock().push(first_tcb);
+    thread_management::READY_LIST.lock().push(first_tcb);
 
     assert!(
         process_list.insert(id, pcb).is_none(),

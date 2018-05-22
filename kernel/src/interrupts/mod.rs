@@ -6,7 +6,7 @@
 
 use arch::{self, schedule, Architecture};
 use memory::VirtualAddress;
-use multitasking::CURRENT_THREAD;
+use multitasking::thread_management::CURRENT_THREAD;
 
 /// The timer interrupt handler for the system.
 pub fn timer_interrupt() {
