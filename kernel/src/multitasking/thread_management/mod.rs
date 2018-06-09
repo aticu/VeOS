@@ -36,6 +36,7 @@ cpu_local! {
 ///
 /// Values of this type hold a lock that allows access to a TCB.
 pub struct ThreadLock<'a> {
+    /// The underlying mutex guard of the thread lock.
     guard: MutexGuard<'a, TCB>
 }
 

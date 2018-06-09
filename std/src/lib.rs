@@ -1,6 +1,7 @@
 #![feature(start)]
 #![feature(asm)]
 #![feature(lang_items)]
+#![feature(panic_implementation)]
 #![feature(naked_functions)]
 #![no_std]
 
@@ -97,6 +98,7 @@ pub mod io;
 pub mod process;
 pub mod thread;
 
+use core::panic::PanicInfo;
 use process::exit;
 
 extern "Rust" {
@@ -124,10 +126,9 @@ extern "C" fn eh_personality() {
 /// The panic handler of the program.
 ///
 /// This exits after printing some debug information.
-#[lang = "panic_fmt"]
+#[panic_implementation]
 #[no_mangle]
-pub extern "C" fn panic_fmt(fmt: core::fmt::Arguments, file: &'static str, line: u32) -> ! {
-    println!("PANIC! in file '{}' at line {}:", file, line);
-    println!("{}", fmt);
+pub extern "C" fn panic_fmt(info: &PanicInfo) -> ! {
+    println!("{}", info);
     exit();
 }

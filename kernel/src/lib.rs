@@ -1,4 +1,5 @@
 #![feature(lang_items)]
+#![feature(panic_implementation)]
 #![feature(const_fn)]
 #![feature(ptr_internals)]
 #![feature(repr_transparent)]
@@ -55,6 +56,7 @@ mod syscalls;
 static OS_NAME: &'static str = "VeOS";
 
 use arch::Architecture;
+use core::panic::PanicInfo;
 use memory::allocator::Allocator;
 
 /// Sets the current log level for the kernel.
@@ -119,11 +121,10 @@ pub extern "C" fn main(magic_number: u32, information_structure_address: usize) 
 /// this is not meant to be called manually anywhere,
 /// but through the panic! macro.
 #[cfg(not(test))]
-#[lang = "panic_fmt"]
+#[panic_implementation]
 #[no_mangle]
-pub extern "C" fn panic_fmt(fmt: core::fmt::Arguments, file: &'static str, line: u32) -> ! {
-    error!("{}", fmt);
-    info!("Panic in file '{}:{}'.", file, line);
+pub extern "C" fn panic_fmt(info: &PanicInfo) -> ! {
+    error!("{}", info);
     unsafe {
         sync::disable_preemption();
     }
