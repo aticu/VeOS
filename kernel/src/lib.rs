@@ -10,7 +10,6 @@
 #![feature(naked_functions)]
 #![feature(allocator_internals)]
 #![feature(allocator_api)]
-#![feature(global_allocator)]
 #![feature(abi_x86_interrupt)]
 #![no_std]
 #![warn(missing_docs)]
